@@ -168,55 +168,46 @@ class AdminMenuService
             ],
         ]);
 
-                $this->addMenuItem([
-    'label' => __('Agent Time Logs'),
-    'icon' => 'clock.svg',
-    'id' => 'agent-time-logs-submenu',
-    'active' => Route::is('admin.agent-time-logs.*'),
-    'priority' => 25,
-    'permissions' => ['agent_time_logs.create', 'agent_time_logs.view'],
-    'children' => [
-        [
-            'label' => __('Add Logs'),
-            'route' => route('admin.agent-time-logs.create'),
-            'active' => Route::is('admin.agent-time-logs.create'),
-            'priority' => 10,
-            'permissions' => 'agent_time_logs.create',
-        ],
-        [
-            'label' => __('View Logs'),
-            'route' => route('admin.agent-time-logs.index'),
-            'active' => Route::is('admin.agent-time-logs.index') || Route::is('admin.agent-time-logs.show'),
-            'priority' => 20,
-            'permissions' => 'agent_time_logs.view',
-        ],
-    ],
+$this->addMenuItem([
+    'label' => __('Dialer'),
+    'icon' => 'phone.svg',
+    'id' => 'dialer',
+    'route' => route('admin.dialer.index'),
+    'active' => Route::is('admin.dialer.*'),
+    'priority' => 15,
+    'permissions' => [], // empty => everyone (but still must be logged in)
 ]);
+  
 
-             $this->addMenuItem([
-    'label' => __('Agent Leads'),
-    'icon' => 'user.svg', // Change this to the appropriate icon if needed
-    'id' => 'agent-leads-submenu',
-    'active' => Route::is('admin.agent-leads.*'),
-    'priority' => 26, // Adjust priority as needed
-    'permissions' => ['agent_leads.create', 'agent_leads.view'],
-    'children' => [
-        [
-            'label' => __('Add Leads'),
-            'route' => route('admin.agent-leads.create'),
-            'active' => Route::is('admin.agent-leads.create'),
-            'priority' => 10,
-            'permissions' => 'agent_leads.create',
+$user = auth()->user();
+$isAdmin = $user && $user->hasAnyRole(['Admin', 'Superadmin']); // or hasRole('Superadmin') etc.
+
+if ($isAdmin) {
+    $this->addMenuItem([
+        'label' => __('carrier'),
+        'icon' => 'user.svg',
+        'id' => 'carrier-submenu',
+        'active' => Route::is('admin.carrier.*'),
+        'priority' => 26,
+        'permissions' => [],
+        'children' => [
+            [
+                'label' => __('View carrier'),
+                'route' => route('admin.carrier.index'),
+                'active' => Route::is('admin.carrier.index'),
+                'priority' => 10,
+                'permissions' => [],
+            ],
+            [
+                'label' => __('New Carrier'),
+                'route' => route('admin.carrier.create'),
+                'active' => Route::is('admin.carrier.create'),
+                'priority' => 20,
+                'permissions' => [],
+            ],
         ],
-        [
-            'label' => __('View Leads'),
-            'route' => route('admin.agent-leads.index'),
-            'active' => Route::is('admin.agent-leads.index') || Route::is('admin.agent-leads.show'),
-            'priority' => 20,
-            'permissions' => 'agent_leads.view',
-        ],
-    ],
-]);
+    ]);
+}
    
 
         $this->addMenuItem([
@@ -280,24 +271,23 @@ class AdminMenuService
             ],
         ], __('More'));
 
-        $this->addMenuItem([
-            'label' => __('Logout'),
-            'icon' => 'logout.svg',
-            'route' => route('admin.dashboard'),
-            'active' => false,
-            'id' => 'logout',
-            'priority' => 1,
-            'html' => '
-                <li class="hover:menu-item-active">
-                    <form method="POST" action="'.route('logout').'">
-                        '.csrf_field().'
-                        <button type="submit" class="menu-item group w-full text-left menu-item-inactive text-black dark:text-white hover:text-black">
-                            <img src="'.asset('images/icons/logout.svg').'" alt="Logout" class="menu-item-icon dark:invert">
-                            <span class="menu-item-text">'.__('Logout').'</span>
-                        </button>
-                    </form>
-                </li>
-            ',
+$this->addMenuItem([
+    'label' => __('Logout'),
+    'icon' => 'logout.svg',
+    'route' => route('admin.dashboard'),
+    'active' => false,
+    'id' => 'logout',
+    'priority' => 1,
+    'html' => '
+        <li class="hover:menu-item-active">
+            <form method="POST" action="'.route('logout').'">
+                '.csrf_field().'
+                <button type="submit" class="menu-item group w-full text-left menu-item-inactive text-black dark:text-white hover:text-black">
+                    <img src="'.asset('images/icons/logout.svg').'" alt="Logout" class="menu-item-icon dark:invert">
+                    <span class="menu-item-text">'.__('Logout').'</span>
+                </button>
+            </form>
+        </li>            ',
         ], __('More'));
 
         $this->groups = ld_apply_filters('admin_menu_groups_before_sorting', $this->groups);

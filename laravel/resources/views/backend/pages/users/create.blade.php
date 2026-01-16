@@ -17,19 +17,35 @@
                         @csrf
 
                         <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                            {{-- Full Name --}}
+
+                            {{-- External Name --}}
                             <div>
-                                <label for="fullName" class="block text-sm font-medium text-gray-700 dark:text-gray-400">
-                                    {{ __('Full Name') }}
+                                <label for="external_name" class="block text-sm font-medium text-gray-700 dark:text-gray-400">
+                                    {{ __('External Name') }}
                                 </label>
                                 <input
                                     type="text"
-                                    name="fullName"
-                                    id="fullName"
+                                    name="external_name"
+                                    id="external_name"
                                     required
-                                    autofocus
-                                    value="{{ old('fullName') }}"
-                                    placeholder="{{ __('Jane Smith') }}"
+                                    value="{{ old('external_name') }}"
+                                    placeholder="{{ __('Displayed to others') }}"
+                                    class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
+                                >
+                            </div>
+
+                            {{-- Internal Name --}}
+                            <div>
+                                <label for="internal_name" class="block text-sm font-medium text-gray-700 dark:text-gray-400">
+                                    {{ __('Internal Name') }}
+                                </label>
+                                <input
+                                    type="text"
+                                    name="internal_name"
+                                    id="internal_name"
+                                    required
+                                    value="{{ old('internal_name') }}"
+                                    placeholder="{{ __('For internal reference') }}"
                                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
                                 >
                             </div>
@@ -65,23 +81,19 @@
                                 >
                             </div>
 
-                            {{-- Group --}}
+                            {{-- Confirm Password --}}
                             <div>
-                                <label for="groupId" class="block text-sm font-medium text-gray-700 dark:text-gray-400">
-                                    {{ __('Group') }}
+                                <label for="password_confirmation" class="block text-sm font-medium text-gray-700 dark:text-gray-400">
+                                    {{ __('Confirm Password') }}
                                 </label>
-                                <select
-                                    name="groupId"
-                                    id="groupId"
-                                    class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+                                <input
+                                    type="password"
+                                    name="password_confirmation"
+                                    id="password_confirmation"
+                                    required
+                                    placeholder="{{ __('Re-enter password') }}"
+                                    class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
                                 >
-                                    <option value="">{{ __('Default') }}</option>
-                                    @foreach($groups as $group)
-                                        <option value="{{ $group['id'] }}" {{ old('groupId') == $group['id'] ? 'selected' : '' }}>
-                                            {{ $group['name'] }}
-                                        </option>
-                                    @endforeach
-                                </select>
                             </div>
 
                             {{-- Carrier --}}
@@ -102,6 +114,29 @@
                                     @endforeach
                                 </select>
                             </div>
+
+                            {{-- User Role --}}
+                            <div>
+                                <x-inputs.combobox
+                                    name="roles[]"
+                                    label="{{ __('Assign Roles') }}"
+                                    placeholder="{{ __('Select Roles') }}"
+                                    :options="collect($roles)->map(fn($name, $id) => ['value' => $name, 'label' => ucfirst($name)])->values()->toArray()"
+                                    :selected="old('roles', [])"
+                                    :multiple="true"
+                                    :searchable="false"
+                                />
+                            </div>
+
+                            {{-- Status --}}
+                            <div>
+                                <label for="is_active" class="block text-sm font-medium text-gray-700 dark:text-gray-400">{{ __('Status') }}</label>
+                                <select name="is_active" id="is_active" class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90">
+                                    <option value="1" {{ old('is_active', '1') == '1' ? 'selected' : '' }}>{{ __('Enabled') }}</option>
+                                    <option value="0" {{ old('is_active') == '0' ? 'selected' : '' }}>{{ __('Disabled') }}</option>
+                                </select>
+                            </div>
+
                         </div>
 
                         <div class="mt-6 flex justify-start gap-4">

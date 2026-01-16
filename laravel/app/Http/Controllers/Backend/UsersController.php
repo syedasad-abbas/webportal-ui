@@ -22,17 +22,33 @@ class UsersController extends Controller
     public function __construct(
         private readonly UserService $userService,
         private readonly RolesService $rolesService
-    ) {}
+    ) {
+    }
 
     public function index(): Renderable
     {
         $this->checkAuthorization(Auth::user(), ['user.view']);
 
+        $sort = (string) request('sort', '');
+        $sortField = null;
+        $sortDirection = null;
+
+        if (!empty($sort)) {
+            $sortDirection = str_starts_with($sort, '-') ? 'desc' : 'asc';
+            $sortField = ltrim($sort, '-');
+
+            $allowed = ['external_name', 'email', 'user_id', 'is_active', 'created_at'];
+            if (!in_array($sortField, $allowed, true)) {
+                $sortField = null;
+                $sortDirection = null;
+            }
+        }
+
         $filters = [
             'search' => request('search'),
             'role' => request('role'),
-            'sort_field' => null,
-            'sort_direction' => null,
+            'sort_field' => $sortField,
+            'sort_direction' => $sortDirection,
         ];
 
         $currentUser = Auth::user();
@@ -52,24 +68,13 @@ class UsersController extends Controller
 
         ld_do_action('user_create_page_before');
 
-        // NEW: these are needed by the new UI fields
-        // If you already have models, swap these to Group::... / Carrier::...
-        $groups = method_exists($this->userService, 'getGroupsDropdown')
-            ? $this->userService->getGroupsDropdown()
-            : collect();
-
         $carriers = method_exists($this->userService, 'getCarriersDropdown')
             ? $this->userService->getCarriersDropdown()
             : collect();
 
         return view('backend.pages.users.create', [
-            // kept for compatibility (you might still use it elsewhere)
             'roles' => $this->rolesService->getRolesDropdown(),
-
-            // NEW for UI
-            'groups' => $groups,
             'carriers' => $carriers,
-
             'breadcrumbs' => [
                 'title' => __('New User'),
                 'items' => [
@@ -84,39 +89,40 @@ class UsersController extends Controller
 
     public function store(StoreUserRequest $request): RedirectResponse
     {
-        // Your StoreUserRequest should validate fullName/email/password/groupId/carrierId
-        // (update that request accordingly)
+        $this->checkAuthorization(Auth::user(), ['user.create']);
+
         $user = new User();
 
-        // Map new UI fields into your User model
-        $user->external_name = $request->input('fullName'); // show name
+        // Full Name removed - use only external_name
+        $user->external_name = $request->input('external_name');
+        $user->internal_name = $request->input('internal_name');
         $user->email = $request->input('email');
+
+        // Status
+        $user->is_active = $request->boolean('is_active', true);
+
+        // Carrier (optional) - unchanged
+        $user->carrier_id = $request->filled('carrierId') ? $request->input('carrierId') : null;
+
+        // Recording (optional) - unchanged
+        if ($request->has('recording_enabled')) {
+            $user->recording_enabled = $request->boolean('recording_enabled');
+        }
+
         $user->password = Hash::make($request->input('password'));
 
-        // Optional fields (if columns exist)
-        if ($request->filled('groupId')) {
-            $user->group_id = $request->input('groupId');
-        }
-
-        if ($request->filled('carrierId')) {
-            $user->carrier_id = $request->input('carrierId');
-        }
-
-        // If your create form doesn't have recording, it will default false/0
-        if ($request->has('recording_enabled') || $request->has('recordingEnabled')) {
-            $user->recording_enabled = $request->boolean('recording_enabled')
-                ?: $request->boolean('recordingEnabled');
-        }
-
-        // Keep existing hooks
         $user = ld_apply_filters('user_store_before_save', $user, $request);
         $user->save();
         /** @var User $user */
         $user = ld_apply_filters('user_store_after_save', $user, $request);
 
-        // Roles removed from UI, so do nothing unless you still want to support it
-        // If you want to keep it:
-        // if ($request->roles) { ... }
+        // Roles assignment
+        if ($request->filled('roles')) {
+            $roles = array_filter((array) $request->input('roles', []));
+            if (!empty($roles)) {
+                $user->assignRole($roles);
+            }
+        }
 
         $this->storeActionLog(ActionType::CREATED, ['user' => $user]);
         session()->flash('success', __('User has been created.'));
@@ -135,25 +141,14 @@ class UsersController extends Controller
         ld_do_action('user_edit_page_before');
         $user = ld_apply_filters('user_edit_page_before_with_user', $user);
 
-        // NEW: reference data for dropdowns
-        $groups = method_exists($this->userService, 'getGroupsDropdown')
-            ? $this->userService->getGroupsDropdown()
-            : collect();
-
         $carriers = method_exists($this->userService, 'getCarriersDropdown')
             ? $this->userService->getCarriersDropdown()
             : collect();
 
         return view('backend.pages.users.edit', [
             'user' => $user,
-
-            // kept for compatibility
             'roles' => $this->rolesService->getRolesDropdown(),
-
-            // NEW for UI
-            'groups' => $groups,
             'carriers' => $carriers,
-
             'breadcrumbs' => [
                 'title' => __('Edit User'),
                 'items' => [
@@ -168,19 +163,21 @@ class UsersController extends Controller
 
     public function update(UpdateUserRequest $request, int $id): RedirectResponse
     {
+        $this->checkAuthorization(Auth::user(), ['user.edit']);
+
         $user = User::findOrFail($id);
 
         $this->preventSuperAdminModification($user);
 
-        // Agents/support: keep your original rule (password-only)
+        // Agent/support: password-only updates
         if (auth()->user()->hasRole('Agent') || auth()->user()->hasRole('support')) {
             if ($request->filled('password')) {
                 $user->password = Hash::make($request->password);
 
                 $user = ld_apply_filters('user_update_before_save', $user, $request);
                 $user->save();
-
                 $user = ld_apply_filters('user_update_after_save', $user, $request);
+
                 ld_do_action('user_update_after', $user);
 
                 $this->storeActionLog(ActionType::UPDATED, ['user' => $user]);
@@ -193,39 +190,46 @@ class UsersController extends Controller
             return back();
         }
 
-        // Admin: update using NEW UI fields
-        $user->external_name = $request->input('fullName');
+        // Admin/other roles: update everything
+        // Full Name removed - use only external_name
+        $user->external_name = $request->input('external_name');
+        $user->internal_name = $request->input('internal_name');
         $user->email = $request->input('email');
 
-        if ($request->filled('password')) {
-            $user->password = Hash::make($request->input('password'));
+        // Status
+        if ($request->has('is_active')) {
+            $user->is_active = $request->boolean('is_active');
         }
 
-        // Optional dropdown values
-        $user->group_id = $request->input('groupId') ?: null;
-        $user->carrier_id = $request->input('carrierId') ?: null;
+        // Carrier - unchanged
+        if ($request->has('carrierId')) {
+            $user->carrier_id = $request->filled('carrierId') ? $request->input('carrierId') : null;
+        }
 
-        // Recording: accept either recording_enabled or recordingEnabled
-        if ($request->has('recording_enabled') || $request->has('recordingEnabled')) {
-            $user->recording_enabled = $request->boolean('recording_enabled')
-                ?: $request->boolean('recordingEnabled');
+        // Recording - unchanged
+        if ($request->has('recording_enabled')) {
+            $user->recording_enabled = $request->boolean('recording_enabled');
+        }
+
+        // Password optional
+        if ($request->filled('password')) {
+            $user->password = Hash::make($request->password);
         }
 
         $user = ld_apply_filters('user_update_before_save', $user, $request);
         $user->save();
-
         $user = ld_apply_filters('user_update_after_save', $user, $request);
+
         ld_do_action('user_update_after', $user);
 
-        // Roles removed from UI: do nothing unless you still need it
-        // If you want to keep role updates, uncomment:
-        /*
+        // Role update
         $user->roles()->detach();
-        if ($request->roles) {
-            $roles = array_filter($request->roles);
-            $user->assignRole($roles);
+        if ($request->filled('roles')) {
+            $roles = array_filter((array) $request->input('roles', []));
+            if (!empty($roles)) {
+                $user->assignRole($roles);
+            }
         }
-        */
 
         $this->storeActionLog(ActionType::UPDATED, ['user' => $user]);
         session()->flash('success', __('User has been updated.'));

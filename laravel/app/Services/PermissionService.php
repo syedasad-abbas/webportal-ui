@@ -44,6 +44,15 @@ class PermissionService
                 ],
             ],
             [
+                'group_name' => 'carrier',
+                'permissions' => [
+                    'carrier.create',
+                    'carrier.view',
+                    'carrier.edit',
+                    'carrier.delete',
+                ],
+            ],
+            [
                 'group_name' => 'role',
                 'permissions' => [
                     'role.create',

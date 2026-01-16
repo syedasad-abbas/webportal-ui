@@ -20,15 +20,16 @@
             @endif
         </x-slot>
     </x-breadcrumbs>
+
     {!! ld_apply_filters('users_after_breadcrumbs', '') !!}
 
     <div class="space-y-6">
         <div class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
-          <div class="px-5 py-4 sm:px-6 sm:py-5 flex gap-3 md:gap-1 flex-col md:flex-row justify-between items-center">
+            <div class="px-5 py-4 sm:px-6 sm:py-5 flex gap-3 md:gap-1 flex-col md:flex-row justify-between items-center">
                 <h3 class="text-base font-medium text-gray-800 dark:text-white/90 hidden md:block">{{ __('Users') }}</h3>
 
                 @include('backend.partials.search-form', [
-                    'placeholder' => __('Search by name or email'),
+                    'placeholder' => __('Search by external/internal name or email'),
                 ])
 
                 <div class="flex items-center gap-2">
@@ -75,34 +76,38 @@
                             </ul>
                         </div>
                     </div>
+
                 </div>
             </div>
+
             <div class="space-y-3 border-t border-gray-100 dark:border-gray-800 overflow-x-auto overflow-y-visible">
                 <table id="dataTable" class="w-full dark:text-gray-400">
                     <thead class="bg-light text-capitalize">
                         <tr class="border-b border-gray-100 dark:border-gray-800">
                             <th width="5%" class="p-2 bg-gray-50 dark:bg-gray-800 dark:text-white text-left px-5">
                                 <div class="flex items-center">
-                                    <input 
-                                        type="checkbox" 
-                                        class="form-checkbox h-4 w-4 text-primary border-gray-300 rounded focus:ring-primary dark:focus:ring-primary dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600" 
+                                    <input
+                                        type="checkbox"
+                                        class="form-checkbox h-4 w-4 text-primary border-gray-300 rounded focus:ring-primary dark:focus:ring-primary dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
                                         x-model="selectAll"
                                         @click="
                                             selectAll = !selectAll;
-                                            selectedUsers = selectAll ? 
-                                                [...document.querySelectorAll('.user-checkbox')].map(cb => cb.value) : 
+                                            selectedUsers = selectAll ?
+                                                [...document.querySelectorAll('.user-checkbox')].map(cb => cb.value) :
                                                 [];
                                         "
                                     >
                                 </div>
                             </th>
+
+                            {{-- Name (External/Internal) --}}
                             <th width="20%" class="p-2 bg-gray-50 dark:bg-gray-800 dark:text-white text-left px-5">
                                 <div class="flex items-center">
                                     {{ __('Name') }}
-                                    <a href="{{ request()->fullUrlWithQuery(['sort' => request()->sort === 'name' ? '-name' : 'name']) }}" class="ml-1">
-                                        @if(request()->sort === 'name')
+                                    <a href="{{ request()->fullUrlWithQuery(['sort' => request()->sort === 'external_name' ? '-external_name' : 'external_name']) }}" class="ml-1">
+                                        @if(request()->sort === 'external_name')
                                             <i class="bi bi-sort-alpha-down text-primary"></i>
-                                        @elseif(request()->sort === '-name')
+                                        @elseif(request()->sort === '-external_name')
                                             <i class="bi bi-sort-alpha-up text-primary"></i>
                                         @else
                                             <i class="bi bi-arrow-down-up text-gray-400"></i>
@@ -110,6 +115,7 @@
                                     </a>
                                 </div>
                             </th>
+
                             <th width="10%" class="p-2 bg-gray-50 dark:bg-gray-800 dark:text-white text-left px-5">
                                 <div class="flex items-center">
                                     {{ __('Email') }}
@@ -123,48 +129,69 @@
                                         @endif
                                     </a>
                                 </div>
-                                <th width="10%" class="p-2 bg-gray-50 dark:bg-gray-800 dark:text-white text-left px-5">
-                                    {{ __('User ID') }}
-                                </th>
-
                             </th>
-                            <th width="30%" class="p-2 bg-gray-50 dark:bg-gray-800 dark:text-white text-left px-5">{{ __('Roles') }}</th>
-                            <th width="10%" class="p-2 bg-gray-50 dark:bg-gray-800 dark:text-white text-left px-5">{{ __('Status') }}</th>
+
+                            <th width="10%" class="p-2 bg-gray-50 dark:bg-gray-800 dark:text-white text-left px-5">
+                                {{ __('User ID') }}
+                            </th>
+
+                            <th width="30%" class="p-2 bg-gray-50 dark:bg-gray-800 dark:text-white text-left px-5">
+                                {{ __('Roles') }}
+                            </th>
+
+                            <th width="10%" class="p-2 bg-gray-50 dark:bg-gray-800 dark:text-white text-left px-5">
+                                {{ __('Status') }}
+                            </th>
+
                             @php ld_apply_filters('user_list_page_table_header_before_action', '') @endphp
-                            <th width="15%" class="p-2 bg-gray-50 dark:bg-gray-800 dark:text-white text-left px-5">{{ __('Action') }}</th>
+                            <th width="15%" class="p-2 bg-gray-50 dark:bg-gray-800 dark:text-white text-left px-5">
+                                {{ __('Action') }}
+                            </th>
                             @php ld_apply_filters('user_list_page_table_header_after_action', '') @endphp
                         </tr>
                     </thead>
+
                     <tbody>
                         @forelse ($users as $user)
-                        @if ((auth()->user()->hasRole('Agent') || auth()->user()->hasRole('support')) && auth()->id() !== $user->id)
-                            @continue
-                        @endif
+                            @if ((auth()->user()->hasRole('Agent') || auth()->user()->hasRole('support')) && auth()->id() !== $user->id)
+                                @continue
+                            @endif
+
+                            @php
+                                $displayExternal = $user->external_name ?? $user->full_name ?? $user->name ?? '-';
+                                $displayInternal = $user->internal_name ?? '';
+                            @endphp
+
                             <tr class="{{ $loop->index + 1 != count($users) ?  'border-b border-gray-100 dark:border-gray-800' : '' }}">
                                 <td class="px-5 py-4 sm:px-6">
-                                    <input 
-                                        type="checkbox" 
-                                        class="user-checkbox form-checkbox h-4 w-4 text-primary border-gray-300 rounded focus:ring-primary dark:focus:ring-primary dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600" 
+                                    <input
+                                        type="checkbox"
+                                        class="user-checkbox form-checkbox h-4 w-4 text-primary border-gray-300 rounded focus:ring-primary dark:focus:ring-primary dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
                                         value="{{ $user->id }}"
                                         x-model="selectedUsers"
                                         {{ !auth()->user()->canBeModified($user, 'user.delete') ? 'disabled' : '' }}
                                     >
                                 </td>
+
                                 <td class="px-5 py-4 sm:px-6 flex items-center md:min-w-[200px]">
                                     <a data-tooltip-target="tooltip-user-{{ $user->id }}" href="{{ auth()->user()->canBeModified($user) ? route('admin.users.edit', $user->id) : '#' }}" class="flex items-center">
-                                        <img src="{{ ld_apply_filters('user_list_page_avatar_item', $user->getGravatarUrl(40), $user) }}" alt="{{ $user->name }}" class="w-10 h-10 rounded-full mr-3">
+                                        <img src="{{ ld_apply_filters('user_list_page_avatar_item', $user->getGravatarUrl(40), $user) }}" alt="{{ $displayExternal }}" class="w-10 h-10 rounded-full mr-3">
                                         <div class="flex flex-col">
-                                            <span>{{ $user->external_name }}</span>
-                                            <span class="text-xs text-gray-500 dark:text-gray-400">{{ $user->internal_name }}</span>
+                                            <span>{{ $displayExternal }}</span>
+                                            @if(!empty($displayInternal))
+                                                <span class="text-xs text-gray-500 dark:text-gray-400">{{ $displayInternal }}</span>
+                                            @endif
                                         </div>
                                     </a>
+
                                     @if (auth()->user()->canBeModified($user))
-                                    <div id="tooltip-user-{{ $user->id }}" href="{{ route('admin.users.edit', $user->id) }}" class="absolute z-10 invisible inline-block px-3 py-2 text-sm font-medium text-white transition-opacity duration-300 bg-gray-900 rounded-lg shadow-xs opacity-0 tooltip dark:bg-gray-700">
-                                        {{ __('Edit User') }}
-                                        <div class="tooltip-arrow" data-popper-arrow></div>
-                                    </div>
+                                        <div id="tooltip-user-{{ $user->id }}" href="{{ route('admin.users.edit', $user->id) }}" class="absolute z-10 invisible inline-block px-3 py-2 text-sm font-medium text-white transition-opacity duration-300 bg-gray-900 rounded-lg shadow-xs opacity-0 tooltip dark:bg-gray-700">
+                                            {{ __('Edit User') }}
+                                            <div class="tooltip-arrow" data-popper-arrow></div>
+                                        </div>
                                     @endif
                                 </td>
+
                                 <td class="px-5 py-4 sm:px-6">{{ $user->email }}</td>
                                 <td class="px-5 py-4 sm:px-6">{{ $user->user_id }}</td>
 
@@ -185,39 +212,40 @@
                                         </span>
                                     @endforeach
                                 </td>
+
                                 <td class="px-5 py-4 sm:px-6">
-                                @if ($user->is_active)
-                                    <span class="inline-flex items-center justify-center px-2 py-1 text-xs font-medium text-green-800 bg-green-100 rounded-full dark:bg-green-900/30 dark:text-green-400">
-                                        {{ __('Enabled') }}
-                                    </span>
-                                @else
-                                    <span class="inline-flex items-center justify-center px-2 py-1 text-xs font-medium text-red-800 bg-red-100 rounded-full dark:bg-red-900/30 dark:text-red-400">
-                                        {{ __('Disabled') }}
-                                    </span>
-                                @endif
-                            </td>
+                                    @if ($user->is_active)
+                                        <span class="inline-flex items-center justify-center px-2 py-1 text-xs font-medium text-green-800 bg-green-100 rounded-full dark:bg-green-900/30 dark:text-green-400">
+                                            {{ __('Enabled') }}
+                                        </span>
+                                    @else
+                                        <span class="inline-flex items-center justify-center px-2 py-1 text-xs font-medium text-red-800 bg-red-100 rounded-full dark:bg-red-900/30 dark:text-red-400">
+                                            {{ __('Disabled') }}
+                                        </span>
+                                    @endif
+                                </td>
 
                                 @php ld_apply_filters('user_list_page_table_row_before_action', '', $user) @endphp
                                 <td class="px-5 py-4 sm:px-6 flex justify-center">
                                     <x-buttons.action-buttons :label="__('Actions')" :show-label="false" align="right">
                                         @if (auth()->user()->canBeModified($user))
-                                            <x-buttons.action-item 
-                                                :href="route('admin.users.edit', $user->id)" 
-                                                icon="pencil" 
-                                                :label="__('Edit')" 
+                                            <x-buttons.action-item
+                                                :href="route('admin.users.edit', $user->id)"
+                                                icon="pencil"
+                                                :label="__('Edit')"
                                             />
                                         @endif
-                                        
+
                                         @if (auth()->user()->canBeModified($user, 'user.delete'))
                                             <div x-data="{ deleteModalOpen: false }">
-                                                <x-buttons.action-item 
+                                                <x-buttons.action-item
                                                     type="modal-trigger"
                                                     modal-target="deleteModalOpen"
-                                                    icon="trash" 
-                                                    :label="__('Delete')" 
+                                                    icon="trash"
+                                                    :label="__('Delete')"
                                                     class="text-red-600 dark:text-red-400"
                                                 />
-                                                
+
                                                 <x-modals.confirm-delete
                                                     id="delete-modal-{{ $user->id }}"
                                                     title="{{ __('Delete User') }}"
@@ -230,12 +258,12 @@
                                                 />
                                             </div>
                                         @endif
-                                        
+
                                         @if (auth()->user()->can('user.login_as') && $user->id != auth()->user()->id)
-                                            <x-buttons.action-item 
-                                                :href="route('admin.users.login-as', $user->id)" 
-                                                icon="box-arrow-in-right" 
-                                                :label="__('Login as')" 
+                                            <x-buttons.action-item
+                                                :href="route('admin.users.login-as', $user->id)"
+                                                icon="box-arrow-in-right"
+                                                :label="__('Login as')"
                                             />
                                         @endif
                                     </x-buttons.action-buttons>
@@ -244,7 +272,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="text-center py-4">
+                                <td colspan="7" class="text-center py-4">
                                     <p class="text-gray-500 dark:text-gray-400">{{ __('No users found') }}</p>
                                 </td>
                             </tr>
@@ -260,23 +288,23 @@
     </div>
 
     <!-- Bulk Delete Confirmation Modal -->
-    <div 
-        x-cloak 
-        x-show="bulkDeleteModalOpen" 
-        x-transition.opacity.duration.200ms 
-        x-trap.inert.noscroll="bulkDeleteModalOpen" 
-        x-on:keydown.esc.window="bulkDeleteModalOpen = false" 
-        x-on:click.self="bulkDeleteModalOpen = false" 
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-4 backdrop-blur-md" 
-        role="dialog" 
-        aria-modal="true" 
+    <div
+        x-cloak
+        x-show="bulkDeleteModalOpen"
+        x-transition.opacity.duration.200ms
+        x-trap.inert.noscroll="bulkDeleteModalOpen"
+        x-on:keydown.esc.window="bulkDeleteModalOpen = false"
+        x-on:click.self="bulkDeleteModalOpen = false"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-4 backdrop-blur-md"
+        role="dialog"
+        aria-modal="true"
         aria-labelledby="bulk-delete-modal-title"
     >
-        <div 
-            x-show="bulkDeleteModalOpen" 
-            x-transition:enter="transition ease-out duration-200 delay-100 motion-reduce:transition-opacity" 
-            x-transition:enter-start="opacity-0 scale-50" 
-            x-transition:enter-end="opacity-100 scale-100" 
+        <div
+            x-show="bulkDeleteModalOpen"
+            x-transition:enter="transition ease-out duration-200 delay-100 motion-reduce:transition-opacity"
+            x-transition:enter-start="opacity-0 scale-50"
+            x-transition:enter-end="opacity-100 scale-100"
             class="flex max-w-md flex-col gap-4 overflow-hidden rounded-lg border border-outline border-gray-100 dark:border-gray-800 bg-white text-on-surface dark:border-outline-dark dark:bg-gray-700 dark:text-gray-400"
         >
             <div class="flex items-center justify-between border-b border-gray-100 px-4 py-2 dark:border-gray-800">
@@ -288,9 +316,9 @@
                 <h3 id="bulk-delete-modal-title" class="font-semibold tracking-wide text-gray-800 dark:text-white">
                     {{ __('Delete Selected Users') }}
                 </h3>
-                <button 
-                    x-on:click="bulkDeleteModalOpen = false" 
-                    aria-label="close modal" 
+                <button
+                    x-on:click="bulkDeleteModalOpen = false"
+                    aria-label="close modal"
                     class="text-gray-400 hover:bg-gray-200 hover:text-gray-900 rounded-lg p-1 dark:hover:bg-gray-600 dark:hover:text-white"
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" stroke="currentColor" fill="none" stroke-width="1.4" class="w-5 h-5">
@@ -298,31 +326,33 @@
                     </svg>
                 </button>
             </div>
+
             <div class="px-4 text-center">
                 <p class="text-gray-500 dark:text-gray-400">
-                    {{ __('Are you sure you want to delete the selected users?') }} 
+                    {{ __('Are you sure you want to delete the selected users?') }}
                     {{ __('This action cannot be undone.') }}
                 </p>
             </div>
+
             <div class="flex items-center justify-end gap-3 border-t border-gray-100 p-4 dark:border-gray-800">
                 <form id="bulk-delete-form" action="{{ route('admin.users.bulk-delete') }}" method="POST">
                     @method('DELETE')
                     @csrf
-                    
+
                     <template x-for="id in selectedUsers" :key="id">
                         <input type="hidden" name="ids[]" :value="id">
                     </template>
 
-                    <button 
-                        type="button" 
-                        x-on:click="bulkDeleteModalOpen = false" 
+                    <button
+                        type="button"
+                        x-on:click="bulkDeleteModalOpen = false"
                         class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:bg-gray-700 dark:hover:text-white dark:focus:ring-gray-700"
                     >
                         {{ __('No, Cancel') }}
                     </button>
 
-                    <button 
-                        type="submit" 
+                    <button
+                        type="submit"
                         class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-800 focus:outline-none focus:ring-2 focus:ring-red-300 dark:focus:ring-red-800"
                     >
                         {{ __('Yes, Delete') }}
@@ -338,17 +368,14 @@
     function handleRoleFilter(value) {
         let currentUrl = new URL(window.location.href);
 
-        // Preserve sort parameter if it exists.
         const sortParam = currentUrl.searchParams.get('sort');
 
-        // Reset the search params but keep the sort if it exists.
         currentUrl.search = '';
 
         if (value) {
             currentUrl.searchParams.set('role', value);
         }
 
-        // Re-add sort parameter if it existed.
         if (sortParam) {
             currentUrl.searchParams.set('sort', sortParam);
         }
@@ -357,4 +384,5 @@
     }
 </script>
 @endpush
+
 @endsection

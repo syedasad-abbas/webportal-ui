@@ -18,8 +18,6 @@ class DatabaseSeeder extends Seeder
             RolePermissionSeeder::class,
             SettingsSeeder::class,
             ContentSeeder::class,
-            AgentTimeLogsPermissionSeeder::class,
-            leadsPermissionSeeder::class,
         ]);
     }
 }

@@ -16,7 +16,7 @@ class CarrierController extends Controller
     public function index(Request $request)
     {
         $token = $request->session()->get('admin_token');
-        $carriers = collect();
+        $carrier = collect();
 
         if ($token) {
             // Optional: pass search to backend if supported
@@ -25,31 +25,32 @@ class CarrierController extends Controller
                 $query['search'] = $request->string('search')->toString();
             }
 
-            $response = $this->backend($token)->get('/admin/carriers', $query);
+            $response = $this->backend($token)->get('/admin/carrier', $query);
 
             if ($response->ok()) {
-                $carriers = collect($response->json());
+                $carrier = collect($response->json());
             }
         }
 
-        return view('backend.pages.carriers.index', [
-            'carriers' => $carriers,
+        return view('backend.pages.carrier.index', [
+            'carrier' => $carrier,
             'breadcrumbs' => [
-                'title' => __('Carriers'),
+                'title' => __('carrier'),
             ],
         ]);
     }
 
     public function create(Request $request)
-    {
+    {        
+        
         // No reference data needed for create in your current form
-        return view('backend.pages.carriers.create', [
+        return view('backend.pages.carrier.create', [
             'breadcrumbs' => [
                 'title' => __('Add Carrier'),
                 'items' => [
                     [
-                        'label' => __('Carriers'),
-                        'url' => route('admin.carriers.index'),
+                        'label' => __('carrier'),
+                        'url' => route('admin.carrier.index'),
                     ],
                 ],
             ],
@@ -71,6 +72,9 @@ class CarrierController extends Controller
             'registrationUsername' => ['nullable', 'string'],
             'registrationPassword' => ['nullable', 'string'],
             'prefix' => ['nullable', 'string'],
+
+            // ✅ added only
+            'outboundProxy' => ['nullable', 'string'],
         ]);
 
         $payload = $data;
@@ -82,7 +86,10 @@ class CarrierController extends Controller
         $payload['registrationPassword'] = filled($data['registrationPassword'] ?? null) ? $data['registrationPassword'] : null;
         $payload['prefix'] = filled($data['prefix'] ?? null) ? $data['prefix'] : null;
 
-        $response = $this->backend($token)->post('/admin/carriers', $payload);
+        // ✅ added only
+        $payload['outboundProxy'] = filled($data['outboundProxy'] ?? null) ? $data['outboundProxy'] : null;
+
+        $response = $this->backend($token)->post('/admin/carrier', $payload);
 
         if ($response->failed()) {
             return back()->withErrors([
@@ -91,7 +98,7 @@ class CarrierController extends Controller
         }
 
         return redirect()
-            ->route('admin.carriers.index')
+            ->route('admin.carrier.index')
             ->with('status', 'Carrier added successfully.');
     }
 
@@ -99,22 +106,22 @@ class CarrierController extends Controller
     {
         $token = $request->session()->get('admin_token');
 
-        $carrierResponse = $this->backend($token)->get("/admin/carriers/{$carrierId}");
+        $carrierResponse = $this->backend($token)->get("/admin/carrier/{$carrierId}");
 
         if ($carrierResponse->failed()) {
             return redirect()
-                ->route('admin.carriers.index')
+                ->route('admin.carrier.index')
                 ->withErrors(['carrier' => 'Carrier not found.']);
         }
 
-        return view('backend.pages.carriers.edit', [
+        return view('backend.pages.carrier.edit', [
             'carrier' => $carrierResponse->json(),
             'breadcrumbs' => [
                 'title' => __('Edit Carrier'),
                 'items' => [
                     [
-                        'label' => __('Carriers'),
-                        'url' => route('admin.carriers.index'),
+                        'label' => __('carrier'),
+                        'url' => route('admin.carrier.index'),
                     ],
                 ],
             ],
@@ -136,6 +143,9 @@ class CarrierController extends Controller
             'registrationUsername' => ['nullable', 'string'],
             'registrationPassword' => ['nullable', 'string'],
             'prefix' => ['nullable', 'string'],
+
+            // ✅ added only
+            'outboundProxy' => ['nullable', 'string'],
         ]);
 
         $payload = $data;
@@ -146,14 +156,17 @@ class CarrierController extends Controller
         $payload['registrationPassword'] = filled($data['registrationPassword'] ?? null) ? $data['registrationPassword'] : null;
         $payload['prefix'] = filled($data['prefix'] ?? null) ? $data['prefix'] : null;
 
-        $response = $this->backend($token)->put("/admin/carriers/{$carrierId}", $payload);
+        // ✅ added only
+        $payload['outboundProxy'] = filled($data['outboundProxy'] ?? null) ? $data['outboundProxy'] : null;
+
+        $response = $this->backend($token)->put("/admin/carrier/{$carrierId}", $payload);
 
         if ($response->failed()) {
             return back()->withErrors('Unable to update carrier.')->withInput();
         }
 
         return redirect()
-            ->route('admin.carriers.index')
+            ->route('admin.carrier.index')
             ->with('status', 'Carrier updated.');
     }
 
@@ -161,16 +174,16 @@ class CarrierController extends Controller
     {
         $token = $request->session()->get('admin_token');
 
-        $response = $this->backend($token)->delete("/admin/carriers/{$carrierId}");
+        $response = $this->backend($token)->delete("/admin/carrier/{$carrierId}");
 
         if ($response->failed()) {
             return redirect()
-                ->route('admin.carriers.index')
+                ->route('admin.carrier.index')
                 ->withErrors('Unable to delete carrier.');
         }
 
         return redirect()
-            ->route('admin.carriers.index')
+            ->route('admin.carrier.index')
             ->with('status', 'Carrier deleted.');
     }
 }

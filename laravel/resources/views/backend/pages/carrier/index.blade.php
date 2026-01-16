@@ -5,30 +5,26 @@
 @endsection
 
 @section('admin-content')
+@php
+  $isAdmin = auth()->check() && auth()->user()->hasAnyRole(['Admin', 'Superadmin']);
+@endphp
+
 <div class="p-4 mx-auto max-w-(--breakpoint-2xl) md:p-6">
     <x-breadcrumbs :breadcrumbs="$breadcrumbs">
         <x-slot name="title_after">
             <div class="flex items-center gap-2">
-                <a href="{{ route('admin.carriers.create') }}" class="btn-primary ml-2">
-                    <i class="bi bi-plus-circle mr-2"></i>
-                    {{ __('New Carrier') }}
-                </a>
-
-                <a href="{{ route('admin.dashboard') }}" class="btn-default">
-                    {{ __('Back to dashboard') }}
-                </a>
             </div>
         </x-slot>
     </x-breadcrumbs>
 
-    {!! ld_apply_filters('carriers_after_breadcrumbs', '') !!}
+    {!! ld_apply_filters('carrier_after_breadcrumbs', '') !!}
 
     <div class="space-y-6">
         <div class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
             <div class="px-5 py-4 sm:px-6 sm:py-5 flex gap-3 flex-col md:flex-row md:justify-between md:items-center">
                 <div>
                     <h3 class="text-base font-medium text-gray-800 dark:text-white/90 hidden md:block">
-                        {{ __('Configured carriers') }}
+                        {{ __('Configured carrier') }}
                     </h3>
                     <p class="text-sm text-gray-500 dark:text-gray-400 hidden md:block">
                         {{ __('Monitor registration health and manage routing rules.') }}
@@ -48,14 +44,21 @@
                             <th class="p-2 bg-gray-50 dark:bg-gray-800 dark:text-white text-left px-5">{{ __('Default Caller ID') }}</th>
                             <th class="p-2 bg-gray-50 dark:bg-gray-800 dark:text-white text-left px-5">{{ __('Domain / Port') }}</th>
                             <th class="p-2 bg-gray-50 dark:bg-gray-800 dark:text-white text-left px-5">{{ __('Transport') }}</th>
+
+                            {{-- ✅ NEW: Outbound Proxy --}}
+                            <th class="p-2 bg-gray-50 dark:bg-gray-800 dark:text-white text-left px-5">{{ __('Outbound Proxy') }}</th>
+
                             <th class="p-2 bg-gray-50 dark:bg-gray-800 dark:text-white text-left px-5">{{ __('Registration') }}</th>
                             <th class="p-2 bg-gray-50 dark:bg-gray-800 dark:text-white text-left px-5">{{ __('Prefixes') }}</th>
-                            <th class="p-2 bg-gray-50 dark:bg-gray-800 dark:text-white text-right px-5">{{ __('Actions') }}</th>
+
+                            @if($isAdmin)
+                                <th class="p-2 bg-gray-50 dark:bg-gray-800 dark:text-white text-right px-5">{{ __('Actions') }}</th>
+                            @endif
                         </tr>
                     </thead>
 
                     <tbody>
-                        @forelse($carriers as $carrier)
+                        @forelse($carrier as $carrier)
                             @php
                                 $status = $carrier['registration_status'] ?? null;
                                 $state = $status['state'] ?? null;
@@ -68,6 +71,9 @@
                                 $domain = $carrier['sip_domain'] ?? '—';
                                 $port = !empty($carrier['sip_port']) ? ':'.$carrier['sip_port'] : '';
                                 $transport = strtoupper($carrier['transport'] ?? 'udp');
+
+                                // ✅ NEW: Outbound Proxy (display)
+                                $outboundProxy = $carrier['outbound_proxy'] ?? '—';
                             @endphp
 
                             <tr class="{{ $loop->last ? '' : 'border-b border-gray-100 dark:border-gray-800' }}">
@@ -87,6 +93,11 @@
                                     <span class="inline-flex items-center justify-center px-2 py-1 text-xs font-medium text-gray-800 bg-gray-100 rounded-full dark:bg-gray-800 dark:text-white">
                                         {{ $transport }}
                                     </span>
+                                </td>
+
+                                {{-- ✅ NEW: Outbound Proxy cell --}}
+                                <td class="px-5 py-4 sm:px-6">
+                                    {{ $outboundProxy }}
                                 </td>
 
                                 <td class="px-5 py-4 sm:px-6">
@@ -123,36 +134,41 @@
                                     @endif
                                 </td>
 
-                                <td class="px-5 py-4 sm:px-6 text-right">
-                                    <div class="flex justify-end gap-2">
-                                        <a href="{{ route('admin.carriers.edit', $carrier['id']) }}" class="btn-default">
-                                            {{ __('Edit') }}
-                                        </a>
+                                @if($isAdmin)
+                                    <td class="px-5 py-4 sm:px-6 text-right">
+                                        <div class="flex justify-end gap-2">
+                                            <a href="{{ route('admin.carrier.edit', $carrier['id']) }}" class="btn-default">
+                                                {{ __('Edit') }}
+                                            </a>
 
-                                        <form method="POST" action="{{ route('admin.carriers.destroy', $carrier['id']) }}"
-                                              onsubmit="return confirm('Delete this carrier?')">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="btn-danger">
-                                                {{ __('Delete') }}
-                                            </button>
-                                        </form>
-                                    </div>
-                                </td>
+                                            <form method="POST"
+                                                  action="{{ route('admin.carrier.destroy', $carrier['id']) }}"
+                                                  onsubmit="return confirm('Delete this carrier?')">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="btn-danger">
+                                                    {{ __('Delete') }}
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                @endif
+
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="text-center py-6">
-                                    <p class="text-gray-500 dark:text-gray-400">{{ __('No carriers found') }}</p>
+                                {{-- ✅ colspan increased by 1 because we added a column --}}
+                                <td colspan="{{ $isAdmin ? 8 : 7 }}" class="text-center py-6">
+                                    <p class="text-gray-500 dark:text-gray-400">{{ __('No carrier found') }}</p>
                                 </td>
                             </tr>
                         @endforelse
                     </tbody>
                 </table>
 
-                @if(method_exists($carriers, 'links'))
+                @if(method_exists($carrier, 'links'))
                     <div class="my-4 px-4 sm:px-6">
-                        {{ $carriers->links() }}
+                        {{ $carrier->links() }}
                     </div>
                 @endif
             </div>

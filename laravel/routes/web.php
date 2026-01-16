@@ -17,11 +17,9 @@ use App\Http\Controllers\Backend\TranslationController;
 use App\Http\Controllers\Backend\UserLoginAsController;
 use App\Http\Controllers\Backend\UsersController;
 
-use App\Http\Controllers\Auth\AdminAuthController;
 use App\Http\Controllers\Auth\UserAuthController;
 
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
-use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Admin\CarrierController;
 
 use App\Http\Controllers\DialerController;
@@ -34,14 +32,11 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
-Route::get('/', function () {
-    return redirect()->route('user.login');
-})->name('index');
-
+Route::get('/', 'HomeController@redirectAdmin')->name('index');
 Route::get('/home', 'HomeController@index')->name('home');
 
 /**
- * Existing "backend" admin area (kept as-is).
+ * Admin routes.
  */
 Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['auth']], function () {
     Route::get('/', [BackendDashboardController::class, 'index'])->name('dashboard');
@@ -97,6 +92,18 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['auth']], 
 
     // Editor Upload
     Route::post('/editor/upload', [EditorController::class, 'upload'])->name('editor.upload');
+
+
+    // Carrier
+Route::get('/carrier', [CarrierController::class, 'index'])->name('carrier.index');
+Route::get('/carrier/create', [CarrierController::class, 'create'])->name('carrier.create');
+Route::post('/carrier', [CarrierController::class, 'store'])->name('carrier.store');
+Route::get('/carrier/{carrierId}/edit', [CarrierController::class, 'edit'])->name('carrier.edit');
+Route::put('/carrier/{carrierId}', [CarrierController::class, 'update'])->name('carrier.update');
+Route::delete('/carrier/{carrierId}', [CarrierController::class, 'destroy'])->name('carrier.destroy');
+
+//users
+
 });
 
 /**
@@ -117,44 +124,28 @@ Route::get('/locale/{lang}', [LocaleController::class, 'switch'])->name('locale.
  */
 
 
-/**
- * ✅ NEW AUTH + ADMIN PANEL (as per your provided routes)
- */
-Route::get('/admin/login', [AdminAuthController::class, 'showLogin'])->name('admin.login');
-Route::post('/admin/login', [AdminAuthController::class, 'login'])->name('admin.login.submit');
 
-Route::get('/login', [UserAuthController::class, 'showLogin'])->name('user.login');
-Route::post('/login', [UserAuthController::class, 'login'])->name('user.login.submit');
+   
 
-Route::middleware('admin.auth')->group(function () {
-    Route::get('/admin/dashboard', [AdminDashboardController::class, 'index'])->name('admin.dashboard');
+Route::middleware(['auth'])
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function () {
+        // Dialer page (if you haven’t added it yet)
+        Route::view('/dialer', 'backend.pages.dialer.index')->name('dialer.index');
 
-    Route::get('/admin/users/create', [AdminUserController::class, 'create'])->name('admin.users.create');
-    Route::post('/admin/users', [AdminUserController::class, 'store'])->name('admin.users.store');
-    Route::get('/admin/users/{user}/edit', [AdminUserController::class, 'edit'])->name('admin.users.edit');
-    Route::put('/admin/users/{user}', [AdminUserController::class, 'update'])->name('admin.users.update');
-    Route::delete('/admin/users/{user}', [AdminUserController::class, 'destroy'])->name('admin.users.destroy');
+        // Dummy endpoint so the Blade form action works for now
+        Route::post('/dialer/dial', function () {
+            return response()->json([
+                'ok' => true,
+                'message' => 'Dialer stub route (not wired yet)',
+            ]);
+        })->name('dialer.dial');
+    });
+Route::post('/logout', function () {
+    Auth::logout();
+    request()->session()->invalidate();
+    request()->session()->regenerateToken();
 
-    Route::get('/admin/carriers', [CarrierController::class, 'index'])->name('admin.carriers.index');
-    Route::post('/admin/carriers', [CarrierController::class, 'store'])->name('admin.carriers.store');
-    Route::get('/admin/carriers/{carrier}/edit', [CarrierController::class, 'edit'])->name('admin.carriers.edit');
-    Route::put('/admin/carriers/{carrier}', [CarrierController::class, 'update'])->name('admin.carriers.update');
-    Route::delete('/admin/carriers/{carrier}', [CarrierController::class, 'destroy'])->name('admin.carriers.destroy');
-
-    Route::post('/admin/logout', [AdminAuthController::class, 'logout'])->name('admin.logout');
-});
-
-Route::middleware('user.auth')->group(function () {
-    Route::get('/dialer', [DialerController::class, 'index'])->name('dialer.index');
-    Route::post('/dialer', [DialerController::class, 'dial'])->name('dialer.dial');
-
-    // keep session route if your controller still uses it,
-    // even though UI won't open a popup
-    Route::get('/dialer/session/{uuid}', [DialerController::class, 'session'])->name('dialer.session');
-
-    Route::get('/dialer/calls/{uuid}/status', [DialerController::class, 'callStatus'])->name('dialer.status');
-    Route::post('/dialer/calls/{uuid}/dtmf', [DialerController::class, 'dtmf'])->name('dialer.dtmf');
-    Route::post('/dialer/calls/{uuid}/{action}', [DialerController::class, 'control'])->name('dialer.control');
-
-    Route::post('/logout', [UserAuthController::class, 'logout'])->name('user.logout');
-});
+    return redirect('/'); // or /admin
+})->name('logout');
