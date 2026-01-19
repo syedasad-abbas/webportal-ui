@@ -56,11 +56,14 @@ class UserChartService extends ChartService
 
     private function fetchUserGrowthData(Carbon $startDate, Carbon $endDate, bool $isLessThanMonth): \Illuminate\Support\Collection
     {
-        $selectRaw = $isLessThanMonth
-            ? 'DATE(created_at) as day, COUNT(id) as total'
-            : 'DATE_FORMAT(created_at, "%Y-%m") as month, COUNT(id) as total';
-
-        $groupBy = $isLessThanMonth ? 'day' : 'month';
+        if ($isLessThanMonth) {
+            $selectRaw = 'DATE(created_at) as day, COUNT(id) as total';
+            $groupBy = 'day';
+        } else {
+            // PostgreSQL-compatible month grouping
+            $selectRaw = "TO_CHAR(created_at, 'YYYY-MM') as month, COUNT(id) as total";
+            $groupBy = 'month';
+        }
 
         return User::selectRaw($selectRaw)
             ->whereBetween('created_at', [$startDate, $endDate])

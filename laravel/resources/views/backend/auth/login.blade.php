@@ -15,7 +15,7 @@
       </p>
     </div>
     <div>
-      <form action="{{ route('admin.login.submit') }}" method="POST">
+      <form action="{{ route('user.login.submit') }}" method="POST">
         @csrf
         <div class="space-y-5">
           <x-messages />

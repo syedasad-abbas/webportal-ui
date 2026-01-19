@@ -38,7 +38,7 @@
             </div>
         </form>
         <div class="flex justify-center items-center mt-5 text-sm font-normal text-center text-gray-700 dark:text-gray-400 sm:text-start">
-            <a href="{{ route('admin.login') }}" class="text-brand-500 hover:text-brand-600 dark:text-brand-400">
+            <a href="{{ route('user.login') }}" class="text-brand-500 hover:text-brand-600 dark:text-brand-400">
                 <i class="bi bi-chevron-left mr-2"></i>
                 {{ __('Back to Login') }}
             </a>

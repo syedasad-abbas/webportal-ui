@@ -13,23 +13,39 @@ class CarrierController extends Controller
         return Http::withToken($token)->baseUrl(config('services.backend.url'));
     }
 
-    public function index(Request $request)
+    // ✅ no repetition: one place to fetch + validate token
+    protected function getAdminToken(Request $request)
     {
         $token = $request->session()->get('admin_token');
+
+        if (! $token) {
+            return redirect()
+                ->route('login')
+                ->withErrors('Backend admin token missing. Please login again.');
+        }
+
+        return $token;
+    }
+
+    public function index(Request $request)
+    {
+        $token = $this->getAdminToken($request);
+        if (! is_string($token)) {
+            return $token; // redirect response
+        }
+
         $carrier = collect();
 
-        if ($token) {
-            // Optional: pass search to backend if supported
-            $query = [];
-            if ($request->filled('search')) {
-                $query['search'] = $request->string('search')->toString();
-            }
+        // Optional: pass search to backend if supported
+        $query = [];
+        if ($request->filled('search')) {
+            $query['search'] = $request->string('search')->toString();
+        }
 
-            $response = $this->backend($token)->get('/admin/carrier', $query);
+        $response = $this->backend($token)->get('/admin/carrier', $query);
 
-            if ($response->ok()) {
-                $carrier = collect($response->json());
-            }
+        if ($response->ok()) {
+            $carrier = collect($response->json());
         }
 
         return view('backend.pages.carrier.index', [
@@ -41,8 +57,7 @@ class CarrierController extends Controller
     }
 
     public function create(Request $request)
-    {        
-        
+    {
         // No reference data needed for create in your current form
         return view('backend.pages.carrier.create', [
             'breadcrumbs' => [
@@ -59,7 +74,10 @@ class CarrierController extends Controller
 
     public function store(Request $request)
     {
-        $token = $request->session()->get('admin_token');
+        $token = $this->getAdminToken($request);
+        if (! is_string($token)) {
+            return $token; // redirect response
+        }
 
         $data = $request->validate([
             'name' => ['required', 'string'],
@@ -104,7 +122,10 @@ class CarrierController extends Controller
 
     public function edit(Request $request, string $carrierId)
     {
-        $token = $request->session()->get('admin_token');
+        $token = $this->getAdminToken($request);
+        if (! is_string($token)) {
+            return $token; // redirect response
+        }
 
         $carrierResponse = $this->backend($token)->get("/admin/carrier/{$carrierId}");
 
@@ -130,7 +151,10 @@ class CarrierController extends Controller
 
     public function update(Request $request, string $carrierId)
     {
-        $token = $request->session()->get('admin_token');
+        $token = $this->getAdminToken($request);
+        if (! is_string($token)) {
+            return $token; // redirect response
+        }
 
         $data = $request->validate([
             'name' => ['required', 'string'],
@@ -172,7 +196,10 @@ class CarrierController extends Controller
 
     public function destroy(Request $request, string $carrierId)
     {
-        $token = $request->session()->get('admin_token');
+        $token = $this->getAdminToken($request);
+        if (! is_string($token)) {
+            return $token; // redirect response
+        }
 
         $response = $this->backend($token)->delete("/admin/carrier/{$carrierId}");
 

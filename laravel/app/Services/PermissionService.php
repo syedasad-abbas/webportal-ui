@@ -53,6 +53,11 @@ class PermissionService
                 ],
             ],
             [
+                'group_name' => 'dialer',
+                'permissions' => ['dialer.create_call'],
+            ],
+
+            [
                 'group_name' => 'role',
                 'permissions' => [
                     'role.create',

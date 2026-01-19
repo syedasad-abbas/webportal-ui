@@ -1,0 +1,139 @@
+# (Optional) You can remove the version line; Compose v2 ignores it.
+version: "3.9"
+
+x-backend-env: &backend-env
+  PORT: 4000
+  DB_HOST: postgres
+  DB_PORT: 5432
+  DB_NAME: webphone_backend
+  DB_USER: webphone
+  DB_PASSWORD: supersecret
+  JWT_SECRET: change-me
+  DEFAULT_ADMIN_EMAIL: superadmin@example.com
+  DEFAULT_ADMIN_PASSWORD: 12345678
+  FREESWITCH_HOST: freeswitch
+  FREESWITCH_PORT: 8021
+  FREESWITCH_PASSWORD: ClueCon
+  FREESWITCH_RECORDINGS_PATH: /recordings
+  FREESWITCH_GATEWAY_PATH: /mnt/gateways
+  FREESWITCH_EXTERNAL_SIP_IP: ${PUBLIC_IP:-}
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: webphone
+      POSTGRES_USER: webphone
+      POSTGRES_PASSWORD: supersecret
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U webphone"]
+      interval: 10s
+      retries: 5
+    restart: unless-stopped
+
+  freeswitch:
+    build:
+      context: ./freeswitch
+      dockerfile: Dockerfile
+    ports:
+      - "5060:5060/udp"
+      - "5080:5080/udp"
+      - "5060:5060/tcp"
+      - "5080:5080/tcp"
+      - "7443:7443/tcp"
+      - "8021:8021/tcp"
+      - "16384-32768:16384-32768/udp"
+    volumes:
+      - ./freeswitch/conf:/etc/freeswitch
+      - freeswitch_recordings:/var/recordings
+      - freeswitch_gateways:/etc/freeswitch/gateways
+    environment:
+      EVENT_SOCKET_PASSWORD: ClueCon
+    ulimits:
+      nofile:
+        soft: 32768
+        hard: 32768
+    restart: unless-stopped
+
+  backend:
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "npm install && npm start"
+    ports:
+      - "4000:4000"
+    env_file:
+      - ./backend/.env
+    environment:
+      <<: *backend-env
+      BOOTSTRAP_DEFAULTS: "true"
+    volumes:
+      - ./backend:/app
+      - freeswitch_recordings:/recordings
+      - freeswitch_gateways:/mnt/gateways
+    depends_on:
+      postgres:
+        condition: service_healthy
+      freeswitch:
+        condition: service_started
+    restart: unless-stopped
+
+  laravel:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - ./laravel/.env
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "true"
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: webphone
+      DB_USERNAME: webphone
+      DB_PASSWORD: supersecret
+      BACKEND_URL: http://backend:4000
+    volumes:
+      - ./laravel:/var/www/html
+      - laravel_storage:/var/www/html/storage
+    ports:
+      - "8080:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    restart: unless-stopped
+
+  vite:
+    image: node:20-alpine
+    working_dir: /var/www/html
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 5173"
+    volumes:
+      - ./laravel:/var/www/html
+    ports:
+      - "5173:5173"
+    depends_on:
+      - laravel
+
+  queue:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: php artisan queue:work --verbose --tries=3 --timeout=90
+    env_file:
+      - ./laravel/.env
+    volumes:
+      - ./laravel:/var/www/html
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  freeswitch_recordings:
+  freeswitch_gateways:
+  laravel_storage:

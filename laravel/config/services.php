@@ -30,4 +30,10 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'backend' => [
+        'url' => env('BACKEND_URL', 'http://backend:4000'),
+       
+    ],
+
+
 ];

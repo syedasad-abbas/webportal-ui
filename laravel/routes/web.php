@@ -22,7 +22,7 @@ use App\Http\Controllers\Auth\UserAuthController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\CarrierController;
 
-use App\Http\Controllers\DialerController;
+use App\Http\Controllers\Admin\DialerController;
 
 use Illuminate\Support\Facades\Route;
 
@@ -34,6 +34,12 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', 'HomeController@redirectAdmin')->name('index');
 Route::get('/home', 'HomeController@index')->name('home');
+
+/**
+ * Public auth routes for portal login.
+ */
+Route::get('/login', [UserAuthController::class, 'showLogin'])->name('user.login');
+Route::post('/login', [UserAuthController::class, 'login'])->name('user.login.submit');
 
 /**
  * Admin routes.
@@ -101,7 +107,17 @@ Route::post('/carrier', [CarrierController::class, 'store'])->name('carrier.stor
 Route::get('/carrier/{carrierId}/edit', [CarrierController::class, 'edit'])->name('carrier.edit');
 Route::put('/carrier/{carrierId}', [CarrierController::class, 'update'])->name('carrier.update');
 Route::delete('/carrier/{carrierId}', [CarrierController::class, 'destroy'])->name('carrier.destroy');
+ Route::view('/dialer', 'backend.pages.dialer.index')->name('dialer.index');
 
+        Route::post('/dialer/dial', [DialerController::class, 'dial'])->name('dialer.dial');
+
+        Route::get('/dialer/calls/{uuid}/status', [DialerController::class, 'status'])->name('dialer.status');
+
+        Route::post('/dialer/calls/{uuid}/mute', [DialerController::class, 'mute'])->name('dialer.mute');
+        Route::post('/dialer/calls/{uuid}/unmute', [DialerController::class, 'unmute'])->name('dialer.unmute');
+        Route::post('/dialer/calls/{uuid}/hangup', [DialerController::class, 'hangup'])->name('dialer.hangup');
+
+        Route::post('/dialer/calls/{uuid}/dtmf', [DialerController::class, 'dtmf'])->name('dialer.dtmf');
 //users
 
 });
@@ -125,27 +141,15 @@ Route::get('/locale/{lang}', [LocaleController::class, 'switch'])->name('locale.
 
 
 
-   
-
-Route::middleware(['auth'])
-    ->prefix('admin')
-    ->name('admin.')
-    ->group(function () {
-        // Dialer page (if you haven’t added it yet)
-        Route::view('/dialer', 'backend.pages.dialer.index')->name('dialer.index');
 
         // Dummy endpoint so the Blade form action works for now
-        Route::post('/dialer/dial', function () {
-            return response()->json([
-                'ok' => true,
-                'message' => 'Dialer stub route (not wired yet)',
-            ]);
-        })->name('dialer.dial');
-    });
+     
 Route::post('/logout', function () {
+    request()->session()->forget(['admin_token', 'admin_user']);
+
     Auth::logout();
     request()->session()->invalidate();
     request()->session()->regenerateToken();
 
-    return redirect('/'); // or /admin
+    return redirect('/');
 })->name('logout');

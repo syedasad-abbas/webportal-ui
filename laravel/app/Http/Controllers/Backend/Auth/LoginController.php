@@ -79,9 +79,9 @@ class LoginController extends Controller
         return redirect()->route('admin.dashboard');
     }
 
-    // Try login via username
+    // Try login via internal name fallback
     if (Auth::guard('web')->attempt([
-        'username' => $request->email,
+        'internal_name' => $request->email,
         'password' => $request->password,
     ], $request->remember)) {
         $user = Auth::guard('web')->user();
@@ -108,6 +108,6 @@ class LoginController extends Controller
     {
         Auth::guard('web')->logout();
 
-        return redirect()->route('admin.login');
+        return redirect()->route('user.login');
     }
 }

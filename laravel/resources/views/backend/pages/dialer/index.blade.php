@@ -55,7 +55,7 @@
                                     <input type="hidden" name="destination" id="dialpad-input" required>
                                 </div>
 
-                                <div class="mt-4 grid grid-cols-3 gap-3" aria-label="Dial pad">
+                                <div class="dialpad-grid mt-4" aria-label="Dial pad">
                                     @php
                                         $keys = [
                                             ['1',''], ['2','ABC'], ['3','DEF'],
