@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\User;
+use App\Models\Carrier;
 use Illuminate\Support\Facades\Hash;
 
 class UserService
@@ -52,5 +53,18 @@ class UserService
     public function getUserById(int $id): ?User
     {
         return User::findOrFail($id);
+    }
+
+    /**
+     * Return carriers for dropdowns (id + name).
+     */
+    public function getCarriersDropdown()
+    {
+        return Carrier::orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn ($carrier) => [
+                'id' => $carrier->id,
+                'name' => $carrier->name,
+            ]);
     }
 }
