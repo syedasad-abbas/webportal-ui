@@ -99,6 +99,7 @@ const getStatus = async ({ uuid, userId }) => {
   const call = await findCallByUuid(uuid, userId);
   const exists = await freeswitch.callExists(uuid);
   const diagnostics = await fetchCallDiagnostics(uuid);
+  const conferenceName = call.call_uuid ? `call-${call.call_uuid}` : null;
   if (diagnostics.sipStatus || diagnostics.sipReason || diagnostics.hangupCause) {
     await updateCallDiagnostics(call.id, diagnostics);
   }
@@ -111,7 +112,8 @@ const getStatus = async ({ uuid, userId }) => {
       sipReason: diagnostics.sipReason ?? call.sip_reason ?? null,
       hangupCause: diagnostics.hangupCause ?? call.hangup_cause ?? null,
       recordingPath: call.recording_path,
-      durationSeconds: call.duration_seconds || 0
+      durationSeconds: call.duration_seconds || 0,
+      conferenceName
     };
   }
 
@@ -131,7 +133,8 @@ const getStatus = async ({ uuid, userId }) => {
     sipReason: diagnostics.sipReason ?? call.sip_reason ?? null,
     hangupCause: diagnostics.hangupCause ?? call.hangup_cause ?? null,
     recordingPath: call.recording_path,
-    durationSeconds
+    durationSeconds,
+    conferenceName
   };
 };
 
@@ -151,9 +154,18 @@ const hangup = async ({ uuid, userId }) => {
   await updateCallCompletion(call.id, call.duration_seconds);
 };
 
+const sendDtmf = async ({ uuid, digits, userId }) => {
+  if (!digits) {
+    throw new Error('Digits are required');
+  }
+  await findCallByUuid(uuid, userId);
+  await freeswitch.sendDtmf(uuid, digits);
+};
+
 module.exports = {
   getStatus,
   mute,
   unmute,
-  hangup
+  hangup,
+  sendDtmf
 };

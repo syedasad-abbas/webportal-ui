@@ -25,7 +25,8 @@ router.post('/', authenticate(['user', 'admin']), async (req, res) => {
 
     return res.json({
       status: response.status,
-      callUuid: response.callUuid
+      callUuid: response.callUuid,
+      conference: response.conference
     });
   } catch (err) {
     return res.status(500).json({ message: err.message });
@@ -66,6 +67,23 @@ router.post('/:uuid/hangup', authenticate(['user', 'admin']), async (req, res) =
   try {
     await callControlService.hangup({ uuid: req.params.uuid, userId: req.user.id });
     return res.json({ status: 'ended' });
+  } catch (err) {
+    return res.status(400).json({ message: err.message });
+  }
+});
+
+router.post('/:uuid/dtmf', authenticate(['user', 'admin']), async (req, res) => {
+  const digits = (req.body && req.body.digits) || '';
+  if (!digits) {
+    return res.status(400).json({ message: 'Digits are required' });
+  }
+  try {
+    await callControlService.sendDtmf({
+      uuid: req.params.uuid,
+      digits,
+      userId: req.user.id
+    });
+    return res.json({ status: 'sent' });
   } catch (err) {
     return res.status(400).json({ message: err.message });
   }

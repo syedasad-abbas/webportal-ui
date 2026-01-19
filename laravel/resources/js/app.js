@@ -19,6 +19,7 @@ import map01 from "./components/map-01";
 import "./components/image-resize";
 import SlugGenerator from "./components/slug-generator";
 import * as Popper from '@popperjs/core';
+import './dialer/webrtc-client';
 
 // Make Popper available globally with the correct structure
 window.Popper = Popper;
@@ -231,6 +232,5 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 });
-
 
 

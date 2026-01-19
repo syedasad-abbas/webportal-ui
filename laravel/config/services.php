@@ -35,5 +35,13 @@ return [
        
     ],
 
+    'webrtc' => [
+        'ws' => env('WEBRTC_WS', 'wss://localhost:7443'),
+        'domain' => env('WEBRTC_SIP_DOMAIN', 'webphone.local'),
+        'username' => env('WEBRTC_SIP_USER', '1000'),
+        'password' => env('WEBRTC_SIP_PASSWORD', '1234'),
+        'ice_servers' => array_values(array_filter(array_map('trim', explode(',', env('WEBRTC_ICE_SERVERS', 'stun:stun.l.google.com:19302'))))),
+    ],
+
 
 ];

@@ -37,6 +37,7 @@
         "fullcalendar": "^6.1.15",
         "jsvectormap": "^1.6.0",
         "react-dom": "^19.1.0",
+        "sip.js": "^0.21.2",
         "simple-datatables": "^10.0.0",
         "tailwind-merge": "^3.0.1",
         "tailwindcss": "^4.0.0",

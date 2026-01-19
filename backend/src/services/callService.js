@@ -66,6 +66,7 @@ const applyDialPrefix = (normalizedDestination, prefixEntry) => {
 
 const originate = async ({ user, destination, callerId }) => {
   const originationUuid = randomUUID();
+  const conferenceName = `call-${originationUuid}`;
   const normalizedDestination = normalizeDestination(destination);
   if (!normalizedDestination) {
     throw new Error('Only US/CA destinations (+1) are allowed');
@@ -196,7 +197,8 @@ const originate = async ({ user, destination, callerId }) => {
       recordingPath,
       variables: channelVars,
       gateway: useGateway ? gatewayName : null,
-      destination: useGateway ? toUser : null
+      destination: useGateway ? toUser : null,
+      application: `&conference(${conferenceName}@default)`
     });
     jobUuid = originateResult.jobUuid || originationUuid;
     await logCall({
@@ -207,7 +209,7 @@ const originate = async ({ user, destination, callerId }) => {
       recordingPath,
       callUuid: originationUuid
     });
-    return { status: 'queued', callUuid: originationUuid };
+    return { status: 'queued', callUuid: originationUuid, conference: conferenceName };
   } catch (err) {
     console.error('[call] originate failed', {
       userId: user.id,

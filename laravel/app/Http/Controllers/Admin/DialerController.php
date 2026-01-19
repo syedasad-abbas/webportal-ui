@@ -55,7 +55,7 @@ class DialerController extends Controller
         return response()->json($resp->json(), $resp->status());
     }
 
-    public function showCall(Request $request, string $uuid)
+    protected function proxyRequest(Request $request, string $method, string $endpoint, array $payload = [])
     {
         $this->assertDialerPermission($request);
 
@@ -67,8 +67,43 @@ class DialerController extends Controller
             ], 401);
         }
 
-        $resp = $this->backend($token)->get("/calls/{$uuid}");
+        $client = $this->backend($token);
 
-        return response()->json($resp->json(), $resp->status());
+        $response = match (strtolower($method)) {
+            'get' => $client->get($endpoint),
+            'post' => $client->post($endpoint, $payload),
+            default => throw new \InvalidArgumentException("Unsupported method [{$method}]"),
+        };
+
+        return response()->json($response->json(), $response->status());
+    }
+
+    public function status(Request $request, string $uuid)
+    {
+        return $this->proxyRequest($request, 'get', "/calls/{$uuid}");
+    }
+
+    public function mute(Request $request, string $uuid)
+    {
+        return $this->proxyRequest($request, 'post', "/calls/{$uuid}/mute");
+    }
+
+    public function unmute(Request $request, string $uuid)
+    {
+        return $this->proxyRequest($request, 'post', "/calls/{$uuid}/unmute");
+    }
+
+    public function hangup(Request $request, string $uuid)
+    {
+        return $this->proxyRequest($request, 'post', "/calls/{$uuid}/hangup");
+    }
+
+    public function dtmf(Request $request, string $uuid)
+    {
+        $data = $request->validate([
+            'digits' => ['required', 'string'],
+        ]);
+
+        return $this->proxyRequest($request, 'post', "/calls/{$uuid}/dtmf", $data);
     }
 }

@@ -70,7 +70,7 @@ const sendCommand = (command) =>
     });
   });
 
-const originateCall = async ({ destination, callerId, gateway, recordingPath, endpoint, variables = [] }) => {
+const originateCall = async ({ destination, callerId, gateway, recordingPath, endpoint, variables = [], application }) => {
   const vars = ['originate_timeout=30', 'ignore_early_media=true'];
 
   if (callerId) {
@@ -94,7 +94,8 @@ const originateCall = async ({ destination, callerId, gateway, recordingPath, en
     dialString = `sofia/gateway/${gateway}/${destination}`;
   }
 
-  const originateString = `bgapi originate {${vars.join(',')}}${dialString} &park`;
+  const finalApplication = application || '&park';
+  const originateString = `bgapi originate {${vars.join(',')}}${dialString} ${finalApplication}`;
   const response = await sendCommand(originateString);
   const jobUuid = (response.match(/Job-UUID:\s*([0-9a-f-]+)/i) || [])[1];
   return { response, jobUuid };
@@ -129,6 +130,12 @@ const getChannelVar = async (uuid, variable) => {
 const muteCall = async (uuid) => sendCommand(`bgapi uuid_audio ${uuid} start read mute`);
 const unmuteCall = async (uuid) => sendCommand(`bgapi uuid_audio ${uuid} stop read mute`);
 const hangupCall = async (uuid) => sendCommand(`bgapi uuid_kill ${uuid}`);
+const sendDtmf = async (uuid, digits) => {
+  if (!digits) {
+    return null;
+  }
+  return sendCommand(`bgapi uuid_send_dtmf ${uuid} ${digits}`);
+};
 
 const sendApiCommand = (command) =>
   new Promise((resolve, reject) => {
@@ -258,6 +265,7 @@ module.exports = {
   muteCall,
   unmuteCall,
   hangupCall,
+  sendDtmf,
   getGatewayStatus,
   registerGateway,
   reloadXml,

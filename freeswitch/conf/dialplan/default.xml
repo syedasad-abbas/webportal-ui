@@ -20,6 +20,13 @@
       </condition>
     </extension>
 
+    <extension name="web_dialer_conference">
+      <condition field="destination_number" expression="^(call-[0-9a-f-]+)$">
+	<action application="answer"/>
+	<action application="conference" data="$1@default"/>
+      </condition>
+    </extension>
+
     <!-- Example of doing things based on time of day.
 
 	 year = 4 digit year. Example year="2009"

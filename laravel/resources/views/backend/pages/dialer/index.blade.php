@@ -1,5 +1,15 @@
 @extends('backend.layouts.app')
 
+@php
+    $webrtcConfig = [
+        'wsUrl' => config('services.webrtc.ws'),
+        'domain' => config('services.webrtc.domain'),
+        'username' => config('services.webrtc.username'),
+        'password' => config('services.webrtc.password'),
+        'iceServers' => config('services.webrtc.ice_servers'),
+    ];
+@endphp
+
 @section('title')
     {{ __('WebPhone dialer') }} | {{ config('app.name') }}
 @endsection
@@ -120,11 +130,14 @@
                         <div class="hidden mt-2 text-xs text-gray-500 dark:text-gray-400" id="call-timer-badge">
                             {{ __('Duration') }} · <span id="call-timer">00:00</span>
                         </div>
+                        <div class="hidden mt-2 text-xs text-gray-500 dark:text-gray-400" id="browser-audio-status"></div>
+                        <audio id="dialer-audio" class="hidden" autoplay playsinline></audio>
                     </div>
                 </div>
 
             </div>
         </div>
+        <div id="dialer-webrtc-config" data-config='@json($webrtcConfig)' class="hidden" aria-hidden="true"></div>
     </div>
 </div>
 @endsection
@@ -149,6 +162,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const callIdBadge = document.getElementById('call-id-badge');
     const callTimerBadge = document.getElementById('call-timer-badge');
     const callTimerEl = document.getElementById('call-timer');
+    const browserAudioStatus = document.getElementById('browser-audio-status');
+    const webrtcConfigEl = document.getElementById('dialer-webrtc-config');
+    const remoteAudioEl = document.getElementById('dialer-audio');
 
     if (!form) return;
 
@@ -247,6 +263,9 @@ document.addEventListener('DOMContentLoaded', function () {
     let callUuid = null;
     let pollHandle = null;
     let callActive = false;
+    let conferenceName = null;
+    let browserAudioActive = false;
+    let webRtcClient = null;
 
     // timer state
     let callConnectedAt = null;
@@ -308,10 +327,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (normalized === 'in_call') {
             startTimer();
+            if (conferenceName && webRtcClient && !browserAudioActive) {
+                connectBrowserAudio();
+            }
         }
 
         if (normalized === 'ended' || normalized === 'completed') {
             stopTimer();
+            disconnectBrowserAudio();
         }
     };
 
@@ -320,6 +343,81 @@ document.addEventListener('DOMContentLoaded', function () {
         alertEl.textContent = message || 'Unable to update call.';
         alertEl.classList.remove('hidden');
     };
+
+    const initWebRtcClient = () => {
+        if (!window.DialerWebRTC || !webrtcConfigEl || !remoteAudioEl) {
+            return null;
+        }
+        try {
+            const config = JSON.parse(webrtcConfigEl.dataset.config || '{}');
+            if (!config.wsUrl || !config.domain || !config.username || !config.password) {
+                return null;
+            }
+            config.remoteAudioSelector = '#dialer-audio';
+            return new window.DialerWebRTC(config);
+        } catch (error) {
+            console.error('Invalid WebRTC config', error);
+            return null;
+        }
+    };
+
+    const updateBrowserAudioStatus = (text, hasError = false) => {
+        if (!browserAudioStatus) return;
+        if (!text) {
+            browserAudioStatus.classList.add('hidden');
+            browserAudioStatus.textContent = '';
+            return;
+        }
+        browserAudioStatus.textContent = text;
+        browserAudioStatus.classList.remove('hidden');
+        if (hasError) {
+            browserAudioStatus.classList.add('text-red-600', 'dark:text-red-300');
+        } else {
+            browserAudioStatus.classList.remove('text-red-600', 'dark:text-red-300');
+        }
+    };
+
+    const connectBrowserAudio = async () => {
+        if (!webRtcClient || !conferenceName) {
+            return;
+        }
+        updateBrowserAudioStatus('Connecting browser audio…');
+        try {
+            await webRtcClient.joinConference(conferenceName);
+            browserAudioActive = true;
+            updateBrowserAudioStatus('Browser audio connected');
+        } catch (error) {
+            console.error('Failed to connect browser audio', error);
+            browserAudioActive = false;
+            updateBrowserAudioStatus('Browser audio unavailable', true);
+            showError('Unable to connect browser audio.');
+        }
+    };
+
+    const disconnectBrowserAudio = async () => {
+        if (!webRtcClient) return;
+        try {
+            await webRtcClient.leaveConference();
+        } catch (error) {
+            console.error('Failed to disconnect browser audio', error);
+        }
+        browserAudioActive = false;
+        updateBrowserAudioStatus(webRtcClient ? 'Browser audio idle' : '');
+    };
+
+    const ensureWebRtcClient = () => {
+        if (!webRtcClient) {
+            webRtcClient = initWebRtcClient();
+            if (webRtcClient) {
+                updateBrowserAudioStatus('Browser audio idle');
+            } else {
+                updateBrowserAudioStatus('');
+            }
+        }
+        return webRtcClient;
+    };
+
+    ensureWebRtcClient();
 
     const pollStatus = async () => {
         try {
@@ -338,11 +436,17 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             const data = await response.json();
+            if (data.conferenceName) {
+                conferenceName = data.conferenceName;
+            }
             setStatus(data.status);
 
             if (data.status === 'in_call' || data.status === 'ringing' || data.status === 'queued') {
                 callActive = true;
                 setControls(true);
+                if (conferenceName && webRtcClient && !browserAudioActive) {
+                    connectBrowserAudio();
+                }
             }
 
             if (data.status === 'ended' || data.status === 'completed') {
@@ -351,6 +455,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 setControls(false);
                 startCallButton.disabled = false;
                 stopTimer();
+                disconnectBrowserAudio();
             }
         } catch (e) {
             setStatus('ended');
@@ -359,6 +464,7 @@ document.addEventListener('DOMContentLoaded', function () {
             setControls(false);
             startCallButton.disabled = false;
             stopTimer();
+            disconnectBrowserAudio();
         }
     };
 
@@ -394,6 +500,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     setControls(false);
                     startCallButton.disabled = false;
                     stopTimer();
+                    disconnectBrowserAudio();
                 }
             } catch (e) {
                 showError('Network error while updating the call.');
@@ -536,6 +643,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const data = await response.json();
             if (data.callUuid) {
                 callUuid = data.callUuid;
+                conferenceName = data.conference || null;
 
                 if (callIdBadge) {
                     callIdBadge.textContent = `Call ID · ${callUuid}`;
@@ -544,6 +652,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 callActive = true;
                 setControls(true);
+                if (conferenceName && webRtcClient) {
+                    connectBrowserAudio();
+                }
 
                 // poll status
                 pollStatus();
@@ -554,6 +665,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 alertBox.classList.remove('hidden');
                 startCallButton.disabled = false;
                 setStatus('ended');
+                disconnectBrowserAudio();
             }
         } catch (error) {
             alertBox.textContent = 'Network error while queuing the call.';
@@ -561,11 +673,15 @@ document.addEventListener('DOMContentLoaded', function () {
             startCallButton.disabled = false;
             setStatus('ended');
             showError('Network error while queuing the call.');
+            disconnectBrowserAudio();
         }
     });
 
     // initial
     setControls(false);
+    if (!webRtcClient) {
+        updateBrowserAudioStatus('');
+    }
 });
 </script>
 @endpush
