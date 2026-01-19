@@ -37,7 +37,10 @@ services:
     build:
       context: ./freeswitch
       dockerfile: Dockerfile
-    network_mode: "host"
+    ports:
+      - "5060:5060/udp"
+      - "5080:5080/udp"
+      - "8021:8021/tcp"
     volumes:
       - ./freeswitch/conf:/etc/freeswitch
       - freeswitch_recordings:/var/recordings

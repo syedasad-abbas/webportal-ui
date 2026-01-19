@@ -6,7 +6,8 @@ const callControlService = require('../services/callControlService');
 
 const router = express.Router();
 
-router.post('/', authenticate('user'), async (req, res) => {
+router.post('/', authenticate(['user', 'admin']), async (req, res) => {
+  console.log('Incoming call payload:', req.body);
   const schema = Joi.object({
     destination: Joi.string().required()
   });
@@ -31,7 +32,7 @@ router.post('/', authenticate('user'), async (req, res) => {
   }
 });
 
-router.get('/:uuid', authenticate('user'), async (req, res) => {
+router.get('/:uuid', authenticate(['user', 'admin']), async (req, res) => {
   try {
     const status = await callControlService.getStatus({
       uuid: req.params.uuid,
@@ -43,7 +44,7 @@ router.get('/:uuid', authenticate('user'), async (req, res) => {
   }
 });
 
-router.post('/:uuid/mute', authenticate('user'), async (req, res) => {
+router.post('/:uuid/mute', authenticate(['user', 'admin']), async (req, res) => {
   try {
     await callControlService.mute({ uuid: req.params.uuid, userId: req.user.id });
     return res.json({ status: 'muted' });
@@ -52,7 +53,7 @@ router.post('/:uuid/mute', authenticate('user'), async (req, res) => {
   }
 });
 
-router.post('/:uuid/unmute', authenticate('user'), async (req, res) => {
+router.post('/:uuid/unmute', authenticate(['user', 'admin']), async (req, res) => {
   try {
     await callControlService.unmute({ uuid: req.params.uuid, userId: req.user.id });
     return res.json({ status: 'unmuted' });
@@ -61,7 +62,7 @@ router.post('/:uuid/unmute', authenticate('user'), async (req, res) => {
   }
 });
 
-router.post('/:uuid/hangup', authenticate('user'), async (req, res) => {
+router.post('/:uuid/hangup', authenticate(['user', 'admin']), async (req, res) => {
   try {
     await callControlService.hangup({ uuid: req.params.uuid, userId: req.user.id });
     return res.json({ status: 'ended' });

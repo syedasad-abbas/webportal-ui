@@ -44,8 +44,11 @@ class DialerController extends Controller
 
         $payload = [
             'destination' => $data['destination'],
-            'callerId' => $data['callerId'] ?? null,
         ];
+
+        if (filled($data['callerId'] ?? null)) {
+            $payload['callerId'] = $data['callerId'];
+        }
 
         $resp = $this->backend($token)->post('/calls', $payload);
 
