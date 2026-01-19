@@ -157,7 +157,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Function to focus the search input
     function focusSearchInput() {
-        searchInput.focus();
+        if (searchInput) {
+            searchInput.focus();
+        }
     }
 
     if (searchInput) {
@@ -166,20 +168,22 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // Add keyboard event listener for Cmd+K (Mac) or Ctrl+K (Windows/Linux)
-    document.addEventListener("keydown", function (event) {
-        if ((event.metaKey || event.ctrlKey) && event.key === "k") {
-            event.preventDefault(); // Prevent the default browser behavior
-            focusSearchInput();
-        }
-    });
+    if (searchInput) {
+        document.addEventListener("keydown", function (event) {
+            if ((event.metaKey || event.ctrlKey) && event.key === "k") {
+                event.preventDefault(); // Prevent the default browser behavior
+                focusSearchInput();
+            }
+        });
 
-    // Add keyboard event listener for "/" key
-    document.addEventListener("keydown", function (event) {
-        if (event.key === "/" && document.activeElement !== searchInput) {
-            event.preventDefault(); // Prevent the "/" character from being typed
-            focusSearchInput();
-        }
-    });
+        // Add keyboard event listener for "/" key
+        document.addEventListener("keydown", function (event) {
+            if (event.key === "/" && document.activeElement !== searchInput) {
+                event.preventDefault(); // Prevent the "/" character from being typed
+                focusSearchInput();
+            }
+        });
+    }
 });
 
 // Toast notification helper function
@@ -227,7 +231,6 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 });
-
 
 
 

@@ -43,8 +43,8 @@
                                 {{ __('Destination Number') }}
                             </label>
 
-                            <div class="mt-2">
-                                <div class="flex gap-2">
+                            <div class="mt-2 dialpad">
+                                <div class="dialpad-display flex gap-2">
                                     <input
                                         type="text"
                                         id="dialpad-display"
@@ -68,16 +68,16 @@
                                     @foreach($keys as [$k,$sub])
                                         <button
                                             type="button"
-                                            class="dialpad-key h-12 rounded-lg border border-gray-200 bg-white text-base font-medium text-gray-800 shadow-sm hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:hover:bg-gray-800"
+                                            class="dialpad-key"
                                             data-value="{{ $k }}"
                                         >
                                             <div class="leading-none">{{ $k }}</div>
-                                            <div class="mt-1 text-[10px] text-gray-400">{{ $sub ?: ' ' }}</div>
+                                            <div class="mt-1 text-[10px]">{{ $sub ?: ' ' }}</div>
                                         </button>
                                     @endforeach
                                 </div>
 
-                                <div class="mt-3 flex gap-2">
+                                <div class="dialpad-actions mt-3">
                                     <button type="button" class="btn-default" id="dialpad-clear">{{ __('Clear') }}</button>
                                     <button type="button" class="btn-default" id="dialpad-backspace">{{ __('Delete') }}</button>
                                 </div>

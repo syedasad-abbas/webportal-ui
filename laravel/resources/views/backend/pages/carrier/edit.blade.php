@@ -6,7 +6,7 @@
 
 @section('admin-content')
 @php
-    abort_unless(auth()->check() && auth()->user()->hasRole('Admin'), 403);
+    abort_unless(auth()->check() && auth()->user()->can('carrier.edit'), 403);
 @endphp
 <div class="p-4 mx-auto max-w-7xl md:p-6">
     <x-breadcrumbs :breadcrumbs="$breadcrumbs" />
@@ -18,7 +18,7 @@
             <div class="p-5 space-y-6 border-t border-gray-100 dark:border-gray-800 sm:p-6"
                  x-data="{ registrationRequired: {{ old('registrationRequired', !empty($carrier['registration_required'])) ? 'true' : 'false' }} }">
 
-                <form method="POST" action="{{ route('admin.carriers.update', $carrier['id']) }}" class="space-y-6">
+                <form method="POST" action="{{ route('admin.carrier.update', $carrier['id']) }}" class="space-y-6">
                     @csrf
                     @method('PUT')
 
@@ -147,7 +147,7 @@
 
                     <div class="mt-6 flex justify-start gap-4">
                         <button type="submit" class="btn-primary">{{ __('Save') }}</button>
-                        <a href="{{ route('admin.carriers.index') }}" class="btn-default">{{ __('Cancel') }}</a>
+                        <a href="{{ route('admin.carrier.index') }}" class="btn-default">{{ __('Cancel') }}</a>
                     </div>
                 </form>
 

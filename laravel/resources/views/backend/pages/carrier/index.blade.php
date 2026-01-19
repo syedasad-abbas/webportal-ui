@@ -58,31 +58,31 @@
                     </thead>
 
                     <tbody>
-                        @forelse($carrier as $carrier)
+                        @forelse($carrier as $carrierItem)
                             @php
-                                $status = $carrier['registration_status'] ?? null;
+                                $status = $carrierItem['registration_status'] ?? null;
                                 $state = $status['state'] ?? null;
 
                                 $chipClass = 'text-gray-800 bg-gray-100 dark:bg-gray-700 dark:text-gray-300';
                                 if ($state === 'success') $chipClass = 'text-green-800 bg-green-100 dark:bg-green-900/20 dark:text-green-400';
                                 if ($state === 'error') $chipClass = 'text-red-800 bg-red-100 dark:bg-red-900/20 dark:text-red-400';
 
-                                $statusLabel = $status['label'] ?? (!empty($carrier['registration_required']) ? __('Pending') : __('Not required'));
-                                $domain = $carrier['sip_domain'] ?? '—';
-                                $port = !empty($carrier['sip_port']) ? ':'.$carrier['sip_port'] : '';
-                                $transport = strtoupper($carrier['transport'] ?? 'udp');
+                                $statusLabel = $status['label'] ?? (!empty($carrierItem['registration_required']) ? __('Pending') : __('Not required'));
+                                $domain = $carrierItem['sip_domain'] ?? '—';
+                                $port = !empty($carrierItem['sip_port']) ? ':'.$carrierItem['sip_port'] : '';
+                                $transport = strtoupper($carrierItem['transport'] ?? 'udp');
 
                                 // ✅ NEW: Outbound Proxy (display)
-                                $outboundProxy = $carrier['outbound_proxy'] ?? '—';
+                                $outboundProxy = $carrierItem['outbound_proxy'] ?? '—';
                             @endphp
 
                             <tr class="{{ $loop->last ? '' : 'border-b border-gray-100 dark:border-gray-800' }}">
                                 <td class="px-5 py-4 sm:px-6">
-                                    {{ $carrier['name'] ?? '—' }}
+                                    {{ $carrierItem['name'] ?? '—' }}
                                 </td>
 
                                 <td class="px-5 py-4 sm:px-6">
-                                    {{ $carrier['default_caller_id'] ?? '—' }}
+                                    {{ $carrierItem['default_caller_id'] ?? '—' }}
                                 </td>
 
                                 <td class="px-5 py-4 sm:px-6">
@@ -111,17 +111,17 @@
                                         </div>
                                     @endif
 
-                                    @if(!empty($carrier['registration_username']))
+                                    @if(!empty($carrierItem['registration_username']))
                                         <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                            {{ $carrier['registration_username'] }}
+                                            {{ $carrierItem['registration_username'] }}
                                         </div>
                                     @endif
                                 </td>
 
                                 <td class="px-5 py-4 sm:px-6">
-                                    @if(!empty($carrier['prefixes']))
+                                    @if(!empty($carrierItem['prefixes']))
                                         <div class="flex flex-col gap-2">
-                                            @foreach($carrier['prefixes'] as $prefix)
+                                            @foreach($carrierItem['prefixes'] as $prefix)
                                                 <span class="inline-flex items-center justify-center px-2 py-1 text-xs font-medium text-gray-800 bg-gray-100 rounded-full dark:bg-gray-800 dark:text-white">
                                                     {{ $prefix['prefix'] ?: '—' }} · {{ $prefix['callerId'] ?? '—' }}
                                                 </span>
@@ -137,12 +137,12 @@
                                 @if($isAdmin)
                                     <td class="px-5 py-4 sm:px-6 text-right">
                                         <div class="flex justify-end gap-2">
-                                            <a href="{{ route('admin.carrier.edit', $carrier['id']) }}" class="btn-default">
+                                            <a href="{{ route('admin.carrier.edit', $carrierItem['id']) }}" class="btn-default">
                                                 {{ __('Edit') }}
                                             </a>
 
                                             <form method="POST"
-                                                  action="{{ route('admin.carrier.destroy', $carrier['id']) }}"
+                                                  action="{{ route('admin.carrier.destroy', $carrierItem['id']) }}"
                                                   onsubmit="return confirm('Delete this carrier?')">
                                                 @csrf
                                                 @method('DELETE')
@@ -166,7 +166,7 @@
                     </tbody>
                 </table>
 
-                @if(method_exists($carrier, 'links'))
+                @if($carrier instanceof \Illuminate\Contracts\Pagination\Paginator)
                     <div class="my-4 px-4 sm:px-6">
                         {{ $carrier->links() }}
                     </div>

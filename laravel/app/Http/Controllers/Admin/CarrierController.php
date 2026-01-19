@@ -42,7 +42,7 @@ class CarrierController extends Controller
             $query['search'] = $request->string('search')->toString();
         }
 
-        $response = $this->backend($token)->get('/admin/carrier', $query);
+        $response = $this->backend($token)->get('/admin/carriers', $query);
 
         if ($response->ok()) {
             $carrier = collect($response->json());
@@ -107,7 +107,7 @@ class CarrierController extends Controller
         // ✅ added only
         $payload['outboundProxy'] = filled($data['outboundProxy'] ?? null) ? $data['outboundProxy'] : null;
 
-        $response = $this->backend($token)->post('/admin/carrier', $payload);
+        $response = $this->backend($token)->post('/admin/carriers', $payload);
 
         if ($response->failed()) {
             return back()->withErrors([
@@ -127,7 +127,7 @@ class CarrierController extends Controller
             return $token; // redirect response
         }
 
-        $carrierResponse = $this->backend($token)->get("/admin/carrier/{$carrierId}");
+        $carrierResponse = $this->backend($token)->get("/admin/carriers/{$carrierId}");
 
         if ($carrierResponse->failed()) {
             return redirect()
@@ -183,7 +183,7 @@ class CarrierController extends Controller
         // ✅ added only
         $payload['outboundProxy'] = filled($data['outboundProxy'] ?? null) ? $data['outboundProxy'] : null;
 
-        $response = $this->backend($token)->put("/admin/carrier/{$carrierId}", $payload);
+        $response = $this->backend($token)->put("/admin/carriers/{$carrierId}", $payload);
 
         if ($response->failed()) {
             return back()->withErrors('Unable to update carrier.')->withInput();
@@ -201,7 +201,7 @@ class CarrierController extends Controller
             return $token; // redirect response
         }
 
-        $response = $this->backend($token)->delete("/admin/carrier/{$carrierId}");
+        $response = $this->backend($token)->delete("/admin/carriers/{$carrierId}");
 
         if ($response->failed()) {
             return redirect()
