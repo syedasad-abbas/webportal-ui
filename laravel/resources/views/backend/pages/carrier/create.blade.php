@@ -6,7 +6,7 @@
 
 @section('admin-content')
 @php
-    abort_unless(auth()->check() && auth()->user()->hasRole('Admin'), 403);
+    abort_unless(auth()->check() && auth()->user()->can('carrier.create'), 403);
 @endphp
 <div class="p-4 mx-auto max-w-7xl md:p-6">
     <x-breadcrumbs :breadcrumbs="$breadcrumbs" />
@@ -149,7 +149,7 @@
 
                     <div class="mt-6 flex justify-start gap-4">
                         <button type="submit" class="btn-primary">{{ __('Add carrier') }}</button>
-                        <a href="{{ route('admin.carriers.index') }}" class="btn-default">{{ __('Cancel') }}</a>
+                        <a href="{{ route('admin.carrier.index') }}" class="btn-default">{{ __('Cancel') }}</a>
                     </div>
                 </form>
 
