@@ -11,8 +11,12 @@
     @include('backend.layouts.partials.theme-colors')
     @yield('before_vite_build')
 
-    @viteReactRefresh
-    @vite(['resources/js/app.js', 'resources/css/app.css'])
+    @if(app()->environment('local'))
+        @viteReactRefresh
+        @vite(['resources/js/app.js', 'resources/css/app.css'])
+    @else
+        @vite(['resources/js/app.js', 'resources/css/app.css'], 'build')
+    @endif
     
     @if (!empty(config('settings.global_custom_css')))
     <style>

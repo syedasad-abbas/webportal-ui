@@ -9,6 +9,7 @@ x-backend-env: &backend-env
   DB_USER: webphone
   DB_PASSWORD: supersecret
   JWT_SECRET: change-me
+  BACKEND_INTERNAL_TOKEN: ${BACKEND_INTERNAL_TOKEN:-sync-secret}
   DEFAULT_ADMIN_EMAIL: superadmin@example.com
   DEFAULT_ADMIN_PASSWORD: 12345678
   FREESWITCH_HOST: freeswitch
@@ -19,6 +20,25 @@ x-backend-env: &backend-env
   FREESWITCH_EXTERNAL_SIP_IP: ${PUBLIC_IP:-}
 
 services:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "8443:8443"
+    volumes:
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./docker/nginx/www:/var/www/certbot
+      - ./docker/nginx/letsencrypt:/etc/letsencrypt
+    depends_on:
+      - laravel
+    restart: unless-stopped
+
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - ./docker/nginx/www:/var/www/certbot
+      - ./docker/nginx/letsencrypt:/etc/letsencrypt
+    entrypoint: ""
+
   postgres:
     image: postgres:16
     environment:
@@ -41,6 +61,8 @@ services:
       - "5060:5060/udp"
       - "5080:5080/udp"
       - "8021:8021/tcp"
+      - "7443:7443/tcp"
+      - "5066:5066/tcp"
     volumes:
       - ./freeswitch/conf:/etc/freeswitch
       - freeswitch_recordings:/var/recordings
@@ -91,6 +113,7 @@ services:
       DB_USERNAME: webphone
       DB_PASSWORD: supersecret
       BACKEND_URL: http://backend:4000
+      BACKEND_INTERNAL_TOKEN: ${BACKEND_INTERNAL_TOKEN:-sync-secret}
     volumes:
       - ./laravel:/var/www/html
       - laravel_storage:/var/www/html/storage
@@ -109,6 +132,10 @@ services:
     command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 5173"
     volumes:
       - ./laravel:/var/www/html
+      - ./docker/nginx/letsencrypt:/etc/vite-certs:ro
+    environment:
+      VITE_DEV_SERVER_URL: https://vm2.technonies.com:8443
+      VITE_DEV_SERVER_PORT: 5173
     ports:
       - "5173:5173"
     depends_on:

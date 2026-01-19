@@ -55,13 +55,12 @@ const selectCarrierPrefix = (prefixes) => {
   return prefixes.find((entry) => entry.prefix) || null;
 };
 
-const applyDialPrefix = (normalizedDestination, prefixEntry) => {
+const applyDialPrefix = (destinationDigits, prefixEntry) => {
   if (!prefixEntry?.prefix) {
-    return normalizedDestination;
+    return destinationDigits;
   }
-  const withoutPlus = (normalizedDestination || '').replace(/^\+/, '');
   const prefixDigits = prefixEntry.prefix.toString().replace(/\D+/g, '');
-  return `${prefixDigits}${withoutPlus}`;
+  return `${prefixDigits}${destinationDigits}`;
 };
 
 const originate = async ({ user, destination, callerId }) => {
@@ -109,12 +108,9 @@ const originate = async ({ user, destination, callerId }) => {
     prefixEntries = prefixResult.rows || [];
   }
   const selectedPrefix = selectCarrierPrefix(prefixEntries, normalizedDestination);
-  const prefixedDestination = applyDialPrefix(normalizedDestination, selectedPrefix);
-  const prefixCallerId = selectedPrefix?.caller_id || null;
-  let resolvedCallerId = callerId || prefixCallerId || null;
-  if (!resolvedCallerId && record.caller_id_required) {
-    resolvedCallerId = record.default_caller_id || fallbackCallerId;
-  }
+  const destinationDigits = stripPlus(normalizedDestination);
+  const prefixedDestination = applyDialPrefix(destinationDigits, selectedPrefix);
+  const resolvedCallerId = record.default_caller_id || callerId || fallbackCallerId || null;
   const callerIdUser = normalizeCallerId(resolvedCallerId);
   const callerIdSipUser = stripPlus(callerIdUser);
   const recordingEnabled = record.recording_enabled;
@@ -127,7 +123,8 @@ const originate = async ({ user, destination, callerId }) => {
   }
 
   const domainPart = record.sip_port ? `${record.sip_domain}:${record.sip_port}` : record.sip_domain;
-  const useGateway = Boolean(record.registration_required || record.outbound_proxy);
+  const outboundProxy = typeof record.outbound_proxy === 'string' ? record.outbound_proxy.trim() : record.outbound_proxy;
+  const useGateway = Boolean(record.registration_required || outboundProxy);
   const gatewayName = useGateway ? normalizeGatewayName({ id: record.carrier_id }) : null;
   if (useGateway && !gatewayName) {
     throw new Error('Carrier gateway is not configured');
@@ -137,7 +134,7 @@ const originate = async ({ user, destination, callerId }) => {
   const fromHostWithPort = fromHostBase && record.sip_port
     ? `${fromHostBase}:${record.sip_port}`
     : fromHostBase;
-  const toUser = useGateway ? (prefixedDestination || normalizedDestination) : prefixedDestination || normalizedDestination;
+  const toUser = useGateway ? (prefixedDestination || destinationDigits) : prefixedDestination || destinationDigits;
   const requestUser = toUser;
   const endpoint = useGateway ? null : `sofia/external/${requestUser}@${domainPart}`;
   const transport = (record.transport || 'udp').toLowerCase();

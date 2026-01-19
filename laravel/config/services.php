@@ -32,7 +32,7 @@ return [
 
     'backend' => [
         'url' => env('BACKEND_URL', 'http://backend:4000'),
-       
+        'internal_token' => env('BACKEND_INTERNAL_TOKEN'),
     ],
 
     'webrtc' => [

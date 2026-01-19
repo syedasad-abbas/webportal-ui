@@ -9,6 +9,21 @@ const config = require('../config');
 
 const router = express.Router();
 
+const hasInternalToken = (req) => {
+  const token = config.internalTokens?.backendSync;
+  if (!token) {
+    return false;
+  }
+  return req.get('x-internal-token') === token;
+};
+
+const allowInternalOrAdmin = (req, res, next) => {
+  if (hasInternalToken(req)) {
+    return next();
+  }
+  return authenticate(['admin', 'superadmin'])(req, res, next);
+};
+
 router.post('/login', async (req, res) => {
   const schema = Joi.object({
     email: Joi.string().email({ tlds: { allow: false } }).required(),
@@ -17,11 +32,15 @@ router.post('/login', async (req, res) => {
 
   const { error, value } = schema.validate(req.body);
   if (error) {
+    console.warn('[admin] user sync validation failed', {
+      message: error.message,
+      body: req.body
+    });
     return res.status(400).json({ message: error.message });
   }
 
   try {
-    const response = await authService.authenticate(value.email, value.password, ['admin', 'superadmin']);
+    const response = await authService.authenticate(value.email, value.password);
     return res.json(response);
   } catch (err) {
     return res.status(401).json({ message: err.message });
@@ -52,7 +71,9 @@ router.post('/users', authenticate(['admin', 'superadmin']), async (req, res) =>
     password: Joi.string().min(6).required(),
     groupId: Joi.string().uuid().allow(null, '').optional(),
     carrierId: Joi.string().uuid().allow(null, '').optional(),
-    permissions: Joi.array().items(Joi.string()).optional()
+    permissions: Joi.array().items(Joi.string()).optional(),
+    role: Joi.string().optional(),
+    recordingEnabled: Joi.boolean().optional()
   });
 
   const { error, value } = schema.validate(req.body);
@@ -65,6 +86,35 @@ router.post('/users', authenticate(['admin', 'superadmin']), async (req, res) =>
     return res.status(201).json(user);
   } catch (err) {
     return res.status(500).json({ message: err.message });
+  }
+});
+
+router.post('/users/sync', allowInternalOrAdmin, async (req, res) => {
+  const schema = Joi.object({
+    fullName: Joi.string().allow('', null),
+    email: Joi.string().email({ tlds: { allow: false } }).required(),
+    password: Joi.string().min(6).allow(null, ''),
+    groupId: Joi.string().uuid().allow(null, '').optional(),
+    carrierId: Joi.string().uuid().allow(null, '').optional(),
+    permissions: Joi.array().items(Joi.string()).optional(),
+    role: Joi.string().optional(),
+    recordingEnabled: Joi.boolean().optional()
+  });
+
+  const { error, value } = schema.validate(req.body);
+  if (error) {
+    return res.status(400).json({ message: error.message });
+  }
+
+  try {
+    const user = await userService.upsertUser({
+      ...value,
+      fullName: value.fullName || value.email,
+      password: value.password || null
+    });
+    return res.json(user);
+  } catch (err) {
+    return res.status(400).json({ message: err.message });
   }
 });
 

@@ -58,8 +58,9 @@
                                     <input
                                         type="text"
                                         id="dialpad-display"
-                                        placeholder="{{ __('Tap digits to dial') }}"
-                                        readonly
+                                        placeholder="{{ __('Type or paste a number') }}"
+                                        inputmode="tel"
+                                        autocomplete="tel"
                                         class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
                                     >
                                     <input type="hidden" name="destination" id="dialpad-input" required>
@@ -243,17 +244,29 @@ document.addEventListener('DOMContentLoaded', function () {
     const applyPastedValue = (text) => syncDisplay(sanitizePhone(text));
 
     if (displayInput) {
+        displayInput.addEventListener('input', (e) => {
+            if (callActive) {
+                syncDisplay(hiddenInput.value || '');
+                return;
+            }
+            const cleaned = sanitizePhone(e.target.value);
+            if (cleaned !== e.target.value) {
+                e.target.value = cleaned;
+            }
+            syncDisplay(cleaned);
+        });
+
         displayInput.addEventListener('paste', (e) => {
             e.preventDefault();
             const text = (e.clipboardData || window.clipboardData).getData('text');
-            applyPastedValue(text);
+            if (!callActive) applyPastedValue(text);
         });
 
         document.addEventListener('paste', (e) => {
             if (document.activeElement !== displayInput) return;
             e.preventDefault();
             const text = (e.clipboardData || window.clipboardData).getData('text');
-            applyPastedValue(text);
+            if (!callActive) applyPastedValue(text);
         });
 
         displayInput.addEventListener('click', () => displayInput.focus());

@@ -67,5 +67,8 @@ module.exports = {
     otpTtlMinutes: toInt(process.env.PASSWORD_RESET_OTP_TTL_MINUTES, 10),
     maxAttempts: toInt(process.env.PASSWORD_RESET_OTP_MAX_ATTEMPTS, 5),
     internalToken: optionalEnv(process.env.PASSWORD_RESET_INTERNAL_TOKEN, null)
+  },
+  internalTokens: {
+    backendSync: optionalEnv(process.env.BACKEND_INTERNAL_TOKEN, null)
   }
 };

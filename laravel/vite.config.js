@@ -11,12 +11,13 @@ let paths = [
 
 const devServerUrl = process.env.VITE_DEV_SERVER_URL || 'http://vm2.technonies.com:5173';
 let devServerHost = 'vm2.technonies.com';
-let devServerPort = 5173;
+let devServerPort = Number(process.env.VITE_DEV_SERVER_PORT) || 5173;
+let devServerClientPort = devServerPort;
 let devServerProtocol = 'http:';
 try {
     const parsed = new URL(devServerUrl);
     devServerHost = parsed.hostname || devServerHost;
-    devServerPort = parsed.port ? Number(parsed.port) : devServerPort;
+    devServerClientPort = parsed.port ? Number(parsed.port) : devServerClientPort;
     devServerProtocol = parsed.protocol || devServerProtocol;
 } catch {
     // Keep defaults if URL parsing fails.
@@ -50,6 +51,7 @@ export default defineConfig({
         hmr: {
             host: devServerHost,
             port: devServerPort,
+            clientPort: devServerClientPort,
             protocol: devServerProtocol.replace(':', '')
         }
     },

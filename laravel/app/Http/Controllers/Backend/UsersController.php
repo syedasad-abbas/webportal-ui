@@ -16,6 +16,8 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class UsersController extends Controller
 {
@@ -128,6 +130,7 @@ class UsersController extends Controller
         session()->flash('success', __('User has been created.'));
 
         ld_do_action('user_store_after', $user);
+        $this->syncBackendUser($request, $user, $request->input('password'));
 
         return redirect()->route('admin.users.index');
     }
@@ -182,6 +185,7 @@ class UsersController extends Controller
 
                 $this->storeActionLog(ActionType::UPDATED, ['user' => $user]);
                 session()->flash('success', __('Password has been updated.'));
+                $this->syncBackendUser($request, $user, $request->password);
 
                 return back();
             }
@@ -233,8 +237,72 @@ class UsersController extends Controller
 
         $this->storeActionLog(ActionType::UPDATED, ['user' => $user]);
         session()->flash('success', __('User has been updated.'));
+        $this->syncBackendUser($request, $user, $request->filled('password') ? $request->password : null);
 
         return back();
+    }
+
+    protected function backendClient(Request $request, bool $allowInternal = false)
+    {
+        $token = $request->session()->get('admin_token');
+        if (! $token) {
+            if (! $allowInternal) {
+                return null;
+            }
+            $internalToken = config('services.backend.internal_token');
+            if (! $internalToken) {
+                return null;
+            }
+            return Http::withHeaders(['x-internal-token' => $internalToken])
+                ->baseUrl(config('services.backend.url'));
+        }
+        return Http::withToken($token)->baseUrl(config('services.backend.url'));
+    }
+
+    protected function normalizeBackendRole(?string $role): ?string
+    {
+        if (! $role) {
+            return null;
+        }
+        $normalized = strtolower(trim($role));
+        $normalized = preg_replace('/[^a-z0-9]+/i', '_', $normalized) ?? $normalized;
+        return trim($normalized, '_');
+    }
+
+    protected function syncBackendUser(Request $request, User $user, ?string $plainPassword): void
+    {
+        $client = $this->backendClient($request, true);
+        if (! $client) {
+            Log::warning('Backend user sync skipped: admin token missing.', ['email' => $user->email]);
+            return;
+        }
+
+        $roleName = $user->getRoleNames()->first();
+        $payload = [
+            'fullName' => $user->external_name ?: ($user->name ?: $user->email),
+            'email' => $user->email,
+            'role' => $this->normalizeBackendRole($roleName),
+            'carrierId' => $user->carrier_id,
+            'recordingEnabled' => $user->recording_enabled,
+            'permissions' => $user->getAllPermissions()->pluck('name')->values()->all(),
+        ];
+
+        if ($plainPassword) {
+            $payload['password'] = $plainPassword;
+        }
+
+        try {
+            $response = $client->post('/admin/users/sync', $payload);
+            if ($response->failed()) {
+                Log::warning('Backend user sync failed', [
+                    'email' => $user->email,
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                ]);
+            }
+        } catch (\Throwable $e) {
+            Log::error('Backend user sync exception: '.$e->getMessage(), ['email' => $user->email]);
+        }
     }
 
     public function destroy(int $id): RedirectResponse

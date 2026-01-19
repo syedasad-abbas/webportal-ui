@@ -18,16 +18,27 @@ const resolveCarrierId = async (carrierId) => {
   return result.rows[0]?.id || null;
 };
 
-const createUser = async ({ fullName, email, password, groupId, carrierId, permissions }) => {
+const createUser = async ({ fullName, email, password, groupId, carrierId, permissions, role, recordingEnabled }) => {
   const passwordHash = await bcrypt.hash(password, 10);
   const resolvedGroupId = await resolveGroupId(groupId);
   const resolvedCarrierId = await resolveCarrierId(carrierId);
+  const resolvedRole = role || 'user';
+  const resolvedRecordingEnabled = recordingEnabled !== undefined ? recordingEnabled : true;
 
   const insert = await db.query(
     `INSERT INTO users (full_name, email, password_hash, role, group_id, carrier_id, recording_enabled, backend_permissions)
-     VALUES ($1, $2, $3, 'user', $4, $5, true, $6::jsonb)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb)
      RETURNING id, full_name, email, group_id, carrier_id, recording_enabled`,
-    [fullName, email, passwordHash, resolvedGroupId, resolvedCarrierId, JSON.stringify(permissions || [])]
+    [
+      fullName,
+      email,
+      passwordHash,
+      resolvedRole,
+      resolvedGroupId,
+      resolvedCarrierId,
+      resolvedRecordingEnabled,
+      JSON.stringify(permissions || [])
+    ]
   );
 
   return insert.rows[0];
@@ -52,6 +63,82 @@ const listUsers = async () => {
 
 const getUserById = async (id) => {
   const result = await db.query('SELECT * FROM users WHERE id = $1', [id]);
+  return result.rows[0];
+};
+
+const getUserByEmail = async (email) => {
+  if (!email) {
+    return null;
+  }
+  const result = await db.query('SELECT * FROM users WHERE email = $1', [email]);
+  return result.rows[0];
+};
+
+const upsertUser = async ({
+  fullName,
+  email,
+  password,
+  groupId,
+  carrierId,
+  permissions,
+  recordingEnabled,
+  role
+}) => {
+  if (!email) {
+    throw new Error('Email is required');
+  }
+
+  const existing = await getUserByEmail(email);
+  if (!existing) {
+    if (!password) {
+      throw new Error('Password is required for new users');
+    }
+    return createUser({
+      fullName,
+      email,
+      password,
+      groupId,
+      carrierId,
+      permissions,
+      role,
+      recordingEnabled
+    });
+  }
+
+  const resolvedGroupId = await resolveGroupId(groupId || existing.group_id);
+  const resolvedCarrierId = await resolveCarrierId(carrierId || existing.carrier_id);
+  const passwordHash = password ? await bcrypt.hash(password, 10) : null;
+  const resolvedRole = role || existing.role;
+  const resolvedRecordingEnabled =
+    recordingEnabled !== undefined ? recordingEnabled : existing.recording_enabled;
+
+  const result = await db.query(
+    `UPDATE users
+     SET full_name = $1,
+         role = $2,
+         group_id = $3,
+         carrier_id = $4,
+         backend_permissions = $5::jsonb,
+         recording_enabled = $6,
+         password_hash = COALESCE($7, password_hash)
+     WHERE id = $8
+     RETURNING id, full_name, email, group_id, carrier_id, recording_enabled`,
+    [
+      fullName || existing.full_name,
+      resolvedRole,
+      resolvedGroupId,
+      resolvedCarrierId,
+      JSON.stringify(permissions !== undefined ? permissions : existing.backend_permissions || []),
+      resolvedRecordingEnabled,
+      passwordHash,
+      existing.id
+    ]
+  );
+
+  if (result.rowCount === 0) {
+    throw new Error('Unable to update user');
+  }
+
   return result.rows[0];
 };
 
@@ -108,5 +195,7 @@ module.exports = {
   listUsers,
   updateUser,
   deleteUser,
-  getUserById
+  getUserById,
+  getUserByEmail,
+  upsertUser
 };

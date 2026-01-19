@@ -23,6 +23,26 @@ const authenticate = (roles = []) => {
   };
 };
 
+const requirePermissions = (required = []) => {
+  const requiredList = Array.isArray(required) ? required : [required];
+  return (req, res, next) => {
+    if (!requiredList.length) {
+      return next();
+    }
+    const role = req.user?.role;
+    if (role === 'superadmin' || role === 'admin') {
+      return next();
+    }
+    const granted = Array.isArray(req.user?.permissions) ? req.user.permissions : [];
+    const hasAll = requiredList.every((permission) => granted.includes(permission));
+    if (!hasAll) {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+    return next();
+  };
+};
+
 module.exports = {
-  authenticate
+  authenticate,
+  requirePermissions
 };
