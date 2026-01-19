@@ -58,4 +58,6 @@ EXPOSE 80
 
 
 # Start cron and Apache
-ENTRYPOINT ["/usr/local/bin/laravel-entrypoint.sh"]
+#ENTRYPOINT ["docker-entrypoint.sh"]
+#CMD ["apache2-foreground"]
+CMD service cron start && apache2-foreground

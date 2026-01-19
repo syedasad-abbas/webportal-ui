@@ -54,6 +54,7 @@ module.exports = {
   defaults: {
     adminEmail: process.env.DEFAULT_ADMIN_EMAIL || 'admin@webphone.local',
     adminPassword: process.env.DEFAULT_ADMIN_PASSWORD || 'AdminPass123!',
+    adminRole: process.env.DEFAULT_ADMIN_ROLE || 'superadmin',
     groupName: process.env.DEFAULT_GROUP_NAME || 'Standard User',
     groupPermissions: parseJSON(process.env.DEFAULT_GROUP_PERMISSIONS || '["dial"]', ['dial']),
     carrierName: process.env.DEFAULT_CARRIER_NAME || 'Default Carrier',

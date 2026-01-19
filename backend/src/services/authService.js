@@ -17,7 +17,11 @@ const generateToken = (user) =>
   );
 
 const authenticate = async (email, password, role) => {
-  const result = await db.query('SELECT * FROM users WHERE email = $1 AND role = $2', [email, role]);
+  const roles = Array.isArray(role) ? role : [role];
+  const result = await db.query(
+    'SELECT * FROM users WHERE email = $1 AND role = ANY($2::text[])',
+    [email, roles]
+  );
   if (result.rowCount === 0) {
     throw new Error('Invalid credentials');
   }

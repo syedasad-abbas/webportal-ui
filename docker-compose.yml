@@ -5,7 +5,7 @@ x-backend-env: &backend-env
   PORT: 4000
   DB_HOST: postgres
   DB_PORT: 5432
-  DB_NAME: webphone_backend
+  DB_NAME: webphone
   DB_USER: webphone
   DB_PASSWORD: supersecret
   JWT_SECRET: change-me

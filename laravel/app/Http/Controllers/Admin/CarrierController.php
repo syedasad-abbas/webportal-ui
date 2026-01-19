@@ -20,7 +20,7 @@ class CarrierController extends Controller
 
         if (! $token) {
             return redirect()
-                ->route('login')
+                ->route('user.login')
                 ->withErrors('Backend admin token missing. Please login again.');
         }
 

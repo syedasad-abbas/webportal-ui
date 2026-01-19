@@ -9,6 +9,19 @@ let paths = [
     'resources/js/app.js',
 ];
 
+const devServerUrl = process.env.VITE_DEV_SERVER_URL || 'http://vm2.technonies.com:5173';
+let devServerHost = 'vm2.technonies.com';
+let devServerPort = 5173;
+let devServerProtocol = 'http:';
+try {
+    const parsed = new URL(devServerUrl);
+    devServerHost = parsed.hostname || devServerHost;
+    devServerPort = parsed.port ? Number(parsed.port) : devServerPort;
+    devServerProtocol = parsed.protocol || devServerProtocol;
+} catch {
+    // Keep defaults if URL parsing fails.
+}
+
 // Precompute all paths synchronously.
 let allPaths = [];
 (async () => {
@@ -28,6 +41,18 @@ export default defineConfig({
         react(),
         tailwindcss(),
     ],
+    server: {
+        host: '0.0.0.0',
+        port: devServerPort,
+        strictPort: true,
+        origin: devServerUrl,
+        cors: true,
+        hmr: {
+            host: devServerHost,
+            port: devServerPort,
+            protocol: devServerProtocol.replace(':', '')
+        }
+    },
     esbuild: {
         jsx: 'automatic',
         // drop: ['console', 'debugger'],

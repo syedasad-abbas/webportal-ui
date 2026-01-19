@@ -24,7 +24,7 @@ const createUser = async ({ fullName, email, password, groupId, carrierId, permi
   const resolvedCarrierId = await resolveCarrierId(carrierId);
 
   const insert = await db.query(
-    `INSERT INTO users (full_name, email, password_hash, role, group_id, carrier_id, recording_enabled, permissions)
+    `INSERT INTO users (full_name, email, password_hash, role, group_id, carrier_id, recording_enabled, backend_permissions)
      VALUES ($1, $2, $3, 'user', $4, $5, true, $6::jsonb)
      RETURNING id, full_name, email, group_id, carrier_id, recording_enabled`,
     [fullName, email, passwordHash, resolvedGroupId, resolvedCarrierId, JSON.stringify(permissions || [])]
@@ -71,7 +71,7 @@ const updateUser = async (id, { fullName, email, password, groupId, carrierId, p
          email = $2,
          group_id = $3,
          carrier_id = $4,
-         permissions = $5::jsonb,
+         backend_permissions = $5::jsonb,
          recording_enabled = COALESCE($6, recording_enabled),
          password_hash = COALESCE($7, password_hash)
      WHERE id = $8 AND role = 'user'
@@ -81,7 +81,7 @@ const updateUser = async (id, { fullName, email, password, groupId, carrierId, p
       email || existing.email,
       resolvedGroupId,
       resolvedCarrierId,
-      JSON.stringify(permissions !== undefined ? permissions : existing.permissions || []),
+      JSON.stringify(permissions !== undefined ? permissions : existing.backend_permissions || []),
       recordingEnabled,
       passwordHash,
       id

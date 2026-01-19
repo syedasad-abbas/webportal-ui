@@ -59,21 +59,21 @@ const seedDefaults = async () => {
     const passwordHash = await bcrypt.hash(config.defaults.adminPassword, 10);
 
     const adminByEmail = await client.query(
-      'SELECT id FROM users WHERE email = $1 AND role = $2',
-      [config.defaults.adminEmail, 'admin']
+      'SELECT id FROM users WHERE email = $1 AND role = ANY($2::text[])',
+      [config.defaults.adminEmail, ['admin', 'superadmin']]
     );
 
     if (adminByEmail.rowCount === 0) {
       const existingAdmin = await client.query(
-        'SELECT id FROM users WHERE role = $1 ORDER BY created_at ASC LIMIT 1',
-        ['admin']
+        'SELECT id FROM users WHERE role = ANY($1::text[]) ORDER BY created_at ASC LIMIT 1',
+        [['admin', 'superadmin']]
       );
 
       if (existingAdmin.rowCount === 0) {
         await client.query(
           `INSERT INTO users (full_name, email, password_hash, role, group_id, carrier_id, recording_enabled)
-           VALUES ($1, $2, $3, 'admin', $4, $5, true)`,
-          ['Default Admin', config.defaults.adminEmail, passwordHash, groupId, carrierId]
+           VALUES ($1, $2, $3, $4, $5, $6, true)`,
+          ['Default Admin', config.defaults.adminEmail, passwordHash, config.defaults.adminRole, groupId, carrierId]
         );
       } else {
         await client.query(
@@ -82,9 +82,17 @@ const seedDefaults = async () => {
                  password_hash = $2,
                  group_id = $3,
                  carrier_id = $4,
+                 role = $5,
                  recording_enabled = true
-           WHERE id = $5`,
-          [config.defaults.adminEmail, passwordHash, groupId, carrierId, existingAdmin.rows[0].id]
+           WHERE id = $6`,
+          [
+            config.defaults.adminEmail,
+            passwordHash,
+            groupId,
+            carrierId,
+            config.defaults.adminRole,
+            existingAdmin.rows[0].id
+          ]
         );
       }
     } else {
@@ -93,9 +101,10 @@ const seedDefaults = async () => {
            SET password_hash = $1,
                group_id = $2,
                carrier_id = $3,
+               role = $4,
                recording_enabled = true
-         WHERE id = $4`,
-        [passwordHash, groupId, carrierId, adminByEmail.rows[0].id]
+         WHERE id = $5`,
+        [passwordHash, groupId, carrierId, config.defaults.adminRole, adminByEmail.rows[0].id]
       );
     }
 

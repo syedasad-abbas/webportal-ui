@@ -21,19 +21,19 @@ router.post('/login', async (req, res) => {
   }
 
   try {
-    const response = await authService.authenticate(value.email, value.password, 'admin');
+    const response = await authService.authenticate(value.email, value.password, ['admin', 'superadmin']);
     return res.json(response);
   } catch (err) {
     return res.status(401).json({ message: err.message });
   }
 });
 
-router.get('/users', authenticate('admin'), async (_req, res) => {
+router.get('/users', authenticate(['admin', 'superadmin']), async (_req, res) => {
   const users = await userService.listUsers();
   return res.json(users);
 });
 
-router.get('/users/:userId', authenticate('admin'), async (req, res) => {
+router.get('/users/:userId', authenticate(['admin', 'superadmin']), async (req, res) => {
   try {
     const user = await userService.getUserById(req.params.userId);
     if (!user || user.role !== 'user') {
@@ -45,7 +45,7 @@ router.get('/users/:userId', authenticate('admin'), async (req, res) => {
   }
 });
 
-router.post('/users', authenticate('admin'), async (req, res) => {
+router.post('/users', authenticate(['admin', 'superadmin']), async (req, res) => {
   const schema = Joi.object({
     fullName: Joi.string().required(),
     email: Joi.string().email({ tlds: { allow: false } }).required(),
@@ -68,7 +68,7 @@ router.post('/users', authenticate('admin'), async (req, res) => {
   }
 });
 
-router.put('/users/:userId', authenticate('admin'), async (req, res) => {
+router.put('/users/:userId', authenticate(['admin', 'superadmin']), async (req, res) => {
   const schema = Joi.object({
     fullName: Joi.string().optional(),
     email: Joi.string().email({ tlds: { allow: false } }).optional(),
@@ -95,7 +95,7 @@ router.put('/users/:userId', authenticate('admin'), async (req, res) => {
   }
 });
 
-router.delete('/users/:userId', authenticate('admin'), async (req, res) => {
+router.delete('/users/:userId', authenticate(['admin', 'superadmin']), async (req, res) => {
   try {
     await userService.deleteUser(req.params.userId);
     return res.status(204).send();
@@ -104,12 +104,12 @@ router.delete('/users/:userId', authenticate('admin'), async (req, res) => {
   }
 });
 
-router.get('/groups', authenticate('admin'), async (_req, res) => {
+router.get('/groups', authenticate(['admin', 'superadmin']), async (_req, res) => {
   const groups = await groupService.listGroups();
   return res.json(groups);
 });
 
-router.post('/groups', authenticate('admin'), async (req, res) => {
+router.post('/groups', authenticate(['admin', 'superadmin']), async (req, res) => {
   const schema = Joi.object({
     name: Joi.string().required(),
     permissions: Joi.array().items(Joi.string()).default([])
@@ -124,12 +124,12 @@ router.post('/groups', authenticate('admin'), async (req, res) => {
   return res.status(201).json(group);
 });
 
-router.get('/carriers', authenticate('admin'), async (_req, res) => {
+router.get('/carriers', authenticate(['admin', 'superadmin']), async (_req, res) => {
   const carriers = await carrierService.listCarriers();
   return res.json(carriers);
 });
 
-router.get('/carriers/:carrierId', authenticate('admin'), async (req, res) => {
+router.get('/carriers/:carrierId', authenticate(['admin', 'superadmin']), async (req, res) => {
   const carrier = await carrierService.getCarrierById(req.params.carrierId);
   if (!carrier) {
     return res.status(404).json({ message: 'Carrier not found' });
@@ -137,7 +137,7 @@ router.get('/carriers/:carrierId', authenticate('admin'), async (req, res) => {
   return res.json(carrier);
 });
 
-router.post('/carriers', authenticate('admin'), async (req, res) => {
+router.post('/carriers', authenticate(['admin', 'superadmin']), async (req, res) => {
   const schema = Joi.object({
     name: Joi.string().required(),
     callerId: Joi.string().allow('', null),
@@ -176,7 +176,7 @@ router.post('/carriers', authenticate('admin'), async (req, res) => {
   }
 });
 
-router.put('/carriers/:carrierId', authenticate('admin'), async (req, res) => {
+router.put('/carriers/:carrierId', authenticate(['admin', 'superadmin']), async (req, res) => {
   const schema = Joi.object({
     name: Joi.string().optional(),
     callerId: Joi.string().allow('', null).optional(),
@@ -215,7 +215,7 @@ router.put('/carriers/:carrierId', authenticate('admin'), async (req, res) => {
   }
 });
 
-router.delete('/carriers/:carrierId', authenticate('admin'), async (req, res) => {
+router.delete('/carriers/:carrierId', authenticate(['admin', 'superadmin']), async (req, res) => {
   try {
     await carrierService.deleteCarrier(req.params.carrierId);
     return res.status(204).send();
@@ -227,7 +227,7 @@ router.delete('/carriers/:carrierId', authenticate('admin'), async (req, res) =>
   }
 });
 
-router.post('/carriers/:carrierId/prefixes', authenticate('admin'), async (req, res) => {
+router.post('/carriers/:carrierId/prefixes', authenticate(['admin', 'superadmin']), async (req, res) => {
   const schema = Joi.object({
     prefix: Joi.string().required(),
     callerId: Joi.string().required()
