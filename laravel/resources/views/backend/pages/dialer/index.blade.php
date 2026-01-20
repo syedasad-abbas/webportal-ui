@@ -355,6 +355,8 @@ document.addEventListener('DOMContentLoaded', function () {
         if (normalized === 'ended' || normalized === 'completed') {
             stopTimer();
             disconnectBrowserAudio();
+            conferenceName = null;
+            callUuid = null;
         }
     };
 
@@ -476,9 +478,6 @@ document.addEventListener('DOMContentLoaded', function () {
             if (data.status === 'in_call' || data.status === 'ringing' || data.status === 'queued') {
                 callActive = true;
                 setControls(true);
-                if (conferenceName && webRtcClient && !browserAudioActive && !browserAudioConnecting && !hangupInProgress) {
-                    connectBrowserAudio();
-                }
             }
 
             if (data.status === 'ended' || data.status === 'completed') {
@@ -488,6 +487,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 startCallButton.disabled = false;
                 stopTimer();
                 disconnectBrowserAudio();
+                conferenceName = null;
+                callUuid = null;
             }
         } catch (e) {
             setStatus('ended');
@@ -648,6 +649,10 @@ document.addEventListener('DOMContentLoaded', function () {
         // hide alert
         alertBox.classList.add('hidden');
         alertBox.textContent = '';
+
+        disconnectBrowserAudio();
+        conferenceName = null;
+        callUuid = null;
 
         // show live session
         if (liveSession) liveSession.classList.remove('hidden');

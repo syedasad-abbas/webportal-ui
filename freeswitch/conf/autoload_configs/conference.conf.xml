@@ -73,7 +73,7 @@
       <!-- File to play to acknowledge unmuted -->
       <param name="unmuted-sound" value="conference/conf-unmuted.wav"/>
       <!-- File to play if you are alone in the conference -->
-      <param name="alone-sound" value="conference/conf-alone.wav"/>
+      <param name="alone-sound" value="silence_stream://100"/>
       <!-- File to play endlessly (nobody will ever be able to talk) -->
       <!-- <param name="perpetual-sound" value="perpetual.wav"/> -->
       <!-- File to play when you're alone (music on hold)-->
