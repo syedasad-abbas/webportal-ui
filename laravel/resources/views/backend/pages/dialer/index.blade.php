@@ -325,8 +325,9 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     };
 
-    const setStatus = (status) => {
+    const setStatus = (status, sipStatus = null, sipReason = null) => {
         const normalized = (status || '').toLowerCase();
+        const sipText = sipStatus ? `SIP ${sipStatus}${sipReason ? ` ${sipReason}` : ''}` : null;
 
         const labelMap = {
             queued: 'Trying',
@@ -337,7 +338,11 @@ document.addEventListener('DOMContentLoaded', function () {
         };
 
         if (statusEl) {
-            statusEl.textContent = labelMap[normalized] || 'Unknown';
+            if ((normalized === 'ended' || normalized === 'completed') && sipText) {
+                statusEl.textContent = sipText;
+            } else {
+                statusEl.textContent = labelMap[normalized] || 'Unknown';
+            }
         }
 
         if (normalized === 'in_call') {
@@ -466,7 +471,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (data.conferenceName) {
                 conferenceName = data.conferenceName;
             }
-            setStatus(data.status);
+            setStatus(data.status, data.sipStatus, data.sipReason);
 
             if (data.status === 'in_call' || data.status === 'ringing' || data.status === 'queued') {
                 callActive = true;
