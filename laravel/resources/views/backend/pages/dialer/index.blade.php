@@ -331,6 +331,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const labelMap = {
             queued: 'Trying',
+            trying: 'Trying',
             ringing: 'Ringing',
             in_call: 'Answered',
             completed: 'Completed',
@@ -338,8 +339,10 @@ document.addEventListener('DOMContentLoaded', function () {
         };
 
         if (statusEl) {
-            if ((normalized === 'ended' || normalized === 'completed') && sipText) {
+            if ((normalized === 'ended' || normalized === 'completed' || (sipStatus && sipStatus >= 300)) && sipText) {
                 statusEl.textContent = sipText;
+            } else if ((normalized === 'trying' || normalized === 'ringing') && sipStatus) {
+                statusEl.textContent = `${labelMap[normalized] || 'Unknown'} (${sipText})`;
             } else {
                 statusEl.textContent = labelMap[normalized] || 'Unknown';
             }

@@ -9,6 +9,9 @@ const parseSipResponse = (value) => {
   if (!trimmed) {
     return { code: null, reason: null };
   }
+  if (/job-uuid/i.test(trimmed)) {
+    return { code: null, reason: null };
+  }
   const match = trimmed.match(/(\d{3})\s*(.*)/);
   if (match) {
     const code = Number(match[1]);
@@ -127,8 +130,20 @@ const getStatus = async ({ uuid, userId }) => {
     await db.query('UPDATE call_logs SET connected_at = NOW() WHERE id = $1', [call.id]);
   }
 
+  let status = answered ? 'in_call' : 'ringing';
+  const sipCode = diagnostics.sipStatus;
+  if (!answered && sipCode) {
+    if (sipCode >= 400) {
+      status = 'ended';
+    } else if (sipCode >= 180 && sipCode < 200) {
+      status = 'ringing';
+    } else if (sipCode >= 100 && sipCode < 180) {
+      status = 'trying';
+    }
+  }
+
   return {
-    status: answered ? 'in_call' : 'ringing',
+    status,
     sipStatus: diagnostics.sipStatus ?? call.sip_status ?? null,
     sipReason: diagnostics.sipReason ?? call.sip_reason ?? null,
     hangupCause: diagnostics.hangupCause ?? call.hangup_cause ?? null,

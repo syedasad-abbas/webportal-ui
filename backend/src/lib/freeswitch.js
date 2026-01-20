@@ -103,8 +103,15 @@ const originateCall = async ({ destination, callerId, gateway, recordingPath, en
 
 const callExists = async (uuid) => {
   try {
-    const response = await sendCommand(`bgapi uuid_exists ${uuid}`);
-    return response.includes('+OK');
+    const response = await sendApiCommand(`uuid_exists ${uuid}`);
+    const normalized = response.trim().toLowerCase();
+    if (normalized === 'true') {
+      return true;
+    }
+    if (normalized === 'false') {
+      return false;
+    }
+    return normalized.includes('true') || normalized.includes('+ok');
   } catch (err) {
     return false;
   }
@@ -120,8 +127,12 @@ const parseReplyValue = (response) => {
 
 const getChannelVar = async (uuid, variable) => {
   try {
-    const response = await sendCommand(`bgapi uuid_getvar ${uuid} ${variable}`);
-    return parseReplyValue(response);
+    const response = await sendApiCommand(`uuid_getvar ${uuid} ${variable}`);
+    const value = response.trim();
+    if (!value || value === '_undef_') {
+      return null;
+    }
+    return value;
   } catch (err) {
     return null;
   }
