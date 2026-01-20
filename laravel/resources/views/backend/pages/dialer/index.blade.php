@@ -423,6 +423,12 @@ document.addEventListener('DOMContentLoaded', function () {
             webRtcClient = initWebRtcClient();
             if (webRtcClient) {
                 updateBrowserAudioStatus('Browser audio idle');
+                webRtcClient.ensureClient().then(() => {
+                    updateBrowserAudioStatus('Browser audio ready');
+                }).catch((error) => {
+                    console.error('Failed to register WebRTC client', error);
+                    updateBrowserAudioStatus('Browser audio unavailable', true);
+                });
             } else {
                 updateBrowserAudioStatus('');
             }

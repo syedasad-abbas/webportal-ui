@@ -69,8 +69,8 @@ router.post('/users', authenticate(['admin', 'superadmin']), async (req, res) =>
     fullName: Joi.string().required(),
     email: Joi.string().email({ tlds: { allow: false } }).required(),
     password: Joi.string().min(6).required(),
-    groupId: Joi.string().uuid().allow(null, '').optional(),
-    carrierId: Joi.string().uuid().allow(null, '').optional(),
+    groupId: Joi.alternatives().try(Joi.number().integer(), Joi.string()).allow(null, '').optional(),
+    carrierId: Joi.alternatives().try(Joi.number().integer(), Joi.string()).allow(null, '').optional(),
     permissions: Joi.array().items(Joi.string()).optional(),
     role: Joi.string().optional(),
     recordingEnabled: Joi.boolean().optional()
@@ -94,8 +94,8 @@ router.post('/users/sync', allowInternalOrAdmin, async (req, res) => {
     fullName: Joi.string().allow('', null),
     email: Joi.string().email({ tlds: { allow: false } }).required(),
     password: Joi.string().min(6).allow(null, ''),
-    groupId: Joi.string().uuid().allow(null, '').optional(),
-    carrierId: Joi.string().uuid().allow(null, '').optional(),
+    groupId: Joi.alternatives().try(Joi.number().integer(), Joi.string()).allow(null, '').optional(),
+    carrierId: Joi.alternatives().try(Joi.number().integer(), Joi.string()).allow(null, '').optional(),
     permissions: Joi.array().items(Joi.string()).optional(),
     role: Joi.string().optional(),
     recordingEnabled: Joi.boolean().optional()
@@ -123,8 +123,8 @@ router.put('/users/:userId', authenticate(['admin', 'superadmin']), async (req, 
     fullName: Joi.string().optional(),
     email: Joi.string().email({ tlds: { allow: false } }).optional(),
     password: Joi.string().min(6).allow('', null),
-    groupId: Joi.string().uuid().allow(null, '').optional(),
-    carrierId: Joi.string().uuid().allow(null, '').optional(),
+    groupId: Joi.alternatives().try(Joi.number().integer(), Joi.string()).allow(null, '').optional(),
+    carrierId: Joi.alternatives().try(Joi.number().integer(), Joi.string()).allow(null, '').optional(),
     permissions: Joi.array().items(Joi.string()).optional(),
     recordingEnabled: Joi.boolean().optional()
   });
