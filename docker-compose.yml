@@ -15,7 +15,7 @@ x-backend-env: &backend-env
   FREESWITCH_HOST: 178.156.172.172
   FREESWITCH_PORT: 8021
   FREESWITCH_PASSWORD: ClueCon
-  FREESWITCH_RECORDINGS_PATH: /recordings
+  FREESWITCH_RECORDINGS_PATH: /var/recordings
   FREESWITCH_GATEWAY_PATH: /mnt/gateways
   FREESWITCH_EXTERNAL_SIP_IP: ${PUBLIC_IP:-}
 
@@ -60,7 +60,7 @@ services:
     network_mode: host
     volumes:
       - ./freeswitch/conf:/etc/freeswitch
-      - freeswitch_recordings:/var/recordings
+      - /root/recordings:/var/recordings
       - freeswitch_gateways:/etc/freeswitch/gateways
     environment:
       EVENT_SOCKET_PASSWORD: ClueCon
@@ -83,7 +83,7 @@ services:
       BOOTSTRAP_DEFAULTS: "true"
     volumes:
       - ./backend:/app
-      - freeswitch_recordings:/recordings
+      - /root/recordings:/recordings
       - freeswitch_gateways:/mnt/gateways
     depends_on:
       postgres:
@@ -152,6 +152,5 @@ services:
 
 volumes:
   postgres_data:
-  freeswitch_recordings:
   freeswitch_gateways:
   laravel_storage:

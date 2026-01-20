@@ -109,8 +109,9 @@ const getStatus = async ({ uuid, userId }) => {
 
   if (!exists) {
     await updateCallCompletion(call.id, call.duration_seconds);
+    const wasAnswered = Boolean(call.connected_at) || (call.duration_seconds && Number(call.duration_seconds) > 0);
     return {
-      status: call.status === 'completed' ? 'completed' : 'ended',
+      status: wasAnswered ? 'completed' : (call.status === 'completed' ? 'completed' : 'ended'),
       sipStatus: diagnostics.sipStatus ?? call.sip_status ?? null,
       sipReason: diagnostics.sipReason ?? call.sip_reason ?? null,
       hangupCause: diagnostics.hangupCause ?? call.hangup_cause ?? null,
@@ -120,10 +121,16 @@ const getStatus = async ({ uuid, userId }) => {
     };
   }
 
-  const answeredEpoch = await freeswitch.getChannelVar(uuid, 'answered_epoch');
-  const billsec = await freeswitch.getChannelVar(uuid, 'billsec');
+  const [answeredEpoch, billsec, callstate, channelState] = await Promise.all([
+    freeswitch.getChannelVar(uuid, 'answered_epoch'),
+    freeswitch.getChannelVar(uuid, 'billsec'),
+    freeswitch.getChannelVar(uuid, 'callstate'),
+    freeswitch.getChannelVar(uuid, 'channel_state')
+  ]);
 
-  const answered = answeredEpoch && Number(answeredEpoch) > 0;
+  const answered = (answeredEpoch && Number(answeredEpoch) > 0) ||
+    (callstate && callstate.toUpperCase() === 'ACTIVE') ||
+    (channelState && channelState.toUpperCase() === 'CS_EXECUTE');
   const durationSeconds = billsec ? Number(billsec) : 0;
 
   if (answered && !call.connected_at) {
@@ -133,7 +140,9 @@ const getStatus = async ({ uuid, userId }) => {
   let status = answered ? 'in_call' : 'ringing';
   const sipCode = diagnostics.sipStatus;
   if (!answered && sipCode) {
-    if (sipCode >= 400) {
+    if (sipCode >= 200 && sipCode < 300) {
+      status = 'in_call';
+    } else if (sipCode >= 400) {
       status = 'ended';
     } else if (sipCode >= 180 && sipCode < 200) {
       status = 'ringing';
