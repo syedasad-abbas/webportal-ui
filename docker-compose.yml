@@ -12,7 +12,7 @@ x-backend-env: &backend-env
   BACKEND_INTERNAL_TOKEN: ${BACKEND_INTERNAL_TOKEN:-sync-secret}
   DEFAULT_ADMIN_EMAIL: superadmin@example.com
   DEFAULT_ADMIN_PASSWORD: 12345678
-  FREESWITCH_HOST: freeswitch
+  FREESWITCH_HOST: 178.156.172.172
   FREESWITCH_PORT: 8021
   FREESWITCH_PASSWORD: ClueCon
   FREESWITCH_RECORDINGS_PATH: /recordings
@@ -57,12 +57,7 @@ services:
     build:
       context: ./freeswitch
       dockerfile: Dockerfile
-    ports:
-      - "5060:5060/udp"
-      - "5080:5080/udp"
-      - "8021:8021/tcp"
-      - "7443:7443/tcp"
-      - "5066:5066/tcp"
+    network_mode: host
     volumes:
       - ./freeswitch/conf:/etc/freeswitch
       - freeswitch_recordings:/var/recordings

@@ -279,6 +279,8 @@ document.addEventListener('DOMContentLoaded', function () {
     let conferenceName = null;
     let browserAudioActive = false;
     let webRtcClient = null;
+    let browserAudioConnecting = false;
+    let hangupInProgress = false;
 
     // timer state
     let callConnectedAt = null;
@@ -340,7 +342,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (normalized === 'in_call') {
             startTimer();
-            if (conferenceName && webRtcClient && !browserAudioActive) {
+            if (conferenceName && webRtcClient && !browserAudioActive && !browserAudioConnecting && !hangupInProgress) {
                 connectBrowserAudio();
             }
         }
@@ -391,9 +393,10 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const connectBrowserAudio = async () => {
-        if (!webRtcClient || !conferenceName) {
+        if (!webRtcClient || !conferenceName || browserAudioActive || browserAudioConnecting || hangupInProgress) {
             return;
         }
+        browserAudioConnecting = true;
         updateBrowserAudioStatus('Connecting browser audio…');
         try {
             await webRtcClient.joinConference(conferenceName);
@@ -404,6 +407,8 @@ document.addEventListener('DOMContentLoaded', function () {
             browserAudioActive = false;
             updateBrowserAudioStatus('Browser audio unavailable', true);
             showError('Unable to connect browser audio.');
+        } finally {
+            browserAudioConnecting = false;
         }
     };
 
@@ -415,6 +420,7 @@ document.addEventListener('DOMContentLoaded', function () {
             console.error('Failed to disconnect browser audio', error);
         }
         browserAudioActive = false;
+        browserAudioConnecting = false;
         updateBrowserAudioStatus(webRtcClient ? 'Browser audio idle' : '');
     };
 
@@ -439,6 +445,7 @@ document.addEventListener('DOMContentLoaded', function () {
     ensureWebRtcClient();
 
     const pollStatus = async () => {
+        if (hangupInProgress) return;
         try {
             const response = await fetch(`/admin/dialer/calls/${callUuid}/status`, {
                 headers: { 'Accept': 'application/json' }
@@ -455,6 +462,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             const data = await response.json();
+            if (hangupInProgress) return;
             if (data.conferenceName) {
                 conferenceName = data.conferenceName;
             }
@@ -463,7 +471,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (data.status === 'in_call' || data.status === 'ringing' || data.status === 'queued') {
                 callActive = true;
                 setControls(true);
-                if (conferenceName && webRtcClient && !browserAudioActive) {
+                if (conferenceName && webRtcClient && !browserAudioActive && !browserAudioConnecting && !hangupInProgress) {
                     connectBrowserAudio();
                 }
             }
@@ -492,10 +500,15 @@ document.addEventListener('DOMContentLoaded', function () {
         button.addEventListener('click', async () => {
             const action = button.dataset.action;
             if (!callUuid) return;
+            if (hangupInProgress) return;
 
             if (alertEl) alertEl.classList.add('hidden');
 
             try {
+                if (action === 'hangup') {
+                    hangupInProgress = true;
+                    setControls(false);
+                }
                 const response = await fetch(`/admin/dialer/calls/${callUuid}/${action}`, {
                     method: 'POST',
                     headers: {
@@ -509,6 +522,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     let data = {};
                     try { data = await response.json(); } catch (e) {}
                     showError(data.message || `HTTP ${response.status}`);
+                    if (action === 'hangup') {
+                        hangupInProgress = false;
+                        setControls(callActive);
+                    }
                     return;
                 }
 
@@ -523,6 +540,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             } catch (e) {
                 showError('Network error while updating the call.');
+                if (action === 'hangup') {
+                    hangupInProgress = false;
+                    setControls(callActive);
+                }
             }
         });
     });
@@ -630,6 +651,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         setStatus('queued');
         stopTimer();
+        hangupInProgress = false;
 
         const payload = {
             destination: hiddenInput ? hiddenInput.value : ''

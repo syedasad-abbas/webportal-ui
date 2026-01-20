@@ -63,6 +63,53 @@ const applyDialPrefix = (destinationDigits, prefixEntry) => {
   return `${prefixDigits}${destinationDigits}`;
 };
 
+const monitorCallProgress = async ({ callUuid, conferenceName, userId }) => {
+  const start = Date.now();
+  const timeoutMs = 2 * 60 * 1000;
+  let answeredLogged = false;
+  let conferenceLogged = false;
+
+  const poll = async () => {
+    if (Date.now() - start > timeoutMs) {
+      return;
+    }
+
+    const exists = await freeswitch.callExists(callUuid);
+    if (!exists) {
+      return;
+    }
+
+    if (!answeredLogged) {
+      const answeredEpoch = await freeswitch.getChannelVar(callUuid, 'answered_epoch');
+      if (answeredEpoch && Number(answeredEpoch) > 0) {
+        console.log('[call] answered', { userId, callUuid });
+        answeredLogged = true;
+      }
+    }
+
+    if (!conferenceLogged) {
+      const [confName, confMemberId] = await Promise.all([
+        freeswitch.getChannelVar(callUuid, 'conference_name'),
+        freeswitch.getChannelVar(callUuid, 'conference_member_id')
+      ]);
+      if ((confName && confName === conferenceName) || (confMemberId && Number(confMemberId) > 0)) {
+        console.log('[call] joined conference', { userId, callUuid, conference: conferenceName });
+        conferenceLogged = true;
+      }
+    }
+
+    if (!answeredLogged || !conferenceLogged) {
+      setTimeout(poll, 1500);
+    }
+  };
+
+  setTimeout(() => {
+    poll().catch((err) => {
+      console.warn('[call] monitor failed', { userId, callUuid, error: err.message });
+    });
+  }, 1500);
+};
+
 const originate = async ({ user, destination, callerId }) => {
   const originationUuid = randomUUID();
   const conferenceName = `call-${originationUuid}`;
@@ -206,6 +253,7 @@ const originate = async ({ user, destination, callerId }) => {
       recordingPath,
       callUuid: originationUuid
     });
+    monitorCallProgress({ callUuid: originationUuid, conferenceName, userId: user.id });
     return { status: 'queued', callUuid: originationUuid, conference: conferenceName };
   } catch (err) {
     console.error('[call] originate failed', {

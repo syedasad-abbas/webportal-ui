@@ -27,6 +27,7 @@ class DialerWebRTC {
         this.simpleUser = null;
         this.currentConference = null;
         this.connected = false;
+        this.ensurePromise = null;
     }
 
     get isConfigured() {
@@ -37,36 +38,50 @@ class DialerWebRTC {
         if (!this.isConfigured) {
             throw new Error("WebRTC configuration is incomplete");
         }
-        if (this.simpleUser) {
+        if (this.simpleUser && this.connected) {
             return this.simpleUser;
         }
-        const aor = `sip:${this.username}@${this.domain}`;
-        const options = {
-            aor,
-            media: {
-                constraints: { audio: true, video: false },
-                remote: { audio: this.remoteAudio }
-            },
-            userAgentOptions: {
-                authorizationUsername: this.username,
-                authorizationPassword: this.password,
-                transportOptions: {
-                    server: this.wsUrl
-                },
-                sessionDescriptionHandlerFactoryOptions: {
-                    peerConnectionOptions: {
-                        rtcConfiguration: {
-                            iceServers: this.iceServers
+        if (this.ensurePromise) {
+            return this.ensurePromise;
+        }
+        this.ensurePromise = (async () => {
+            if (!this.simpleUser) {
+                const aor = `sip:${this.username}@${this.domain}`;
+                const options = {
+                    aor,
+                    media: {
+                        constraints: { audio: true, video: false },
+                        remote: { audio: this.remoteAudio }
+                    },
+                    userAgentOptions: {
+                        authorizationUsername: this.username,
+                        authorizationPassword: this.password,
+                        transportOptions: {
+                            server: this.wsUrl
+                        },
+                        sessionDescriptionHandlerFactoryOptions: {
+                            peerConnectionOptions: {
+                                rtcConfiguration: {
+                                    iceServers: this.iceServers
+                                }
+                            }
                         }
                     }
-                }
+                };
+                this.simpleUser = new SimpleUser(this.wsUrl, options);
             }
-        };
-        this.simpleUser = new SimpleUser(this.wsUrl, options);
-        await this.simpleUser.connect();
-        await this.simpleUser.register();
-        this.connected = true;
-        return this.simpleUser;
+            if (!this.connected) {
+                await this.simpleUser.connect();
+                await this.simpleUser.register();
+                this.connected = true;
+            }
+            return this.simpleUser;
+        })();
+        try {
+            return await this.ensurePromise;
+        } finally {
+            this.ensurePromise = null;
+        }
     }
 
     async joinConference(conferenceName) {
