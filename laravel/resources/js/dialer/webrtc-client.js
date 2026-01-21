@@ -101,6 +101,7 @@ class DialerWebRTC {
         if (!conferenceName) {
             throw new Error("Conference name is required");
         }
+        await this.resetClient();
         let client = await this.ensureClient();
         if (this.currentConference === conferenceName) {
             return;

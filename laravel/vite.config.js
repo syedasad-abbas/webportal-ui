@@ -47,6 +47,7 @@ export default defineConfig({
         port: devServerPort,
         strictPort: true,
         origin: devServerUrl,
+        allowedHosts: 'all',
         cors: true,
         hmr: {
             host: devServerHost,

@@ -221,7 +221,7 @@ x-init="
     //inde.blade.php for agent_logs
       document.addEventListener("DOMContentLoaded", function () {
         document.querySelectorAll(".datepicker-single").forEach(function (input) {
-            if (!input._flatpickr) {
+            if (!input._flatpickr && window.flatpickr) {
                 flatpickr(input, {
                     mode: "single",
                     dateFormat: "M j, Y",
@@ -232,6 +232,8 @@ x-init="
   
 
      // ✅ DataTable init
+       const agentLogsTable = document.getElementById('agentLogsTable');
+       if (agentLogsTable && window.$ && $.fn && $.fn.DataTable) {
        $('#agentLogsTable').DataTable({
     paging: false,
     ordering: true,
@@ -263,10 +265,10 @@ x-init="
         });
     }
 });
+}
 });
 </script>
 
     {!! ld_apply_filters('admin_footer_after', '') !!}
 </body>
 </html>
-
