@@ -37,6 +37,13 @@
       </condition>
     </extension>
 
+    <extension name="web_dialer_conference">
+      <condition field="destination_number" expression="^(call-[0-9a-f-]+)$">
+	<action application="answer"/>
+	<action application="conference" data="$1@default"/>
+      </condition>
+    </extension>
+
     <extension name="public_extensions">
       <condition field="destination_number" expression="^(10[01][0-9])$">
 	<action application="transfer" data="$1 XML default"/>

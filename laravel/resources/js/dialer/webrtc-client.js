@@ -34,6 +34,19 @@ class DialerWebRTC {
         return Boolean(this.wsUrl && this.domain && this.username && this.password && this.remoteAudio);
     }
 
+    async resetClient() {
+        if (!this.simpleUser) {
+            return;
+        }
+        try {
+            await this.simpleUser.disconnect();
+        } catch (error) {
+            console.error("Failed to reset WebRTC client", error);
+        }
+        this.simpleUser = null;
+        this.connected = false;
+    }
+
     async ensureClient() {
         if (!this.isConfigured) {
             throw new Error("WebRTC configuration is incomplete");
@@ -88,7 +101,7 @@ class DialerWebRTC {
         if (!conferenceName) {
             throw new Error("Conference name is required");
         }
-        const client = await this.ensureClient();
+        let client = await this.ensureClient();
         if (this.currentConference === conferenceName) {
             return;
         }
@@ -99,8 +112,20 @@ class DialerWebRTC {
                 console.error("Failed to hangup previous session", error);
             }
         }
-        await client.call(`sip:${conferenceName}@${this.domain}`);
-        this.currentConference = conferenceName;
+        try {
+            await client.call(`sip:${conferenceName}@${this.domain}`);
+            this.currentConference = conferenceName;
+        } catch (error) {
+            const message = error?.message || "";
+            if (/peer connection undefined|per connection undefined/i.test(message)) {
+                await this.resetClient();
+                client = await this.ensureClient();
+                await client.call(`sip:${conferenceName}@${this.domain}`);
+                this.currentConference = conferenceName;
+                return;
+            }
+            throw error;
+        }
     }
 
     async leaveConference() {
