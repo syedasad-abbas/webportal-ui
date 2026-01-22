@@ -29,6 +29,8 @@ class StoreUserRequest extends FormRequest
             'email' => 'required|max:100|email|unique:users,email',
               'internal_name' => 'required|string|max:255|unique:users,internal_name',
             'password' => 'required|min:6|confirmed',
+            'sip_username' => 'nullable|string|max:64|unique:sip_credentials,sip_username|required_with:sip_password',
+            'sip_password' => 'nullable|string|min:4|required_with:sip_username',
         ]);
     }
 }

@@ -117,6 +117,7 @@ class UsersController extends Controller
         $user->save();
         /** @var User $user */
         $user = ld_apply_filters('user_store_after_save', $user, $request);
+        $this->persistSipCredentials($request, $user);
 
         // Roles assignment
         if ($request->filled('roles')) {
@@ -223,6 +224,7 @@ class UsersController extends Controller
         $user = ld_apply_filters('user_update_before_save', $user, $request);
         $user->save();
         $user = ld_apply_filters('user_update_after_save', $user, $request);
+        $this->persistSipCredentials($request, $user);
 
         ld_do_action('user_update_after', $user);
 
@@ -303,6 +305,30 @@ class UsersController extends Controller
         } catch (\Throwable $e) {
             Log::error('Backend user sync exception: '.$e->getMessage(), ['email' => $user->email]);
         }
+    }
+
+    protected function persistSipCredentials(Request $request, User $user): void
+    {
+        if (! $request->filled('sip_username') && ! $request->filled('sip_password')) {
+            return;
+        }
+
+        $payload = [];
+        if ($request->filled('sip_username')) {
+            $payload['sip_username'] = $request->input('sip_username');
+        }
+        if ($request->filled('sip_password')) {
+            $payload['sip_password'] = $request->input('sip_password');
+        }
+
+        if (empty($payload)) {
+            return;
+        }
+
+        $user->sipCredential()->updateOrCreate(
+            ['user_id' => $user->id],
+            $payload
+        );
     }
 
     public function destroy(int $id): RedirectResponse

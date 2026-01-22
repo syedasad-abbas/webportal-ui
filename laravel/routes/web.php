@@ -107,7 +107,7 @@ Route::post('/carrier', [CarrierController::class, 'store'])->name('carrier.stor
 Route::get('/carrier/{carrierId}/edit', [CarrierController::class, 'edit'])->name('carrier.edit');
 Route::put('/carrier/{carrierId}', [CarrierController::class, 'update'])->name('carrier.update');
 Route::delete('/carrier/{carrierId}', [CarrierController::class, 'destroy'])->name('carrier.destroy');
- Route::view('/dialer', 'backend.pages.dialer.index')->name('dialer.index');
+ Route::get('/dialer', [DialerController::class, 'index'])->name('dialer.index');
 
         Route::post('/dialer/dial', [DialerController::class, 'dial'])->name('dialer.dial');
 

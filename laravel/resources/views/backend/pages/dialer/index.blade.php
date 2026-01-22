@@ -1,11 +1,11 @@
 @extends('backend.layouts.app')
 
 @php
-    $webrtcConfig = [
+    $webrtcConfig = $webrtcConfig ?? [
         'wsUrl' => config('services.webrtc.ws'),
         'domain' => config('services.webrtc.domain'),
-        'username' => config('services.webrtc.username'),
-        'password' => config('services.webrtc.password'),
+        'username' => null,
+        'password' => null,
         'iceServers' => config('services.webrtc.ice_servers'),
     ];
 @endphp
@@ -42,6 +42,11 @@
                 <div class="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800 dark:border-green-900/40 dark:bg-green-900/20 dark:text-green-300">
                     {{ __('Ready · Calls run inline with mute/unmute, hang up, DTMF, and status badges.') }}
                 </div>
+                @if (!empty($webrtcError))
+                    <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-300">
+                        {{ $webrtcError }}
+                    </div>
+                @endif
 
                 <form id="dialer-form" method="POST" action="{{ route('admin.dialer.dial') }}" class="space-y-6">
                     @csrf
@@ -472,6 +477,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             const data = await response.json();
+            console.log('[pollStatus] status:', data.status, data);
             if (hangupInProgress) return;
             if (data.conferenceName) {
                 conferenceName = data.conferenceName;

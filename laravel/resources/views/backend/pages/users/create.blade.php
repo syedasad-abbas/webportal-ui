@@ -115,6 +115,36 @@
                                 </select>
                             </div>
 
+                            {{-- SIP Username --}}
+                            <div>
+                                <label for="sip_username" class="block text-sm font-medium text-gray-700 dark:text-gray-400">
+                                    {{ __('SIP Username') }}
+                                </label>
+                                <input
+                                    type="text"
+                                    name="sip_username"
+                                    id="sip_username"
+                                    value="{{ old('sip_username') }}"
+                                    placeholder="{{ __('e.g. 1001') }}"
+                                    class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
+                                >
+                            </div>
+
+                            {{-- SIP Password --}}
+                            <div>
+                                <label for="sip_password" class="block text-sm font-medium text-gray-700 dark:text-gray-400">
+                                    {{ __('SIP Password') }}
+                                </label>
+                                <input
+                                    type="password"
+                                    name="sip_password"
+                                    id="sip_password"
+                                    value="{{ old('sip_password') }}"
+                                    placeholder="{{ __('SIP secret') }}"
+                                    class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
+                                >
+                            </div>
+
                             {{-- User Role --}}
                             <div>
                                 <x-inputs.combobox

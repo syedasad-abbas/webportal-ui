@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use App\Models\AgentTimeLog; 
+use App\Models\SipCredential;
 use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
@@ -115,8 +116,13 @@ class User extends Authenticatable
         return [];
     }
 
-    public function logs()
+public function logs()
 {
 return $this->hasMany(AgentTimeLog::class, 'user_id', 'user_id');
 }
+
+    public function sipCredential()
+    {
+        return $this->hasOne(SipCredential::class);
+    }
 }

@@ -25,6 +25,30 @@ class DialerController extends Controller
         return $request->session()->get('admin_token');
     }
 
+    public function index(Request $request)
+    {
+        $this->assertDialerPermission($request);
+
+        $user = $request->user();
+        $sipCredential = $user?->sipCredential;
+        $webrtcConfig = [
+            'wsUrl' => config('services.webrtc.ws'),
+            'domain' => config('services.webrtc.domain'),
+            'username' => $sipCredential?->sip_username,
+            'password' => $sipCredential?->sip_password,
+            'iceServers' => config('services.webrtc.ice_servers'),
+        ];
+        $webrtcError = null;
+        if (! $sipCredential || ! $sipCredential->sip_username || ! $sipCredential->sip_password) {
+            $webrtcError = __('SIP credentials are not configured for this user.');
+        }
+
+        return view('backend.pages.dialer.index', [
+            'webrtcConfig' => $webrtcConfig,
+            'webrtcError' => $webrtcError,
+        ]);
+    }
+
     public function dial(Request $request)
     {
         $this->assertDialerPermission($request);
