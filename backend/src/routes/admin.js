@@ -1,14 +1,22 @@
+/**
+ * Admin routes for authentication, user, group, and carrier management
+ * Access restricted to admin and superadmin roles
+ */
 const express = require('express');
 const Joi = require('joi');
+// Service layer dependencies
+// Business logic services
+// Application services
 const authService = require('../services/authService');
 const userService = require('../services/userService');
 const groupService = require('../services/groupService');
 const carrierService = require('../services/carrierService');
 const { authenticate } = require('../middleware/auth');
 const config = require('../config');
-
+// End workers
+// Create router
 const router = express.Router();
-
+// Helper function to check for internal token
 const hasInternalToken = (req) => {
   const token = config.internalTokens?.backendSync;
   if (!token) {
@@ -16,20 +24,22 @@ const hasInternalToken = (req) => {
   }
   return req.get('x-internal-token') === token;
 };
-
+// Middleware to allow internal token or admin authentication
 const allowInternalOrAdmin = (req, res, next) => {
   if (hasInternalToken(req)) {
     return next();
   }
   return authenticate(['admin', 'superadmin'])(req, res, next);
 };
-
+// Authentication routes
+// User management routes
+// Carrier management routes
 router.post('/login', async (req, res) => {
   const schema = Joi.object({
     email: Joi.string().email({ tlds: { allow: false } }).required(),
     password: Joi.string().required()
   });
-
+// Validate request body
   const { error, value } = schema.validate(req.body);
   if (error) {
     console.warn('[admin] user sync validation failed', {
@@ -46,7 +56,7 @@ router.post('/login', async (req, res) => {
     return res.status(401).json({ message: err.message });
   }
 });
-
+// User management routes
 router.get('/users', authenticate(['admin', 'superadmin']), async (_req, res) => {
   const users = await userService.listUsers();
   return res.json(users);
@@ -63,7 +73,7 @@ router.get('/users/:userId', authenticate(['admin', 'superadmin']), async (req, 
     return res.status(404).json({ message: 'User not found' });
   }
 });
-
+// Create new user
 router.post('/users', authenticate(['admin', 'superadmin']), async (req, res) => {
   const schema = Joi.object({
     fullName: Joi.string().required(),
@@ -88,7 +98,7 @@ router.post('/users', authenticate(['admin', 'superadmin']), async (req, res) =>
     return res.status(500).json({ message: err.message });
   }
 });
-
+// Sync (create or update) user
 router.post('/users/sync', allowInternalOrAdmin, async (req, res) => {
   const schema = Joi.object({
     fullName: Joi.string().allow('', null),
@@ -100,7 +110,7 @@ router.post('/users/sync', allowInternalOrAdmin, async (req, res) => {
     role: Joi.string().optional(),
     recordingEnabled: Joi.boolean().optional()
   });
-
+// Validate request body
   const { error, value } = schema.validate(req.body);
   if (error) {
     return res.status(400).json({ message: error.message });
@@ -117,7 +127,7 @@ router.post('/users/sync', allowInternalOrAdmin, async (req, res) => {
     return res.status(400).json({ message: err.message });
   }
 });
-
+// Update user
 router.put('/users/:userId', authenticate(['admin', 'superadmin']), async (req, res) => {
   const schema = Joi.object({
     fullName: Joi.string().optional(),
@@ -128,7 +138,7 @@ router.put('/users/:userId', authenticate(['admin', 'superadmin']), async (req, 
     permissions: Joi.array().items(Joi.string()).optional(),
     recordingEnabled: Joi.boolean().optional()
   });
-
+// Validate request body
   const { error, value } = schema.validate(req.body);
   if (error) {
     return res.status(400).json({ message: error.message });
@@ -144,7 +154,7 @@ router.put('/users/:userId', authenticate(['admin', 'superadmin']), async (req, 
     return res.status(400).json({ message: err.message });
   }
 });
-
+// Delete user
 router.delete('/users/:userId', authenticate(['admin', 'superadmin']), async (req, res) => {
   try {
     await userService.deleteUser(req.params.userId);
@@ -153,18 +163,18 @@ router.delete('/users/:userId', authenticate(['admin', 'superadmin']), async (re
     return res.status(400).json({ message: err.message });
   }
 });
-
+// Group management routes
 router.get('/groups', authenticate(['admin', 'superadmin']), async (_req, res) => {
   const groups = await groupService.listGroups();
   return res.json(groups);
 });
-
+// Create new group
 router.post('/groups', authenticate(['admin', 'superadmin']), async (req, res) => {
   const schema = Joi.object({
     name: Joi.string().required(),
     permissions: Joi.array().items(Joi.string()).default([])
   });
-
+// Validate request body
   const { error, value } = schema.validate(req.body);
   if (error) {
     return res.status(400).json({ message: error.message });
@@ -173,12 +183,12 @@ router.post('/groups', authenticate(['admin', 'superadmin']), async (req, res) =
   const group = await groupService.createGroup(value);
   return res.status(201).json(group);
 });
-
+// Carrier management routes
 router.get('/carriers', authenticate(['admin', 'superadmin']), async (_req, res) => {
   const carriers = await carrierService.listCarriers();
   return res.json(carriers);
 });
-
+// Get carrier by ID
 router.get('/carriers/:carrierId', authenticate(['admin', 'superadmin']), async (req, res) => {
   const carrier = await carrierService.getCarrierById(req.params.carrierId);
   if (!carrier) {
@@ -186,7 +196,7 @@ router.get('/carriers/:carrierId', authenticate(['admin', 'superadmin']), async 
   }
   return res.json(carrier);
 });
-
+// Create new carrier
 router.post('/carriers', authenticate(['admin', 'superadmin']), async (req, res) => {
   const schema = Joi.object({
     name: Joi.string().required(),
@@ -202,7 +212,7 @@ router.post('/carriers', authenticate(['admin', 'superadmin']), async (req, res)
     prefix: Joi.string().allow('', null),
     prefixCallerId: Joi.string().allow('', null)
   });
-
+// Validate request body
   const { error, value } = schema.validate(req.body);
   if (error) {
     return res.status(400).json({ message: error.message });
@@ -225,17 +235,17 @@ router.post('/carriers', authenticate(['admin', 'superadmin']), async (req, res)
     return res.status(400).json({ message: err.message || 'Unable to create carrier' });
   }
 });
-
+// Update carrier
 router.put('/carriers/:carrierId', authenticate(['admin', 'superadmin']), async (req, res) => {
   const schema = Joi.object({
     name: Joi.string().optional(),
     callerId: Joi.string().allow('', null).optional(),
-    callerIdRequired: Joi.boolean().optional(),
+    callerIdRequired: Joi.boolean().truthy('1').falsy('0').optional(),
     transport: Joi.string().valid('udp', 'tcp', 'tls').optional(),
     sipDomain: Joi.string().allow('', null).optional(),
-    sipPort: Joi.number().integer().min(1).max(65535).allow(null).optional(),
+    sipPort: Joi.number().integer().min(1).max(65535).allow(null, '').optional(),
     outboundProxy: Joi.string().allow('', null).optional(),
-    registrationRequired: Joi.boolean().optional(),
+    registrationRequired: Joi.boolean().truthy('1').falsy('0').optional(),
     registrationUsername: Joi.string().allow('', null).optional(),
     registrationPassword: Joi.string().allow('', null).optional(),
     prefix: Joi.string().allow('', null),
@@ -244,6 +254,7 @@ router.put('/carriers/:carrierId', authenticate(['admin', 'superadmin']), async 
 
   const { error, value } = schema.validate(req.body);
   if (error) {
+    console.error('carrier update validation error:', error.message);
     return res.status(400).json({ message: error.message });
   }
 
@@ -252,7 +263,7 @@ router.put('/carriers/:carrierId', authenticate(['admin', 'superadmin']), async 
     if (value.prefix) {
       const prefixCaller =
         value.prefixCallerId || value.callerId || carrier.default_caller_id || config.defaults.carrierCallerId || null;
-      await carrierService.addPrefix({
+      await carrierService.upsertPrefix({
         carrierId: carrier.id,
         prefix: value.prefix,
         callerId: prefixCaller
@@ -261,10 +272,11 @@ router.put('/carriers/:carrierId', authenticate(['admin', 'superadmin']), async 
     }
     return res.json(carrier);
   } catch (err) {
+    console.error('carrier update error:', err);
     return res.status(400).json({ message: err.message || 'Unable to update carrier' });
   }
 });
-
+// Delete carrier
 router.delete('/carriers/:carrierId', authenticate(['admin', 'superadmin']), async (req, res) => {
   try {
     await carrierService.deleteCarrier(req.params.carrierId);
@@ -276,7 +288,7 @@ router.delete('/carriers/:carrierId', authenticate(['admin', 'superadmin']), asy
     return res.status(400).json({ message: err.message || 'Unable to delete carrier.' });
   }
 });
-
+// Add prefix to carrier
 router.post('/carriers/:carrierId/prefixes', authenticate(['admin', 'superadmin']), async (req, res) => {
   const schema = Joi.object({
     prefix: Joi.string().required(),
@@ -287,7 +299,7 @@ router.post('/carriers/:carrierId/prefixes', authenticate(['admin', 'superadmin'
   if (error) {
     return res.status(400).json({ message: error.message });
   }
-
+// Add prefix
   const entry = await carrierService.addPrefix({
     carrierId: req.params.carrierId,
     prefix: value.prefix,

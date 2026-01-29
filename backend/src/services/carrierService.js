@@ -213,12 +213,7 @@ const updateCarrier = async (
 
 const deleteCarrier = async (carrierId) => {
   const existing = await db.query('SELECT id, name FROM carriers WHERE id = $1', [carrierId]);
-  const usage = await db.query('SELECT COUNT(*)::int AS total FROM users WHERE carrier_id = $1', [carrierId]);
-  if ((usage.rows[0]?.total || 0) > 0) {
-    const err = new Error('Carrier is assigned to one or more users. Reassign users before deleting.');
-    err.code = 'CARRIER_IN_USE';
-    throw err;
-  }
+  await db.query('UPDATE users SET carrier_id = NULL WHERE carrier_id = $1', [carrierId]);
   await db.query('DELETE FROM carriers WHERE id = $1', [carrierId]);
   if (existing.rowCount > 0) {
     await removeGateway(existing.rows[0]);
@@ -248,6 +243,29 @@ const getCarrierById = async (carrierId) => {
   return hydrateCarrier(carrier);
 };
 
+const upsertPrefix = async ({ carrierId, prefix, callerId }) => {
+  const existing = await db.query(
+    'SELECT id FROM carrier_prefixes WHERE carrier_id = $1 LIMIT 1',
+    [carrierId]
+  );
+
+  if (existing.rowCount > 0) {
+    await db.query(
+      `UPDATE carrier_prefixes
+       SET prefix = $1, caller_id = $2
+       WHERE id = $3`,
+      [prefix, callerId, existing.rows[0].id]
+    );
+    return;
+  }
+
+  await db.query(
+    `INSERT INTO carrier_prefixes (carrier_id, prefix, caller_id)
+     VALUES ($1, $2, $3)`,
+    [carrierId, prefix, callerId]
+  );
+};
+
 const addPrefix = async ({ carrierId, prefix, callerId }) => {
   const result = await db.query(
     `INSERT INTO carrier_prefixes (carrier_id, prefix, caller_id)
@@ -258,11 +276,13 @@ const addPrefix = async ({ carrierId, prefix, callerId }) => {
   return result.rows[0];
 };
 
+
 module.exports = {
   listCarriers,
   createCarrier,
   updateCarrier,
   deleteCarrier,
   addPrefix,
+  upsertPrefix,
   getCarrierById
 };
