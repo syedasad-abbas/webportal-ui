@@ -112,6 +112,7 @@ const upsertUser = async ({
   const resolvedRecordingEnabled =
     recordingEnabled !== undefined ? recordingEnabled : existing.recording_enabled;
 
+  const existingPermissions = existing.permissions ?? existing.backend_permissions ?? [];
   const result = await db.query(
     `UPDATE users
      SET full_name = $1,
@@ -128,7 +129,7 @@ const upsertUser = async ({
       resolvedRole,
       resolvedGroupId,
       resolvedCarrierId,
-      JSON.stringify(permissions !== undefined ? permissions : existing.backend_permissions || []),
+      JSON.stringify(permissions !== undefined ? permissions : existingPermissions),
       resolvedRecordingEnabled,
       passwordHash,
       existing.id
@@ -152,6 +153,7 @@ const updateUser = async (id, { fullName, email, password, groupId, carrierId, p
   const resolvedCarrierId = await resolveCarrierId(carrierId);
   const passwordHash = password ? await bcrypt.hash(password, 10) : null;
 
+  const existingPermissions = existing.permissions ?? existing.backend_permissions ?? [];
   const result = await db.query(
     `UPDATE users
      SET full_name = $1,
@@ -168,7 +170,7 @@ const updateUser = async (id, { fullName, email, password, groupId, carrierId, p
       email || existing.email,
       resolvedGroupId,
       resolvedCarrierId,
-      JSON.stringify(permissions !== undefined ? permissions : existing.backend_permissions || []),
+      JSON.stringify(permissions !== undefined ? permissions : existingPermissions),
       recordingEnabled,
       passwordHash,
       id

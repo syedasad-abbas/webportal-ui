@@ -178,6 +178,17 @@ $this->addMenuItem([
     'permissions' => [], // empty => everyone (but still must be logged in)
 ]);
   
+//Campaigns menu 
+
+$this->addMenuItem([
+    'label' => __('Campaigns'),
+    'icon' => 'phone.svg',
+    'id' => 'campaigns',
+    'route' => route('admin.campaigns.index'),
+    'active' => Route::is('admin.campaigns.*'),
+    'priority' => 16,
+    'permissions' => ['campaign.add', 'campaign.play'],
+]);
 
 $user = auth()->user();
 $isAdmin = $user && $user->hasAnyRole(['Admin', 'Superadmin']); // or hasRole('Superadmin') etc.

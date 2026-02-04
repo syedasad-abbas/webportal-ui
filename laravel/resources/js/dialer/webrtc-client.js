@@ -28,6 +28,7 @@ class DialerWebRTC {
         this.currentConference = null;
         this.connected = false;
         this.ensurePromise = null;
+        this.pendingMute = false;
     }
 
     get isConfigured() {
@@ -116,6 +117,9 @@ class DialerWebRTC {
         try {
             await client.call(`sip:${conferenceName}@${this.domain}`);
             this.currentConference = conferenceName;
+            if (this.pendingMute) {
+                await this.applyMuteState(this.pendingMute);
+            }
         } catch (error) {
             const message = error?.message || "";
             if (/peer connection undefined|per connection undefined/i.test(message)) {
@@ -160,6 +164,28 @@ class DialerWebRTC {
         }
         this.simpleUser = null;
         this.connected = false;
+    }
+
+    async applyMuteState(muted) {
+        const session = this.simpleUser?.session;
+        const handler = session?.sessionDescriptionHandler;
+        const peer = handler?.peerConnection;
+        if (!peer) {
+            return;
+        }
+        peer.getSenders().forEach((sender) => {
+            if (sender.track && sender.track.kind === "audio") {
+                sender.track.enabled = !muted;
+            }
+        });
+    }
+
+    async setMuted(muted) {
+        this.pendingMute = muted;
+        if (!this.simpleUser?.session) {
+            return;
+        }
+        await this.applyMuteState(muted);
     }
 }
 

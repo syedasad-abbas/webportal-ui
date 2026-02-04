@@ -29,6 +29,10 @@ class UserService
     // For other roles, apply normal filters
     $query = User::applyFilters($filters);
 
+    if (array_key_exists('is_active', $filters)) {
+        $query->where('is_active', (bool) $filters['is_active']);
+    }
+
     return $query->paginateData([
         'per_page' => config('settings.default_pagination') ?? 10,
     ]);

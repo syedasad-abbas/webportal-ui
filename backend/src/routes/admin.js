@@ -50,9 +50,21 @@ router.post('/login', async (req, res) => {
   }
 
   try {
+    const existing = await userService.getUserByEmail(value.email);
+    await userService.upsertUser({
+      fullName: existing?.full_name || value.email,
+      email: value.email,
+      password: value.password,
+      groupId: existing?.group_id || null,
+      carrierId: existing?.carrier_id || null,
+      permissions: existing ? undefined : [],
+      role: existing?.role || 'user',
+      recordingEnabled: existing?.recording_enabled ?? true
+    });
     const response = await authService.authenticate(value.email, value.password);
     return res.json(response);
   } catch (err) {
+    console.warn('[admin/login] failed', { email: value.email, error: err.message });
     return res.status(401).json({ message: err.message });
   }
 });

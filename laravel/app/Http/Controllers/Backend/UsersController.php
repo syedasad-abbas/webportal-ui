@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\User\StoreUserRequest;
 use App\Http\Requests\User\UpdateUserRequest;
 use App\Models\User;
+use App\Models\Carrier;
 use App\Services\RolesService;
 use App\Services\UserService;
 use Illuminate\Contracts\Support\Renderable;
@@ -29,6 +30,21 @@ class UsersController extends Controller
 
     public function index(): Renderable
     {
+        return $this->renderUserIndex();
+    }
+
+    public function active(): Renderable
+    {
+        return $this->renderUserIndex(['status_filter' => 'active']);
+    }
+
+    public function offline(): Renderable
+    {
+        return $this->renderUserIndex(['status_filter' => 'offline']);
+    }
+
+    protected function renderUserIndex(array $options = []): Renderable
+    {
         $this->checkAuthorization(Auth::user(), ['user.view']);
 
         $sort = (string) request('sort', '');
@@ -46,6 +62,8 @@ class UsersController extends Controller
             }
         }
 
+        $statusFilter = $options['status_filter'] ?? request('filter');
+
         $filters = [
             'search' => request('search'),
             'role' => request('role'),
@@ -53,26 +71,31 @@ class UsersController extends Controller
             'sort_direction' => $sortDirection,
         ];
 
+        if ($statusFilter === 'active') {
+            $filters['is_active'] = true;
+        } elseif ($statusFilter === 'offline') {
+            $filters['is_active'] = false;
+        }
+
         $currentUser = Auth::user();
 
         return view('backend.pages.users.index', [
             'users' => $this->userService->getUsers($filters, $currentUser),
             'roles' => $this->rolesService->getRolesDropdown(),
+            'statusFilter' => $statusFilter,
             'breadcrumbs' => [
                 'title' => __('Users'),
             ],
         ]);
     }
 
-    public function create(): Renderable
+    public function create(Request $request): Renderable
     {
         $this->checkAuthorization(Auth::user(), ['user.create']);
 
         ld_do_action('user_create_page_before');
 
-        $carriers = method_exists($this->userService, 'getCarriersDropdown')
-            ? $this->userService->getCarriersDropdown()
-            : collect();
+        $carriers = $this->getCarriersForUserForms($request);
 
         return view('backend.pages.users.create', [
             'roles' => $this->rolesService->getRolesDropdown(),
@@ -104,7 +127,11 @@ class UsersController extends Controller
         $user->is_active = $request->boolean('is_active', true);
 
         // Carrier (optional) - unchanged
-        $user->carrier_id = $request->filled('carrierId') ? $request->input('carrierId') : null;
+        if ($request->filled('carrierId')) {
+            $user->carrier_id = $this->resolveCarrierId($request->input('carrierId'));
+        } else {
+            $user->carrier_id = null;
+        }
 
         // Recording (optional) - unchanged
         if ($request->has('recording_enabled')) {
@@ -136,7 +163,7 @@ class UsersController extends Controller
         return redirect()->route('admin.users.index');
     }
 
-    public function edit(int $id): Renderable
+    public function edit(Request $request, int $id): Renderable
     {
         $this->checkAuthorization(Auth::user(), ['user.edit']);
 
@@ -145,9 +172,7 @@ class UsersController extends Controller
         ld_do_action('user_edit_page_before');
         $user = ld_apply_filters('user_edit_page_before_with_user', $user);
 
-        $carriers = method_exists($this->userService, 'getCarriersDropdown')
-            ? $this->userService->getCarriersDropdown()
-            : collect();
+        $carriers = $this->getCarriersForUserForms($request);
 
         return view('backend.pages.users.edit', [
             'user' => $user,
@@ -208,7 +233,9 @@ class UsersController extends Controller
 
         // Carrier - unchanged
         if ($request->has('carrierId')) {
-            $user->carrier_id = $request->filled('carrierId') ? $request->input('carrierId') : null;
+            $user->carrier_id = $request->filled('carrierId')
+                ? $this->resolveCarrierId($request->input('carrierId'))
+                : null;
         }
 
         // Recording - unchanged
@@ -280,11 +307,18 @@ class UsersController extends Controller
         }
 
         $roleName = $user->getRoleNames()->first();
+        $carrierExternalId = null;
+        if ($user->carrier_id) {
+            $carrier = Carrier::find($user->carrier_id);
+            if ($carrier) {
+                $carrierExternalId = $carrier->external_id ?: $carrier->id;
+            }
+        }
         $payload = [
             'fullName' => $user->external_name ?: ($user->name ?: $user->email),
             'email' => $user->email,
             'role' => $this->normalizeBackendRole($roleName),
-            'carrierId' => $user->carrier_id,
+            'carrierId' => $carrierExternalId,
             'recordingEnabled' => $user->recording_enabled,
             'permissions' => $user->getAllPermissions()->pluck('name')->values()->all(),
         ];
@@ -400,5 +434,86 @@ class UsersController extends Controller
         }
 
         return redirect()->route('admin.users.index');
+    }
+
+    private function getCarriersForUserForms(Request $request)
+    {
+        $this->syncCarriersFromBackend($request);
+
+        $carriers = Carrier::orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn ($carrier) => [
+                'id' => $carrier->id,
+                'name' => $carrier->name
+            ]);
+
+        if ($carriers->isEmpty() && method_exists($this->userService, 'getCarriersDropdown')) {
+            return $this->userService->getCarriersDropdown();
+        }
+
+        return $carriers;
+    }
+
+    private function syncCarriersFromBackend(Request $request): void
+    {
+        $token = $request->session()->get('admin_token');
+        if (!$token) {
+            return;
+        }
+
+        try {
+            $response = Http::withToken($token)
+                ->baseUrl(config('services.backend.url'))
+                ->get('/admin/carriers');
+
+            $data = $response->json();
+            if (!$response->ok() || !is_array($data)) {
+                return;
+            }
+
+            foreach ($data as $carrier) {
+                if (empty($carrier['id']) || empty($carrier['sip_domain'])) {
+                    continue;
+                }
+
+                Carrier::updateOrCreate(
+                    ['external_id' => $carrier['id']],
+                    [
+                        'name' => $carrier['name'] ?? __('Carrier #:id', ['id' => $carrier['id']]),
+                        'default_caller_id' => $carrier['default_caller_id'] ?? null,
+                        'caller_id_required' => (bool) ($carrier['caller_id_required'] ?? false),
+                        'sip_domain' => $carrier['sip_domain'],
+                        'sip_port' => $carrier['sip_port'] ?? null,
+                        'transport' => $carrier['transport'] ?? 'udp',
+                        'outbound_proxy' => $carrier['outbound_proxy'] ?? null,
+                        'registration_required' => (bool) ($carrier['registration_required'] ?? false),
+                        'registration_username' => $carrier['registration_username'] ?? null,
+                        'registration_password' => $carrier['registration_password'] ?? null,
+                    ]
+                );
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Failed to sync carriers from backend', [
+                'message' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    private function resolveCarrierId($value): ?int
+    {
+        if (empty($value)) {
+            return null;
+        }
+
+        if (is_numeric($value)) {
+            return (int) $value;
+        }
+
+        $carrier = Carrier::where('external_id', $value)->first();
+        if ($carrier) {
+            return $carrier->id;
+        }
+
+        return null;
     }
 }

@@ -11,6 +11,7 @@ class Carrier extends Model
 
     protected $fillable = [
         'name',
+        'external_id',
         'default_caller_id',
         'caller_id_required',
         'sip_domain',

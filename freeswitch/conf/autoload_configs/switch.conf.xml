@@ -198,7 +198,8 @@
 
     <!-- <param name="core-dbtype" value="MSSQL"/> -->
 
-    <!-- Allow multiple registrations to the same account in the central registration table -->
+    <!-- Allow multiple registrations to the same account in the central registration table.
+         This lets multiple endpoints register simultaneously against the same SIP user. -->
     <param name="multiple-registrations" value="true"/>
 
     <!-- <param name="max-audio-channels" value="2"/> -->

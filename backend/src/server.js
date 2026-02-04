@@ -6,6 +6,7 @@ const { ensureDefaults } = require('./services/bootstrapService');
 const adminRoutes = require('./routes/admin');
 const authRoutes = require('./routes/auth');
 const callRoutes = require('./routes/calls');
+const campaignDialerRoutes = require('./routes/campaignDialer');
 
 const app = express();
 
@@ -18,6 +19,7 @@ app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 app.use('/admin', adminRoutes);
 app.use('/auth', authRoutes);
 app.use('/calls', callRoutes);
+app.use('/dialer/campaign', campaignDialerRoutes);
 
 const start = async () => {
   await ensureDefaults();

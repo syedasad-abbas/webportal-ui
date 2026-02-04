@@ -29,7 +29,7 @@ const generateToken = (user) =>
       role: user.role,
       groupId: user.group_id,
       carrierId: user.carrier_id,
-      permissions: normalizePermissions(user.backend_permissions)
+      permissions: normalizePermissions(user.permissions ?? user.backend_permissions)
     },
     config.jwtSecret,
     { expiresIn: '12h' }

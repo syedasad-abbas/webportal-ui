@@ -29,6 +29,17 @@ const sanitizeTransport = (value, fallback = 'udp') => {
   return ['udp', 'tcp', 'tls'].includes(normalized) ? normalized : fallback;
 };
 
+const parseCsvList = (value, fallback = []) => {
+  if (!value) {
+    return fallback;
+  }
+  const items = value
+    .split(',')
+    .map((token) => token.trim())
+    .filter(Boolean);
+  return items.length ? items : fallback;
+};
+
 module.exports = {
   port: process.env.PORT || 4000,
   db: {
@@ -70,5 +81,11 @@ module.exports = {
   },
   internalTokens: {
     backendSync: optionalEnv(process.env.BACKEND_INTERNAL_TOKEN, null)
+  },
+  frontend: {
+    allowedRoles: parseCsvList(process.env.FRONTEND_ALLOWED_ROLES, [])
+  },
+  permissions: {
+    callDial: optionalEnv(process.env.CALL_DIAL_PERMISSION, 'dial')
   }
 };

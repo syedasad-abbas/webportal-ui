@@ -63,9 +63,14 @@
                                 $status = $carrierItem['registration_status'] ?? null;
                                 $state = $status['state'] ?? null;
 
-                                $chipClass = 'text-gray-800 bg-gray-100 dark:bg-gray-700 dark:text-gray-300';
-                                if ($state === 'success') $chipClass = 'text-green-800 bg-green-100 dark:bg-green-900/20 dark:text-green-400';
-                                if ($state === 'error') $chipClass = 'text-red-800 bg-red-100 dark:bg-red-900/20 dark:text-red-400';
+                                $chipClass = 'text-gray-800 bg-gray-100 dark:bg-gray-800/70 dark:text-gray-100 dark:border dark:border-gray-600';
+                                if ($state === 'success') {
+                                    $chipClass = 'text-green-800 bg-green-100 dark:bg-green-500/30 dark:text-green-100 dark:border dark:border-green-400/60';
+                                } elseif ($state === 'error') {
+                                    $chipClass = 'text-red-800 bg-red-100 dark:bg-red-500/30 dark:text-red-100 dark:border dark:border-red-400/60';
+                                } elseif ($state === 'warning') {
+                                    $chipClass = 'text-amber-800 bg-amber-100 dark:bg-amber-500/30 dark:text-amber-100 dark:border dark:border-amber-400/60';
+                                }
 
                                 $statusLabel = $status['label'] ?? (!empty($carrierItem['registration_required']) ? __('Pending') : __('Not required'));
                                 $domain = $carrierItem['sip_domain'] ?? '—';
@@ -136,20 +141,35 @@
 
                                 @if($isAdmin)
                                     <td class="px-5 py-4 sm:px-6 text-right">
-                                        <div class="flex justify-end gap-2">
-                                            <a href="{{ route('admin.carrier.edit', $carrierItem['id']) }}" class="btn-default">
-                                                {{ __('Edit') }}
-                                            </a>
+                                        <div class="flex justify-end">
+                                            <x-buttons.action-buttons :label="__('Actions')" :show-label="false" align="right">
+                                                <x-buttons.action-item
+                                                    :href="route('admin.carrier.edit', $carrierItem['id'])"
+                                                    icon="pencil"
+                                                    :label="__('Edit')"
+                                                />
 
-                                            <form method="POST"
-                                                  action="{{ route('admin.carrier.destroy', $carrierItem['id']) }}"
-                                                  onsubmit="return confirm('Delete this carrier?')">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="btn-danger">
-                                                    {{ __('Delete') }}
-                                                </button>
-                                            </form>
+                                                <div x-data="{ deleteModalOpen: false }">
+                                                    <x-buttons.action-item
+                                                        type="modal-trigger"
+                                                        modal-target="deleteModalOpen"
+                                                        icon="trash"
+                                                        :label="__('Delete')"
+                                                        class="text-red-600 dark:text-red-400"
+                                                    />
+
+                                                    <x-modals.confirm-delete
+                                                        id="delete-carrier-{{ $carrierItem['id'] }}"
+                                                        title="{{ __('Delete Carrier') }}"
+                                                        content="{{ __('Are you sure you want to delete this carrier?') }}"
+                                                        formId="delete-carrier-form-{{ $carrierItem['id'] }}"
+                                                        formAction="{{ route('admin.carrier.destroy', $carrierItem['id']) }}"
+                                                        modalTrigger="deleteModalOpen"
+                                                        cancelButtonText="{{ __('No, cancel') }}"
+                                                        confirmButtonText="{{ __('Yes, delete') }}"
+                                                    />
+                                                </div>
+                                            </x-buttons.action-buttons>
                                         </div>
                                     </td>
                                 @endif

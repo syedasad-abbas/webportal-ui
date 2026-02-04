@@ -23,6 +23,7 @@ use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\CarrierController;
 
 use App\Http\Controllers\Admin\DialerController;
+use App\Http\Controllers\Admin\CampaignController;
 
 use Illuminate\Support\Facades\Route;
 
@@ -70,6 +71,8 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['auth']], 
     Route::post('/translations/create', [TranslationController::class, 'create'])->name('translations.create');
 
     // Users + Login as
+    Route::get('users/active', [UsersController::class, 'active'])->name('users.active');
+    Route::get('users/offline', [UsersController::class, 'offline'])->name('users.offline');
     Route::resource('users', UsersController::class);
     Route::delete('users/delete/bulk-delete', [UsersController::class, 'bulkDelete'])->name('users.bulk-delete');
     Route::get('users/{id}/login-as', [UserLoginAsController::class, 'loginAs'])->name('users.login-as');
@@ -108,6 +111,8 @@ Route::get('/carrier/{carrierId}/edit', [CarrierController::class, 'edit'])->nam
 Route::put('/carrier/{carrierId}', [CarrierController::class, 'update'])->name('carrier.update');
 Route::delete('/carrier/{carrierId}', [CarrierController::class, 'destroy'])->name('carrier.destroy');
  Route::get('/dialer', [DialerController::class, 'index'])->name('dialer.index');
+ Route::get('/calls/dialing', [DialerController::class, 'index'])->name('calls.dialing');
+ Route::get('/calls/in-call', [DialerController::class, 'index'])->name('calls.in_call');
 
         Route::post('/dialer/dial', [DialerController::class, 'dial'])->name('dialer.dial');
 
@@ -118,7 +123,21 @@ Route::delete('/carrier/{carrierId}', [CarrierController::class, 'destroy'])->na
         Route::post('/dialer/calls/{uuid}/hangup', [DialerController::class, 'hangup'])->name('dialer.hangup');
 
         Route::post('/dialer/calls/{uuid}/dtmf', [DialerController::class, 'dtmf'])->name('dialer.dtmf');
-//users
+
+        Route::middleware('can:campaign.play')->group(function () {
+            Route::post('/dialer/campaign/start', [DialerController::class, 'startCampaign'])->name('dialer.campaign.start');
+            Route::post('/dialer/campaign/stop', [DialerController::class, 'stopCampaign'])->name('dialer.campaign.stop');
+            Route::get('/dialer/campaign/next', [DialerController::class, 'nextLead'])->name('dialer.campaign.next');
+        });
+
+        Route::middleware('can:campaign.add')->group(function () {
+            Route::get('/campaigns', [CampaignController::class, 'index'])->name('campaigns.index');
+            Route::post('/campaigns/store', [CampaignController::class, 'store'])->name('campaigns.store');
+            Route::get('/campaigns/{campaign}/status', [CampaignController::class, 'status'])->name('campaigns.status');
+            Route::get('/campaigns/{campaign}/edit', [CampaignController::class, 'edit'])->name('campaigns.edit');
+            Route::put('/campaigns/{campaign}', [CampaignController::class, 'update'])->name('campaigns.update');
+            Route::delete('/campaigns/{campaign}', [CampaignController::class, 'destroy'])->name('campaigns.destroy');
+        });
 
 });
 

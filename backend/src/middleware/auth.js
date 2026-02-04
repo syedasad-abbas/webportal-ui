@@ -1,6 +1,18 @@
 const jwt = require('jsonwebtoken');
 const config = require('../config');
 
+const permissionAliases = {
+  'dialer.create_call': ['dial']
+};
+
+const hasPermission = (granted, permission) => {
+  if (granted.includes(permission)) {
+    return true;
+  }
+  const aliases = permissionAliases[permission] || [];
+  return aliases.some((alias) => granted.includes(alias));
+};
+
 const authenticate = (roles = []) => {
   const allowedRoles = Array.isArray(roles) ? roles : [roles];
   return (req, res, next) => {
@@ -34,7 +46,7 @@ const requirePermissions = (required = []) => {
       return next();
     }
     const granted = Array.isArray(req.user?.permissions) ? req.user.permissions : [];
-    const hasAll = requiredList.every((permission) => granted.includes(permission));
+    const hasAll = requiredList.every((permission) => hasPermission(granted, permission));
     if (!hasAll) {
       return res.status(403).json({ message: 'Forbidden' });
     }

@@ -3,14 +3,33 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Campaign;
+use App\Models\CampaignRun;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 
 class DialerController extends Controller
+{    
+    protected function assertCampaignPermission(Request $request): void
 {
+    if (! $request->user() || ! $request->user()->can('campaign.play')) {
+        abort(403, __('You do not have permission to run campaigns.'));
+    }
+}
+
     protected function backend(string $token)
     {
         return Http::withToken($token)->baseUrl(config('services.backend.url'));
+    }
+
+    protected function requireBackendToken(Request $request): string
+    {
+        $token = $this->backendToken($request);
+        if (! $token) {
+            abort(401, __('Backend token missing. Please login again.'));
+        }
+
+        return $token;
     }
 
     protected function assertDialerPermission(Request $request): void
@@ -43,9 +62,18 @@ class DialerController extends Controller
             $webrtcError = __('SIP credentials are not configured for this user.');
         }
 
+        $campaigns = collect();
+        $run = null;
+        if ($user && $user->can('campaign.play')) {
+            $campaigns = Campaign::latest()->get(['id', 'list_id', 'list_name']);
+            $run = CampaignRun::where('user_id', $user->id)->latest('id')->first();
+        }
+
         return view('backend.pages.dialer.index', [
             'webrtcConfig' => $webrtcConfig,
             'webrtcError' => $webrtcError,
+            'campaigns' => $campaigns,
+            'run' => $run,
         ]);
     }
 
@@ -129,5 +157,66 @@ class DialerController extends Controller
         ]);
 
         return $this->proxyRequest($request, 'post', "/calls/{$uuid}/dtmf", $data);
+    }
+
+    public function startCampaign(Request $request)
+    {
+        $this->assertCampaignPermission($request);
+
+        $data = $request->validate([
+            'campaign_id' => ['required', 'integer', 'min:1'],
+            'agent' => ['required', 'string', 'max:100'],
+        ]);
+
+        $token = $this->requireBackendToken($request);
+
+        $resp = $this->backend($token)->post('/dialer/campaign/start', [
+            'campaignId' => $data['campaign_id'],
+            'agent' => $data['agent'],
+        ]);
+
+        return response()->json($resp->json(), $resp->status());
+    }
+
+    public function stopCampaign(Request $request)
+    {
+        $this->assertCampaignPermission($request);
+
+        $token = $this->requireBackendToken($request);
+
+        $resp = $this->backend($token)->post('/dialer/campaign/stop');
+
+        return response()->json($resp->json(), $resp->status());
+    }
+
+    public function nextLead(Request $request)
+    {
+        $this->assertCampaignPermission($request);
+
+        $validated = $request->validate([
+            'last_lead_id' => ['nullable', 'integer', 'min:1'],
+            'last_lead_status' => ['nullable', 'in:called,failed'],
+            'lastLeadId' => ['nullable', 'integer', 'min:1'],
+            'lastLeadStatus' => ['nullable', 'in:called,failed'],
+        ]);
+
+        $lastLeadId = $validated['last_lead_id'] ?? $validated['lastLeadId'] ?? null;
+        $lastLeadStatus = $validated['last_lead_status'] ?? $validated['lastLeadStatus'] ?? null;
+
+        $query = [];
+
+        if ($lastLeadId) {
+            $query['lastLeadId'] = $lastLeadId;
+        }
+
+        if ($lastLeadStatus) {
+            $query['lastLeadStatus'] = $lastLeadStatus;
+        }
+
+        $token = $this->requireBackendToken($request);
+
+        $resp = $this->backend($token)->get('/dialer/campaign/next', $query);
+
+        return response()->json($resp->json(), $resp->status());
     }
 }

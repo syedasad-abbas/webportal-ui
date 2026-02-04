@@ -1,12 +1,14 @@
 const express = require('express');
 const Joi = require('joi');
 const { authenticate, requirePermissions } = require('../middleware/auth');
+const config = require('../config');
 const callService = require('../services/callService');
 const callControlService = require('../services/callControlService');
 
 const router = express.Router();
+const dialPermission = config.permissions?.callDial || 'dial';
 
-router.post('/', authenticate(), requirePermissions(['dialer.create_call']), async (req, res) => {
+router.post('/', authenticate(), requirePermissions([dialPermission]), async (req, res) => {
   console.log('Incoming call payload:', req.body);
   const schema = Joi.object({
     destination: Joi.string().required()
@@ -33,7 +35,7 @@ router.post('/', authenticate(), requirePermissions(['dialer.create_call']), asy
   }
 });
 
-router.get('/:uuid', authenticate(), requirePermissions(['dialer.create_call']), async (req, res) => {
+router.get('/:uuid', authenticate(), requirePermissions([dialPermission]), async (req, res) => {
   try {
     const status = await callControlService.getStatus({
       uuid: req.params.uuid,
@@ -45,7 +47,7 @@ router.get('/:uuid', authenticate(), requirePermissions(['dialer.create_call']),
   }
 });
 
-router.post('/:uuid/mute', authenticate(), requirePermissions(['dialer.create_call']), async (req, res) => {
+router.post('/:uuid/mute', authenticate(), requirePermissions([dialPermission]), async (req, res) => {
   try {
     await callControlService.mute({ uuid: req.params.uuid, userId: req.user.id });
     return res.json({ status: 'muted' });
@@ -54,7 +56,7 @@ router.post('/:uuid/mute', authenticate(), requirePermissions(['dialer.create_ca
   }
 });
 
-router.post('/:uuid/unmute', authenticate(), requirePermissions(['dialer.create_call']), async (req, res) => {
+router.post('/:uuid/unmute', authenticate(), requirePermissions([dialPermission]), async (req, res) => {
   try {
     await callControlService.unmute({ uuid: req.params.uuid, userId: req.user.id });
     return res.json({ status: 'unmuted' });
@@ -63,7 +65,7 @@ router.post('/:uuid/unmute', authenticate(), requirePermissions(['dialer.create_
   }
 });
 
-router.post('/:uuid/hangup', authenticate(), requirePermissions(['dialer.create_call']), async (req, res) => {
+router.post('/:uuid/hangup', authenticate(), requirePermissions([dialPermission]), async (req, res) => {
   try {
     await callControlService.hangup({ uuid: req.params.uuid, userId: req.user.id });
     return res.json({ status: 'ended' });
@@ -72,7 +74,7 @@ router.post('/:uuid/hangup', authenticate(), requirePermissions(['dialer.create_
   }
 });
 
-router.post('/:uuid/dtmf', authenticate(), requirePermissions(['dialer.create_call']), async (req, res) => {
+router.post('/:uuid/dtmf', authenticate(), requirePermissions([dialPermission]), async (req, res) => {
   const digits = (req.body && req.body.digits) || '';
   if (!digits) {
     return res.status(400).json({ message: 'Digits are required' });

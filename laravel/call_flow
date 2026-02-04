@@ -1,0 +1,229 @@
+CALL FLOW (ASCII BOXES)
+
++-------------------+       +---------------------+
+|  User Browser A   |       |  User Browser B     |
+|  (SIP.js WebRTC)  |       |  (SIP.js WebRTC)    |
++---------+---------+       +----------+----------+
+          |                            |
+          | 1) Login / Open Dialer UI  |
+          |--------------------------->|
+          v                            v
++-------------------------------------------------+
+|                 Laravel Admin UI                |
+|  - Loads dialer page                             |
+|  - Injects WebRTC config (wsUrl, domain, creds) |
++----------------------+--------------------------+
+                       |
+                       | 2) Dial button -> POST /admin/dialer
+                       v
++-------------------------------------------------+
+|                 Backend (Node API)              |
+|  - /calls -> callService.originate()            |
+|  - Generate call UUID + conference name         |
+|  - Send ESL command: bgapi originate ...        |
++----------------------+--------------------------+
+                       |
+                       | 3) ESL to FreeSWITCH event socket
+                       v
++-------------------------------------------------+
+|                 FreeSWITCH Core                 |
+|  INTERNAL profile (WebRTC WSS)                  |
+|   - REGISTER from SIP.js                         |
+|   - INVITE to conference                         |
+|                                                 |
+|  EXTERNAL profile (Carrier/PSTN)                |
+|   - Outbound INVITE to carrier                   |
++----------------------+--------------------------+
+                       |
+                       | 4) Outbound SIP INVITE
+                       v
++-------------------------------------------------+
+|             Carrier / SIP Trunk / PSTN          |
+|  - Routes call to destination                   |
+|  - Answers or rejects                            |
++----------------------+--------------------------+
+                       |
+                       | 5) Answer / Reject
+                       v
++-------------------------------------------------+
+|               FreeSWITCH Conference             |
+|  Name: call-<uuid>                               |
+|  Members:                                        |
+|   - WebRTC leg (sofia/internal/<sip_user>)       |
+|   - Outbound leg (sofia/external/<carrier>)      |
++----------------------+--------------------------+
+                       |
+                       | 6) RTP media flows both ways
+                       v
++-------------------------------------------------+
+|                User Hears PSTN Audio            |
++-------------------------------------------------+
+
+DETAILS / CHECKPOINTS
+
+A) Registration
+   - Command: fs_cli -x "sofia status profile internal reg"
+   - Expect: SIP users 1000, 1001 both registered
+
+B) Conference membership
+   - Command: fs_cli -x "conference list"
+   - Expect: each call-<uuid> has 2 members
+     * WebRTC leg (sofia/internal/...)
+     * Outbound leg (sofia/external/...)
+
+C) When ONLY 1 member appears
+   - Outbound leg failed (carrier/trunk rejection)
+   - Check:
+     * fs_cli -x "uuid_dump <uuid>"
+     * sip_last_response / hangup_cause
+
+D) Common failures
+   - 403 / 486 / 503 from carrier = trunk/concurrency/authorization issue
+   - ICE/NAT issues = WebRTC audio not connecting (browser logs)
+
+
+NODE.JS + FREESWITCH FILE ROLES (CALL WORKFLOW)
+
++---------------------------+
+|  Laravel Dialer Controller|
+|  laravel/app/Http/...      |
+|  Admin/DialerController   |
+|  - Loads WebRTC config    |
+|  - POST /admin/dialer     |
++-------------+-------------+
+              |
+              | 1) HTTP POST /calls
+              v
++---------------------------+
+|  Backend Routes           |
+|  backend/src/routes/calls |
+|  - Auth + permissions     |
+|  - callService.originate  |
++-------------+-------------+
+              |
+              | 2) Originate call
+              v
++---------------------------+
+|  Call Service             |
+|  backend/src/services/    |
+|  callService.js           |
+|  - Normalize numbers      |
+|  - Build SIP vars         |
+|  - Create conference name |
+|  - Log call to DB         |
++-------------+-------------+
+              |
+              | 3) ESL command
+              v
++---------------------------+
+|  FreeSWITCH ESL Client    |
+|  backend/src/lib/         |
+|  freeswitch.js            |
+|  - sendCommand(bgapi)     |
+|  - sendApiCommand(api)    |
++-------------+-------------+
+              |
+              | 4) FreeSWITCH handles call
+              v
++---------------------------+
+|  FreeSWITCH Config Files  |
+|  freeswitch/conf/         |
+|  - sip_profiles/internal.xml
+|    * WSS binding (WebRTC) |
+|  - sip_profiles/external.xml
+|    * Carrier outbound     |
+|  - autoload_configs/      |
+|    event_socket.conf.xml  |
+|    * ESL listener         |
+|  - dialplan/default.xml   |
+|    * conference logic     |
+|  - vars.xml               |
+|    * domain, RTP, etc     |
++-------------+-------------+
+              |
+              | 5) Outbound INVITE + Conference
+              v
++---------------------------+
+|  Carrier / PSTN           |
+|  - Receives INVITE        |
+|  - Answers / rejects      |
++---------------------------+
+
+NOTES
+- WebRTC SIP credentials are injected by Laravel and used by SIP.js in the browser.
+- Outbound leg depends on carrier/gateway settings (domain, port, auth, limits).
+- Call diagnostics are read via backend/src/services/callControlService.js.
+
+
+CAMPAIGN AUTO-DIAL FLOW (APPENDED)
+
++-------------------------+           +-------------------------+
+|  Admin uploads CSV/XLS  |           |  Laravel Campaign UI    |
+|  (list_id + leads file) |           |  /admin/campaigns       |
++------------+------------+           +------------+------------+
+             | 1) POST /admin/campaigns/store                 |
+             v                                                |
++-------------------------------------------------------------+
+| Laravel CampaignController                                  |
+| - Stores metadata + file_path                               |
+| - Sets import_status='processing'                           |
+| - Dispatches ImportCampaignLeads job                        |
++------------+------------------------------------------------+
+             |
+             | 2) Queue worker (php artisan queue:work)
+             v
++-------------------------------------------------------------+
+| ImportCampaignLeads Job                                     |
+| - Streams CSV/XLS                                           |
+| - Inserts rows into campaign_leads                          |
+| - Updates total/imported counts + status                    |
++------------+------------------------------------------------+
+             |
+             | 3) Admin sees status via polling route
+             v
++-------------------------------------------------------------+
+| Campaigns Index (Blade + JS)                                |
+| - Polls /admin/campaigns/{id}/status                        |
+| - Shows pending/processing/completed/failed                 |
++------------+------------------------------------------------+
+
+=== RUNTIME AUTO DIAL ===
+
++-------------------------+           +-------------------------+
+| Agent opens dialer page |           | Laravel DialerController|
+| selects campaign + agent|           | (start/stop/next)       |
++------------+------------+           +------------+------------+
+             | 1) POST /admin/dialer/campaign/start           |
+             v                                                |
++-------------------------------------------------------------+
+| DialerController -> Node Backend (/dialer/campaign/start)   |
+| - campaignDialerService.startRun()                          |
+|   * Validates campaign (import completed)                   |
+|   * Upserts campaign_runs row                               |
+|   * Reserves first lead via SELECT ... SKIP LOCKED          |
+| - Returns { next: {id, phone} }                             |
++------------+------------------------------------------------+
+             |
+             | 2) Browser JS fills dialpad & submits /calls
+             v
++-------------------------------------------------------------+
+| Existing call flow (see diagrams above)                     |
+| - /admin/dialer/dial -> Node /calls -> FreeSWITCH           |
+| - Creates conference + outbound leg                         |
++------------+------------------------------------------------+
+             |
+             | 3) On call completion                          |
+             v
++-------------------------------------------------------------+
+| Dialer JS -> /admin/dialer/campaign/next?last_lead=ID&status|
+| - Node reserves next lead, marks prior lead called/failed   |
+| - Returns next phone or null                                |
++------------+------------------------------------------------+
+             |
+             | 4) Loop repeats until no leads or Stop pressed |
+             v
++-------------------------------------------------------------+
+| Stop flow: POST /admin/dialer/campaign/stop                 |
+| - Marks campaign_runs.is_running=false                      |
+| - Releases in_progress leads                                |
++-------------------------------------------------------------+

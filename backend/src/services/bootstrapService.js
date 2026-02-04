@@ -58,10 +58,9 @@ const seedDefaults = async () => {
 
     const passwordHash = await bcrypt.hash(config.defaults.adminPassword, 10);
 
-    const adminByEmail = await client.query(
-      'SELECT id FROM users WHERE email = $1 AND role = ANY($2::text[])',
-      [config.defaults.adminEmail, ['admin', 'superadmin']]
-    );
+    const adminByEmail = await client.query('SELECT id, role FROM users WHERE email = $1', [
+      config.defaults.adminEmail
+    ]);
 
     if (adminByEmail.rowCount === 0) {
       const existingAdmin = await client.query(

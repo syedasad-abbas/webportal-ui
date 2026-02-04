@@ -176,7 +176,7 @@ const originate = async ({ user, destination, callerId }) => {
   if (useGateway && !gatewayName) {
     throw new Error('Carrier gateway is not configured');
   }
-  const preferredFromHost = record.sip_domain || config.freeswitch.externalSipIp || null;
+  const preferredFromHost = config.freeswitch.externalSipIp || config.freeswitch.host || record.sip_domain || null;
   const fromHostBase = preferredFromHost;
   const fromHostWithPort = fromHostBase && record.sip_port
     ? `${fromHostBase}:${record.sip_port}`

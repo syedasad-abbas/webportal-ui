@@ -61,6 +61,42 @@
                         'enable_full_div_click' => true,
                     ])
                     {!! ld_apply_filters('dashboard_cards_after_translations', '') !!}
+                    @include('backend.pages.dashboard.partials.card', [
+                        'icon' => 'bi bi-check-circle',
+                        'label' => __('Active Users'),
+                        'value' => $active_users ?? 0,
+                        'bg' => '#34D399',
+                        'class' => 'bg-white',
+                        'url' => route('admin.users.active'),
+                        'enable_full_div_click' => true,
+                    ])
+                    @include('backend.pages.dashboard.partials.card', [
+                        'icon' => 'bi bi-power',
+                        'label' => __('Offline Users'),
+                        'value' => $offline_users ?? 0,
+                        'bg' => '#FACC15',
+                        'class' => 'bg-white',
+                        'url' => route('admin.users.offline'),
+                        'enable_full_div_click' => true,
+                    ])
+                    @include('backend.pages.dashboard.partials.card', [
+                        'icon' => 'bi bi-telephone-outbound',
+                        'label' => __('Dialing Users'),
+                        'value' => $dialing_users ?? 0,
+                        'bg' => '#0EA5E9',
+                        'class' => 'bg-white',
+                        'url' => route('admin.calls.dialing'),
+                        'enable_full_div_click' => true,
+                    ])
+                    @include('backend.pages.dashboard.partials.card', [
+                        'icon' => 'bi bi-telephone-inbound',
+                        'label' => __('In-Call Users'),
+                        'value' => $in_call_users ?? 0,
+                        'bg' => '#A855F7',
+                        'class' => 'bg-white',
+                        'url' => route('admin.calls.in_call'),
+                        'enable_full_div_click' => true,
+                    ])
                 </div>
             </div>
         </div>

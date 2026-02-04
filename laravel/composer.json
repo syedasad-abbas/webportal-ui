@@ -16,13 +16,14 @@
     "license": "MIT",
     "require": {
         "php": "^8.3|^8.4",
+        "cweagans/composer-patches": "^1.7",
         "guzzlehttp/guzzle": "^7.2",
         "laravel/framework": "^12.0",
         "laravel/pulse": "^1.4",
         "laravel/tinker": "^2.10",
         "laravel/ui": "^4.5",
+        "league/csv": "^9.28",
         "nwidart/laravel-modules": "^12.0",
-        "cweagans/composer-patches": "^1.7",
         "spatie/laravel-permission": "^6.4",
         "spatie/laravel-query-builder": "^6.3",
         "tormjens/eventy": "^0.8.0"

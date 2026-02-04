@@ -30,6 +30,7 @@
         <div class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
             <div class="p-5 space-y-6 border-t border-gray-100 dark:border-gray-800 sm:p-6">
 
+                @can('campaign.play')
                 <div>
                     <h3 class="text-base font-medium text-gray-800 dark:text-white/90">
                         {{ __('WebPhone dialer') }}
@@ -39,11 +40,47 @@
                     </p>
                 </div>
 
+
+                 <div class="flex items-end gap-2">
+                    <div>
+                    <label class="block text-xs font-semibold text-gray-800 dark:text-gray-100">{{ __('Campaign') }}</label>
+                    <select
+                        id="campaign_id"
+                        class="h-11 min-w-[230px] rounded-lg border px-3 pr-10 text-sm text-gray-800 dark:text-white/90 dark:bg-gray-900 dark:border-gray-700 truncate">
+                        <option value="">{{ __('Select') }}</option>
+                        @foreach($campaigns as $c)
+                        <option value="{{ $c->id }}" @selected(optional($run)->campaign_id === $c->id)>
+                            {{ $c->list_name }} ({{ $c->list_id }})
+                        </option>
+                        @endforeach
+                    </select>
+                    </div>
+
+                    <div>
+                    <label class="block text-xs font-semibold text-gray-800 dark:text-gray-100">{{ __('Agent') }}</label>
+                    <input
+                        id="agent_name"
+                        value="{{ optional($run)->agent }}"
+                        class="h-11 min-w-[230px] rounded-lg border px-3 text-sm text-gray-800 dark:text-white/90 dark:bg-gray-900 dark:border-gray-700 placeholder:text-gray-400 dark:placeholder:text-white/60"
+                        placeholder="asad" />
+                    </div>
+
+                    <button type="button" id="btnStartCampaign" class="btn-primary">
+                    {{ __('Start campaign') }}
+                    </button>
+                    <button type="button" id="btnStopCampaign" class="btn-danger">
+                    {{ __('Stop campaign') }}
+                    </button>
+                </div>
+                </div>
+                @endcan
+
+
                 <div class="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800 dark:border-green-900/40 dark:bg-green-900/20 dark:text-green-300">
                     {{ __('Ready · Calls run inline with mute/unmute, hang up, DTMF, and status badges.') }}
                 </div>
                 @if (!empty($webrtcError))
-                    <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-300">
+                    <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500 dark:bg-amber-800 dark:text-white">
                         {{ $webrtcError }}
                     </div>
                 @endif
@@ -177,6 +214,48 @@ document.addEventListener('DOMContentLoaded', function () {
     const csrfToken = form.querySelector('input[name="_token"]').value;
     const startCallButton = form.querySelector('button[type="submit"]');
 
+    let callUuid = null;
+    let pollHandle = null;
+    let callActive = false;
+    let conferenceName = null;
+    let browserAudioActive = false;
+    let webRtcClient = null;
+    let browserAudioConnecting = false;
+    let hangupInProgress = false;
+    let isMuted = false;
+    let callControlsEnabled = false;
+
+    let callConnectedAt = null;
+    let timerHandle = null;
+
+    let manualDialLocked = false;
+    let campaignSubmission = false;
+
+    const refreshStartButton = () => {
+        if (!startCallButton) {
+            return;
+        }
+        startCallButton.disabled = manualDialLocked || callActive;
+    };
+
+    const lockManualDial = () => {
+        manualDialLocked = true;
+        refreshStartButton();
+    };
+
+    const unlockManualDial = () => {
+        manualDialLocked = false;
+        refreshStartButton();
+    };
+
+    const showManualDialLocked = () => {
+        if (!alertBox) return;
+        alertBox.textContent = 'Campaign is running. Stop it to dial manually.';
+        alertBox.classList.remove('hidden');
+    };
+
+    refreshStartButton();
+
     // ===== DTMF local tone =====
     const dtmfMap = {
         '1': [697, 1209],
@@ -244,13 +323,20 @@ document.addEventListener('DOMContentLoaded', function () {
         if (hiddenInput) hiddenInput.value = value;
     };
 
+    const setDestination = (value) => {
+        syncDisplay(value || '');
+    };
+
     // Allow paste into readonly display
     const sanitizePhone = (value) => (value || '').toString().replace(/[^\d+*#]/g, '');
     const applyPastedValue = (text) => syncDisplay(sanitizePhone(text));
 
     if (displayInput) {
         displayInput.addEventListener('input', (e) => {
-            if (callActive) {
+            if (callActive || manualDialLocked) {
+                if (manualDialLocked && !callActive) {
+                    showManualDialLocked();
+                }
                 syncDisplay(hiddenInput.value || '');
                 return;
             }
@@ -264,32 +350,28 @@ document.addEventListener('DOMContentLoaded', function () {
         displayInput.addEventListener('paste', (e) => {
             e.preventDefault();
             const text = (e.clipboardData || window.clipboardData).getData('text');
-            if (!callActive) applyPastedValue(text);
+            if (!callActive && !manualDialLocked) {
+                applyPastedValue(text);
+            } else if (!callActive && manualDialLocked) {
+                showManualDialLocked();
+            }
         });
 
         document.addEventListener('paste', (e) => {
             if (document.activeElement !== displayInput) return;
             e.preventDefault();
             const text = (e.clipboardData || window.clipboardData).getData('text');
-            if (!callActive) applyPastedValue(text);
+            if (!callActive && !manualDialLocked) {
+                applyPastedValue(text);
+            } else if (!callActive && manualDialLocked) {
+                showManualDialLocked();
+            }
         });
 
         displayInput.addEventListener('click', () => displayInput.focus());
     }
 
     // ===== Live call state =====
-    let callUuid = null;
-    let pollHandle = null;
-    let callActive = false;
-    let conferenceName = null;
-    let browserAudioActive = false;
-    let webRtcClient = null;
-    let browserAudioConnecting = false;
-    let hangupInProgress = false;
-
-    // timer state
-    let callConnectedAt = null;
-    let timerHandle = null;
 
     const formatDuration = (seconds) => {
         const s = Math.max(0, Number(seconds) || 0);
@@ -324,32 +406,65 @@ document.addEventListener('DOMContentLoaded', function () {
         if (callTimerBadge) callTimerBadge.classList.add('hidden');
     };
 
-    const setControls = (enabled) => {
+    const updateActionButtons = () => {
         actionButtons.forEach((btn) => {
-            btn.disabled = !enabled;
+            const action = btn.dataset.action;
+            let disabled = !callControlsEnabled || !callActive || hangupInProgress;
+            if (!disabled) {
+                if (action === 'mute') {
+                    disabled = isMuted;
+                } else if (action === 'unmute') {
+                    disabled = !isMuted;
+                }
+            }
+            btn.disabled = disabled;
         });
+    };
+
+    const setControls = (enabled) => {
+        callControlsEnabled = enabled;
+        updateActionButtons();
     };
 
     const setStatus = (status, sipStatus = null, sipReason = null) => {
         const normalized = (status || '').toLowerCase();
-        const sipText = sipStatus ? `SIP ${sipStatus}${sipReason ? ` ${sipReason}` : ''}` : null;
+        const sipCode = sipStatus !== null && sipStatus !== undefined && !Number.isNaN(Number(sipStatus))
+            ? Number(sipStatus)
+            : null;
 
         const labelMap = {
             queued: 'Trying',
             trying: 'Trying',
             ringing: 'Ringing',
-            in_call: 'Answered',
-            completed: 'Completed',
-            ended: 'Ended'
+            in_call: 'In Call',
+            completed: 'Bye',
+            ended: 'Bye'
         };
 
+        let label = labelMap[normalized] || 'Ready';
+        if (sipCode && sipCode >= 400) {
+            label = `Error ${sipCode}${sipReason ? ` ${sipReason}` : ''}`;
+        } else if (normalized === 'ringing' && sipCode && sipCode >= 180 && sipCode < 200) {
+            label = `Ringing${sipReason ? ` (${sipReason})` : ''}`;
+        } else if ((normalized === 'trying' || normalized === 'queued') && sipCode && sipCode < 180) {
+            label = `Trying${sipReason ? ` (${sipReason})` : ''}`;
+        } else if ((normalized === 'ended' || normalized === 'completed') && (!sipCode || sipCode < 400)) {
+            label = 'Bye';
+        }
+
         if (statusEl) {
-            if ((normalized === 'ended' || normalized === 'completed' || (sipStatus && sipStatus >= 300)) && sipText) {
-                statusEl.textContent = sipText;
-            } else if ((normalized === 'trying' || normalized === 'ringing') && sipStatus) {
-                statusEl.textContent = `${labelMap[normalized] || 'Unknown'} (${sipText})`;
-            } else {
-                statusEl.textContent = labelMap[normalized] || 'Unknown';
+            statusEl.textContent = label;
+            statusEl.classList.remove('bg-amber-100','text-amber-800','dark:bg-amber-500/30','dark:text-amber-100','bg-blue-100','text-blue-800','dark:bg-blue-500/30','dark:text-blue-100','bg-green-100','text-green-800','dark:bg-green-500/30','dark:text-green-100','bg-red-100','text-red-800','dark:bg-red-500/30','dark:text-red-100','bg-gray-100','text-gray-800','dark:bg-gray-700','dark:text-gray-200');
+            if (label.startsWith('Trying')) {
+                statusEl.classList.add('bg-amber-100','text-amber-800','dark:bg-amber-500/30','dark:text-amber-100');
+            } else if (label.startsWith('Ringing')) {
+                statusEl.classList.add('bg-blue-100','text-blue-800','dark:bg-blue-500/30','dark:text-blue-100');
+            } else if (label === 'In Call') {
+                statusEl.classList.add('bg-green-100','text-green-800','dark:bg-green-500/30','dark:text-green-100');
+            } else if (label === 'Bye') {
+                statusEl.classList.add('bg-gray-100','text-gray-800','dark:bg-gray-700','dark:text-gray-200');
+            } else if (label.startsWith('Error')) {
+                statusEl.classList.add('bg-red-100','text-red-800','dark:bg-red-500/30','dark:text-red-100');
             }
         }
 
@@ -363,6 +478,10 @@ document.addEventListener('DOMContentLoaded', function () {
         if (normalized === 'ended' || normalized === 'completed') {
             stopTimer();
             disconnectBrowserAudio();
+            applyMuteState(false);
+            if (typeof handleCampaignCallComplete === 'function') {
+                handleCampaignCallComplete(normalized);
+            }
             conferenceName = null;
             callUuid = null;
         }
@@ -439,6 +558,21 @@ document.addEventListener('DOMContentLoaded', function () {
         updateBrowserAudioStatus(webRtcClient ? 'Browser audio idle' : '');
     };
 
+    const applyMuteState = async (muted) => {
+        isMuted = muted;
+        updateActionButtons();
+        if (webRtcClient && typeof webRtcClient.setMuted === 'function') {
+            try {
+                await webRtcClient.setMuted(muted);
+            } catch (error) {
+                console.error('Failed to toggle microphone mute', error);
+            }
+        }
+        if (browserAudioActive) {
+            updateBrowserAudioStatus(muted ? 'Microphone muted' : 'Browser audio connected');
+        }
+    };
+
     const ensureWebRtcClient = () => {
         if (!webRtcClient) {
             webRtcClient = initWebRtcClient();
@@ -471,7 +605,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 showError(`HTTP ${response.status}`);
                 callActive = false;
                 setControls(false);
-                startCallButton.disabled = false;
+                refreshStartButton();
                 stopTimer();
                 return;
             }
@@ -493,7 +627,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 clearInterval(pollHandle);
                 callActive = false;
                 setControls(false);
-                startCallButton.disabled = false;
+                refreshStartButton();
                 stopTimer();
                 disconnectBrowserAudio();
                 conferenceName = null;
@@ -504,7 +638,7 @@ document.addEventListener('DOMContentLoaded', function () {
             showError('Network error while updating the call.');
             callActive = false;
             setControls(false);
-            startCallButton.disabled = false;
+            refreshStartButton();
             stopTimer();
             disconnectBrowserAudio();
         }
@@ -516,6 +650,8 @@ document.addEventListener('DOMContentLoaded', function () {
             const action = button.dataset.action;
             if (!callUuid) return;
             if (hangupInProgress) return;
+            const isMuteAction = action === 'mute' || action === 'unmute';
+            if (isMuteAction && !callActive) return;
 
             if (alertEl) alertEl.classList.add('hidden');
 
@@ -523,6 +659,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (action === 'hangup') {
                     hangupInProgress = true;
                     setControls(false);
+                } else if (isMuteAction) {
+                    button.disabled = true;
                 }
                 const response = await fetch(`/admin/dialer/calls/${callUuid}/${action}`, {
                     method: 'POST',
@@ -540,6 +678,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (action === 'hangup') {
                         hangupInProgress = false;
                         setControls(callActive);
+                    } else if (isMuteAction) {
+                        updateActionButtons();
                     }
                     return;
                 }
@@ -549,15 +689,20 @@ document.addEventListener('DOMContentLoaded', function () {
                     clearInterval(pollHandle);
                     callActive = false;
                     setControls(false);
-                    startCallButton.disabled = false;
+                    refreshStartButton();
                     stopTimer();
                     disconnectBrowserAudio();
+                    await applyMuteState(false);
+                } else if (isMuteAction) {
+                    await applyMuteState(action === 'mute');
                 }
             } catch (e) {
                 showError('Network error while updating the call.');
                 if (action === 'hangup') {
                     hangupInProgress = false;
                     setControls(callActive);
+                } else if (isMuteAction) {
+                    updateActionButtons();
                 }
             }
         });
@@ -578,9 +723,11 @@ document.addEventListener('DOMContentLoaded', function () {
             longPressTimer = setTimeout(() => {
                 longPressActive = true;
 
-                if (!callActive) {
+                if (!callActive && !manualDialLocked) {
                     syncDisplay(`${hiddenInput.value || ''}+`);
                     playTone('0');
+                } else if (!callActive && manualDialLocked) {
+                    showManualDialLocked();
                 }
             }, LONG_PRESS_MS);
         };
@@ -631,6 +778,10 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             // Before call: build number
+            if (manualDialLocked) {
+                showManualDialLocked();
+                return;
+            }
             syncDisplay(`${hiddenInput.value || ''}${value}`);
             playTone(value);
         });
@@ -639,6 +790,10 @@ document.addEventListener('DOMContentLoaded', function () {
     if (clearButton) {
         clearButton.addEventListener('click', () => {
             if (callActive) return;
+            if (manualDialLocked) {
+                showManualDialLocked();
+                return;
+            }
             syncDisplay('');
         });
     }
@@ -646,14 +801,215 @@ document.addEventListener('DOMContentLoaded', function () {
     if (backspaceButton) {
         backspaceButton.addEventListener('click', () => {
             if (callActive) return;
+            if (manualDialLocked) {
+                showManualDialLocked();
+                return;
+            }
             const current = hiddenInput.value || '';
             syncDisplay(current.slice(0, -1));
         });
     }
 
+    // ===== Campaign automation =====
+    const campaignSelect = document.getElementById('campaign_id');
+    const agentInput = document.getElementById('agent_name');
+    const btnStartCampaign = document.getElementById('btnStartCampaign');
+    const btnStopCampaign = document.getElementById('btnStopCampaign');
+    const campaignRoutes = {
+        start: '{{ route('admin.dialer.campaign.start') }}',
+        stop: '{{ route('admin.dialer.campaign.stop') }}',
+        next: '{{ route('admin.dialer.campaign.next') }}',
+    };
+
+    const campaignState = {
+        running: false,
+        currentLeadId: null,
+        fetchingNext: false,
+    };
+
+    const campaignAlert = (message = '') => {
+        if (!alertBox) return;
+        if (!message) {
+            alertBox.classList.add('hidden');
+            alertBox.textContent = '';
+            return;
+        }
+        alertBox.textContent = message;
+        alertBox.classList.remove('hidden');
+    };
+
+    const buildUrl = (base, params = {}) => {
+        const url = new URL(base, window.location.origin);
+        Object.entries(params).forEach(([key, value]) => {
+            if (value !== undefined && value !== null && value !== '') {
+                url.searchParams.set(key, value);
+            }
+        });
+        return url.toString();
+    };
+
+    const campaignRequest = async (url, { method = 'GET', body = null, params = null } = {}) => {
+        const target = params ? buildUrl(url, params) : url;
+        const headers = {
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': csrfToken
+        };
+        const options = { method, headers };
+        if (body) {
+            headers['Content-Type'] = 'application/json';
+            options.body = JSON.stringify(body);
+        }
+
+        const response = await fetch(target, options);
+        let data = {};
+        try { data = await response.json(); } catch (error) {}
+
+        if (!response.ok || data.ok === false) {
+            throw new Error(data.message || `HTTP ${response.status}`);
+        }
+
+        return data;
+    };
+
+    const submitDialerForm = () => {
+        if (!form) return;
+        campaignSubmission = true;
+        try {
+            form.requestSubmit();
+        } finally {
+            campaignSubmission = false;
+        }
+    };
+
+    const dialCampaignLead = (lead) => {
+        if (!lead || !lead.phone) {
+            campaignAlert('Campaign started but no leads were returned.');
+            campaignState.running = false;
+            campaignState.currentLeadId = null;
+            unlockManualDial();
+            return;
+        }
+
+        campaignState.currentLeadId = lead.id;
+        campaignState.running = true;
+        lockManualDial();
+        campaignAlert('');
+        setDestination(lead.phone);
+        submitDialerForm();
+    };
+
+    const fetchNextLead = async ({ lastLeadId, lastLeadStatus } = {}) => {
+        if (!campaignState.running || campaignState.fetchingNext) {
+            return;
+        }
+
+        campaignState.fetchingNext = true;
+        try {
+            const data = await campaignRequest(campaignRoutes.next, {
+                params: {
+                    last_lead_id: lastLeadId,
+                    last_lead_status: lastLeadStatus
+                }
+            });
+
+            if (data.next?.phone) {
+                dialCampaignLead(data.next);
+            } else {
+                campaignAlert('Campaign completed. No more leads available.');
+                campaignState.running = false;
+                campaignState.currentLeadId = null;
+                setDestination('');
+                unlockManualDial();
+            }
+        } catch (error) {
+            campaignAlert(error.message || 'Unable to fetch next lead.');
+            campaignState.running = false;
+            campaignState.currentLeadId = null;
+            unlockManualDial();
+        } finally {
+            campaignState.fetchingNext = false;
+        }
+    };
+
+    const startCampaignFlow = async () => {
+        if (!campaignSelect || !agentInput) return;
+        if (campaignState.running) {
+            campaignAlert('Campaign is already running.');
+            return;
+        }
+        const campaignId = campaignSelect.value;
+        const agent = (agentInput.value || '').trim();
+
+        if (!campaignId || !agent) {
+            campaignAlert('Select campaign and enter agent name.');
+            return;
+        }
+
+        campaignState.running = true;
+        lockManualDial();
+
+        try {
+            const data = await campaignRequest(campaignRoutes.start, {
+                method: 'POST',
+                body: {
+                    campaign_id: campaignId,
+                    agent: agent
+                }
+            });
+
+            if (data.next?.phone) {
+                dialCampaignLead(data.next);
+            } else {
+                campaignAlert('Campaign started but no leads were returned.');
+                campaignState.running = false;
+                campaignState.currentLeadId = null;
+                unlockManualDial();
+            }
+        } catch (error) {
+            campaignAlert(error.message || 'Unable to start campaign.');
+            campaignState.running = false;
+            unlockManualDial();
+        }
+    };
+
+    const stopCampaignFlow = async () => {
+        try {
+            await campaignRequest(campaignRoutes.stop, { method: 'POST' });
+            campaignState.running = false;
+            campaignState.currentLeadId = null;
+            campaignAlert('');
+            setDestination('');
+            unlockManualDial();
+        } catch (error) {
+            campaignAlert(error.message || 'Unable to stop campaign.');
+        }
+    };
+
+    const handleCampaignCallComplete = (status) => {
+        if (!campaignState.running || !campaignState.currentLeadId) {
+            return;
+        }
+
+        const finalStatus = status === 'completed' ? 'called' : 'failed';
+        const finishedLeadId = campaignState.currentLeadId;
+        campaignState.currentLeadId = null;
+        fetchNextLead({
+            lastLeadId: finishedLeadId,
+            lastLeadStatus: finalStatus
+        });
+    };
+
+    btnStartCampaign?.addEventListener('click', startCampaignFlow);
+    btnStopCampaign?.addEventListener('click', stopCampaignFlow);
+
     // ===== Start call (inline; no popup) =====
     form.addEventListener('submit', async function (event) {
         event.preventDefault();
+
+        if (manualDialLocked && !campaignSubmission) {
+            showManualDialLocked();
+            return;
+        }
 
         // hide alert
         alertBox.classList.add('hidden');
@@ -668,7 +1024,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (callIdBadge) callIdBadge.classList.add('hidden');
         if (alertEl) alertEl.classList.add('hidden');
 
-        setStatus('queued');
+        setStatus('trying');
         stopTimer();
         hangupInProgress = false;
 
@@ -694,7 +1050,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 try { error = await response.json(); } catch (e) {}
                 alertBox.textContent = error.message || `HTTP ${response.status}`;
                 alertBox.classList.remove('hidden');
-                startCallButton.disabled = false;
+                refreshStartButton();
                 setStatus('ended');
                 showError(`HTTP ${response.status}`);
                 return;
@@ -711,6 +1067,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
 
                 callActive = true;
+                await applyMuteState(false);
                 setControls(true);
                 if (conferenceName && webRtcClient) {
                     connectBrowserAudio();
@@ -723,14 +1080,14 @@ document.addEventListener('DOMContentLoaded', function () {
             } else {
                 alertBox.textContent = 'Call queued but no call identifier returned.';
                 alertBox.classList.remove('hidden');
-                startCallButton.disabled = false;
+                refreshStartButton();
                 setStatus('ended');
                 disconnectBrowserAudio();
             }
         } catch (error) {
             alertBox.textContent = 'Network error while queuing the call.';
             alertBox.classList.remove('hidden');
-            startCallButton.disabled = false;
+            refreshStartButton();
             setStatus('ended');
             showError('Network error while queuing the call.');
             disconnectBrowserAudio();
@@ -743,5 +1100,6 @@ document.addEventListener('DOMContentLoaded', function () {
         updateBrowserAudioStatus('');
     }
 });
+
 </script>
 @endpush
