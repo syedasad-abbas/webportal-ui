@@ -31,9 +31,8 @@ class DashboardController extends Controller
         $totalUsers = User::count();
         $activeUsers = $this->countActiveSessions();
         $offlineUsers = max($totalUsers - $activeUsers, 0);
-        $dialingUsers = DB::table('call_logs')
-            ->where('status', 'queued')
-            ->whereNull('ended_at')
+        $dialingUsers = DB::table('campaign_runs')
+            ->where('is_running', true)
             ->distinct('user_id')
             ->count('user_id');
         $inCallUsers = DB::table('call_logs')
@@ -83,25 +82,13 @@ class DashboardController extends Controller
         );
     }
 
-    private function countActiveSessions(): int
-    {
-        if (! Schema::hasTable('sessions')) {
-            return 0;
-        }
-
-        $lifetime = (int) config('session.lifetime', 120);
-        $threshold = Carbon::now()->subMinutes($lifetime)->getTimestamp();
-
-        return (int) DB::table('sessions')
-            ->whereNotNull('user_id')
-            ->where('last_activity', '>=', $threshold)
-            ->distinct('user_id')
-            ->count('user_id');
-    }
-
     private function getUserActivityStats(int $userId = 0): array
     {
-        $query = DB::table('call_logs');
+        $windowEnd = Carbon::now();
+        $windowStart = $windowEnd->copy()->subHours(24);
+
+        $query = DB::table('call_logs')
+            ->whereBetween('created_at', [$windowStart, $windowEnd]);
         if ($userId > 0) {
             $query->where('user_id', $userId);
         }
@@ -124,6 +111,26 @@ class DashboardController extends Controller
             'ok_200' => (int) ($stats->ok_200 ?? 0),
             'err_503' => (int) ($stats->error_503 ?? 0),
             'other' => (int) ($stats->other_calls ?? 0),
+            'window' => [
+                'start' => $windowStart,
+                'end' => $windowEnd
+            ]
         ];
+    }
+
+    private function countActiveSessions(): int
+    {
+        if (! Schema::hasTable('sessions')) {
+            return 0;
+        }
+
+        $lifetime = (int) config('session.lifetime', 120);
+        $threshold = Carbon::now()->subMinutes($lifetime)->getTimestamp();
+
+        return (int) DB::table('sessions')
+            ->whereNotNull('user_id')
+            ->where('last_activity', '>=', $threshold)
+            ->distinct('user_id')
+            ->count('user_id');
     }
 }

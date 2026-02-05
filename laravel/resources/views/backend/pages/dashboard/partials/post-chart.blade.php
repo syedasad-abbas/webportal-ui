@@ -3,7 +3,12 @@
         <div class="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
                 <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{{ __('User Activity') }}</h3>
-                <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('Dialed calls grouped by SIP outcomes') }}</p>
+                <p class="text-sm text-gray-500 dark:text-gray-400">
+                    {{ __('Window: :start – :end', [
+                        'start' => optional($user_activity_stats['window']['start'] ?? null)->format('M d, h:i A'),
+                        'end' => optional($user_activity_stats['window']['end'] ?? null)->format('M d, h:i A')
+                    ]) }}
+                </p>
             </div>
             <form method="GET" class="flex items-center gap-2">
                 @foreach(request()->except('user_activity_user') as $field => $value)
@@ -67,6 +72,9 @@
             activityData.err_503 || 0,
             activityData.other || 0
         ];
+        const maxVal = Math.max(...seriesData);
+        const yMax = Math.max(10, Math.ceil((maxVal || 0) / 10) * 10);
+        const yTicks = Math.max(1, Math.round(yMax / 10));
 
         const options = {
             series: [{
@@ -105,6 +113,9 @@
                 }
             },
             yaxis: {
+                min: 0,
+                max: yMax,
+                tickAmount: yTicks,
                 labels: {
                     formatter: function (val) {
                         return val.toLocaleString();
