@@ -32,7 +32,7 @@ return [
 
     'backend' => [
         'url' => env('BACKEND_URL', 'http://backend:4000'),
-        'ws_url' => env('BACKEND_WS_URL', env('BACKEND_URL', 'http://localhost:4000')),
+        'ws_url' => env('BACKEND_WS_URL', env('APP_URL', env('BACKEND_URL', 'http://localhost:4000'))),
         'internal_token' => env('BACKEND_INTERNAL_TOKEN'),
     ],
 

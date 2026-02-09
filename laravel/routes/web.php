@@ -47,6 +47,9 @@ Route::post('/login', [UserAuthController::class, 'login'])->name('user.login.su
  */
 Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['auth']], function () {
     Route::get('/', [BackendDashboardController::class, 'index'])->name('dashboard');
+    Route::post('/ping', function () {
+        return response()->json(['ok' => true]);
+    })->name('ping');
 
     Route::resource('roles', RolesController::class);
     Route::delete('roles/delete/bulk-delete', [RolesController::class, 'bulkDelete'])->name('roles.bulk-delete');

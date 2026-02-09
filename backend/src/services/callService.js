@@ -71,6 +71,30 @@ const monitorCallProgress = async ({ callUuid, conferenceName, userId }) => {
   let answeredLogged = false;
   let conferenceLogged = false;
 
+  const markAnswered = async () => {
+    await db.query(
+      `UPDATE call_logs
+       SET connected_at = COALESCE(connected_at, NOW()),
+           status = COALESCE(status, 'in_call'),
+           updated_at = NOW()
+       WHERE call_uuid = $1 AND user_id = $2 AND connected_at IS NULL`,
+      [callUuid, userId]
+    );
+    scheduleMetricsBroadcast();
+  };
+
+  const markEnded = async () => {
+    await db.query(
+      `UPDATE call_logs
+       SET ended_at = COALESCE(ended_at, NOW()),
+           status = CASE WHEN connected_at IS NULL THEN 'ended' ELSE 'completed' END,
+           updated_at = NOW()
+       WHERE call_uuid = $1 AND user_id = $2 AND ended_at IS NULL`,
+      [callUuid, userId]
+    );
+    scheduleMetricsBroadcast();
+  };
+
   const poll = async () => {
     if (Date.now() - start > timeoutMs) {
       return;
@@ -78,6 +102,7 @@ const monitorCallProgress = async ({ callUuid, conferenceName, userId }) => {
 
     const exists = await freeswitch.callExists(callUuid);
     if (!exists) {
+      await markEnded();
       return;
     }
 
@@ -86,6 +111,7 @@ const monitorCallProgress = async ({ callUuid, conferenceName, userId }) => {
       if (answeredEpoch && Number(answeredEpoch) > 0) {
         console.log('[call] answered', { userId, callUuid });
         answeredLogged = true;
+        await markAnswered();
       }
     }
 
@@ -100,9 +126,7 @@ const monitorCallProgress = async ({ callUuid, conferenceName, userId }) => {
       }
     }
 
-    if (!answeredLogged || !conferenceLogged) {
-      setTimeout(poll, 1500);
-    }
+    setTimeout(poll, 1500);
   };
 
   setTimeout(() => {
@@ -274,7 +298,8 @@ const originate = async ({ user, destination, callerId }) => {
       callerId: resolvedCallerId,
       status: 'failed',
       recordingPath,
-      callUuid: originationUuid
+      callUuid: originationUuid,
+      endedAt: new Date()
     });
     throw err;
   }

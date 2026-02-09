@@ -84,7 +84,9 @@ module.exports = {
   },
   metrics: {
     presenceMinutes: toInt(process.env.PRESENCE_WINDOW_MINUTES, 5) || 5,
-    activityWindowHours: toInt(process.env.ACTIVITY_WINDOW_HOURS, 24) || 24
+    activityWindowHours: toInt(process.env.ACTIVITY_WINDOW_HOURS, 24) || 24,
+    broadcastIntervalSeconds: toInt(process.env.METRICS_BROADCAST_SECONDS, 15) || 15,
+    dialingWindowMinutes: toInt(process.env.METRICS_DIALING_WINDOW_MINUTES, 5) || 5
   },
   frontend: {
     allowedRoles: parseCsvList(process.env.FRONTEND_ALLOWED_ROLES, [])

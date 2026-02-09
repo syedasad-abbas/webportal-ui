@@ -30,8 +30,27 @@ class DashboardController extends Controller
         $totalUsers = User::count();
         $activeUsers = $this->countActiveSessions();
         $offlineUsers = max($totalUsers - $activeUsers, 0);
-        $dialingUsers = DB::table('campaign_runs')
-            ->where('is_running', true)
+        $inCallUsersQuery = DB::table('call_logs')
+            ->whereNotNull('connected_at')
+            ->whereNull('ended_at')
+            ->select('user_id')
+            ->distinct();
+
+        $dialingUsers = DB::query()
+            ->fromSub(function ($query) {
+                $query->from('call_logs')
+                    ->select('user_id')
+                    ->whereNull('connected_at')
+                    ->whereNull('ended_at')
+                    ->distinct()
+                    ->union(
+                        DB::table('campaign_runs')
+                            ->select('user_id')
+                            ->where('is_running', true)
+                            ->distinct()
+                    );
+            }, 'dialing')
+            ->whereNotIn('user_id', $inCallUsersQuery)
             ->distinct('user_id')
             ->count('user_id');
         $inCallUsers = DB::table('call_logs')
@@ -124,11 +143,20 @@ class DashboardController extends Controller
             (int) config('session.lifetime', 120)
         );
         $presenceMinutes = $presenceMinutes > 0 ? $presenceMinutes : 5;
-        $threshold = Carbon::now()->subMinutes($presenceMinutes);
+        $threshold = Carbon::now()->subMinutes($presenceMinutes)->timestamp;
+
+        if (config('session.driver') === 'database') {
+            return (int) DB::table('sessions')
+                ->whereNotNull('user_id')
+                ->where('last_activity', '>=', $threshold)
+                ->distinct('user_id')
+                ->count('user_id');
+        }
 
         return (int) User::query()
             ->whereNotNull('last_seen_at')
-            ->where('last_seen_at', '>=', $threshold)
+            ->where('last_seen_at', '>=', Carbon::now()->subMinutes($presenceMinutes))
             ->count();
     }
+
 }

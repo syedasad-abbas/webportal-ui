@@ -14,7 +14,7 @@ class SettingsSeeder extends Seeder
      */
     public function run(): void
     {
-        DB::table('settings')->insert([
+        $settings = [
             // Site title.
             ['option_name' => 'app_name', 'option_value' => 'Lara Dashboard'],
 
@@ -55,6 +55,12 @@ class SettingsSeeder extends Seeder
             // Custom CSS and JS.
             ['option_name' => 'global_custom_css', 'option_value' => ''],
             ['option_name' => 'global_custom_js', 'option_value' => ''],
-        ]);
+        ];
+
+        DB::table('settings')->upsert(
+            $settings,
+            ['option_name'],
+            ['option_value']
+        );
     }
 }

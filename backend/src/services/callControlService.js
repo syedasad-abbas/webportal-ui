@@ -1,5 +1,6 @@
 const db = require('../db');
 const freeswitch = require('../lib/freeswitch');
+const { scheduleMetricsBroadcast } = require('./metricsService');
 
 const parseSipResponse = (value) => {
   if (!value || typeof value !== 'string') {
@@ -47,6 +48,7 @@ const updateCallCompletion = async (callId, durationSeconds) => {
      WHERE id = $2`,
     [durationSeconds || null, callId]
   );
+  scheduleMetricsBroadcast();
 };
 
 const updateCallDiagnostics = async (callId, diagnostics) => {
@@ -63,6 +65,7 @@ const updateCallDiagnostics = async (callId, diagnostics) => {
       callId
     ]
   );
+  scheduleMetricsBroadcast();
 };
 
 const fetchCallDiagnostics = async (uuid) => {
@@ -135,6 +138,7 @@ const getStatus = async ({ uuid, userId }) => {
 
   if (answered && !call.connected_at) {
     await db.query('UPDATE call_logs SET connected_at = NOW() WHERE id = $1', [call.id]);
+    scheduleMetricsBroadcast();
   }
 
   let status = answered ? 'in_call' : 'ringing';

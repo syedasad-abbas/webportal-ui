@@ -139,7 +139,7 @@
 
 @push('scripts')
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
-    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" integrity="sha384-wsgO4YJ9h5tqcfp/J2vh7vHwlGHNirMRHkRkNvztNFVQVw1Gc7YCOUMIqFZp2kOz" crossorigin="anonymous"></script>
+    <script src="/socket.io/socket.io.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             if (typeof io === 'undefined') {
@@ -187,6 +187,20 @@
                     window.DashboardActivityChart.update(payload.activity);
                 }
             });
+
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            if (csrfToken) {
+                setInterval(() => {
+                    fetch(@json(route('admin.ping')), {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': csrfToken,
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        credentials: 'same-origin'
+                    }).catch(() => {});
+                }, 60000);
+            }
         });
     </script>
 @endpush

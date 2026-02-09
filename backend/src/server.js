@@ -5,7 +5,7 @@ const morgan = require('morgan');
 const config = require('./config');
 const { ensureDefaults } = require('./services/bootstrapService');
 const { initSocket } = require('./socket');
-const { scheduleMetricsBroadcast, fetchDashboardMetrics } = require('./services/metricsService');
+const { scheduleMetricsBroadcast, startMetricsBroadcasting, fetchDashboardMetrics } = require('./services/metricsService');
 const adminRoutes = require('./routes/admin');
 const authRoutes = require('./routes/auth');
 const callRoutes = require('./routes/calls');
@@ -35,7 +35,7 @@ const start = async () => {
   });
   httpServer.listen(config.port, () => {
     console.log(`Backend listening on port ${config.port}`);
-    scheduleMetricsBroadcast();
+    startMetricsBroadcasting();
   });
 };
 
