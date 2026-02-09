@@ -6,6 +6,10 @@ const presenceMinutes = config.metrics?.presenceMinutes || 5;
 const activityWindowHours = config.metrics?.activityWindowHours || 24;
 const broadcastIntervalSeconds = config.metrics?.broadcastIntervalSeconds || 15;
 const dialingWindowMinutes = config.metrics?.dialingWindowMinutes || 5;
+const activityTimezone = config.metrics?.activityTimezone || 'Asia/Karachi';
+const activityAnchorHour = Number.isFinite(config.metrics?.activityAnchorHour)
+  ? config.metrics.activityAnchorHour
+  : 21;
 
 const fetchDashboardMetrics = async () => {
   const presenceQuery = await db.query(
@@ -68,19 +72,65 @@ const fetchDashboardMetrics = async () => {
 
   const activityQuery = await db.query(
     `
+      WITH local_now AS (
+        SELECT (NOW() AT TIME ZONE $1) AS local_now
+      ),
+      anchor AS (
+        SELECT (date_trunc('day', local_now) + make_interval(hours => $2)) AS anchor_local
+        FROM local_now
+      ),
+      window_start AS (
+        SELECT CASE
+          WHEN local_now < anchor_local THEN anchor_local - INTERVAL '1 day'
+          ELSE anchor_local
+        END AS window_start_local
+        FROM local_now, anchor
+      ),
+      window_bounds AS (
+        SELECT
+          ((window_start_local AT TIME ZONE $1) AT TIME ZONE 'UTC') AS window_start_utc,
+          ((window_start_local AT TIME ZONE $1) AT TIME ZONE 'UTC') + INTERVAL '1 day' AS window_end_utc
+        FROM window_start
+      )
       SELECT
         COALESCE(COUNT(*), 0)::int AS total_calls,
-        COALESCE(SUM(CASE WHEN sip_status = 200 THEN 1 ELSE 0 END), 0)::int AS ok_200,
-        COALESCE(SUM(CASE WHEN sip_status = 503 THEN 1 ELSE 0 END), 0)::int AS err_503,
         COALESCE(SUM(
           CASE
-            WHEN sip_status IS NOT NULL AND sip_status NOT IN (200, 503) THEN 1
+            WHEN sip_status = 200 OR status = 'completed' THEN 1
             ELSE 0
           END
-        ), 0)::int AS other_calls
-      FROM call_logs
-      WHERE created_at >= NOW() - INTERVAL '${activityWindowHours} hours'
-    `
+        ), 0)::int AS ok_200,
+        COALESCE(SUM(
+          CASE
+            WHEN sip_status = 503
+              OR sip_reason ILIKE '%no such channel%'
+              OR hangup_cause ILIKE '%no such channel%'
+            THEN 1 ELSE 0
+          END
+        ), 0)::int AS err_503,
+        GREATEST(
+          COALESCE(COUNT(*), 0)
+          - COALESCE(SUM(
+              CASE
+                WHEN sip_status = 200 OR status = 'completed' THEN 1
+                ELSE 0
+              END
+            ), 0)
+          - COALESCE(SUM(
+              CASE
+                WHEN sip_status = 503
+                  OR sip_reason ILIKE '%no such channel%'
+                  OR hangup_cause ILIKE '%no such channel%'
+                THEN 1 ELSE 0
+              END
+            ), 0),
+          0
+        )::int AS other_calls
+      FROM call_logs, window_bounds
+      WHERE COALESCE(created_at, ended_at, connected_at) >= window_bounds.window_start_utc
+        AND COALESCE(created_at, ended_at, connected_at) < window_bounds.window_end_utc
+    `,
+    [activityTimezone, activityAnchorHour]
   );
 
   const activity = activityQuery.rows[0] || {};
@@ -100,7 +150,9 @@ const fetchDashboardMetrics = async () => {
       ok200: activity.ok_200 || 0,
       err503: activity.err_503 || 0,
       other: activity.other_calls || 0,
-      windowHours: activityWindowHours
+      windowHours: activityWindowHours,
+      windowTimezone: activityTimezone,
+      windowAnchorHour: activityAnchorHour
     }
   };
 };

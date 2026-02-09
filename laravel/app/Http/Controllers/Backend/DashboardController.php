@@ -102,24 +102,44 @@ class DashboardController extends Controller
 
     private function getUserActivityStats(int $userId = 0): array
     {
-        $windowEnd = Carbon::now();
-        $windowStart = $windowEnd->copy()->subHours(24);
+        $timezone = (string) config('app.timezone', 'UTC');
+        $now = Carbon::now($timezone);
+        $anchorHour = 21;
+        $anchor = $now->copy()->setTime($anchorHour, 0, 0);
+        $windowStart = $now->lt($anchor) ? $anchor->subDay() : $anchor;
+        $windowEnd = $windowStart->copy()->addDay();
+        $dbWindowStart = $windowStart->copy()->setTimezone('UTC');
+        $dbWindowEnd = $windowEnd->copy()->setTimezone('UTC');
 
         $query = DB::table('call_logs')
-            ->whereBetween('created_at', [$windowStart, $windowEnd]);
+            ->whereBetween(DB::raw('COALESCE(created_at, ended_at, connected_at)'), [$dbWindowStart, $dbWindowEnd]);
         if ($userId > 0) {
             $query->where('user_id', $userId);
         }
 
         $stats = $query->selectRaw("
                 COUNT(*) AS total_calls,
-                SUM(CASE WHEN sip_status = 200 THEN 1 ELSE 0 END) AS ok_200,
-                SUM(CASE WHEN sip_status = 503 THEN 1 ELSE 0 END) AS error_503,
+                SUM(CASE WHEN sip_status = 200 OR status = 'completed' THEN 1 ELSE 0 END) AS ok_200,
                 SUM(
                     CASE
-                        WHEN sip_status IS NOT NULL AND sip_status NOT IN (200, 503)
+                        WHEN sip_status = 503
+                          OR sip_reason ILIKE '%no such channel%'
+                          OR hangup_cause ILIKE '%no such channel%'
                         THEN 1 ELSE 0
                     END
+                ) AS error_503,
+                GREATEST(
+                    COUNT(*)
+                    - SUM(CASE WHEN sip_status = 200 OR status = 'completed' THEN 1 ELSE 0 END)
+                    - SUM(
+                        CASE
+                            WHEN sip_status = 503
+                              OR sip_reason ILIKE '%no such channel%'
+                              OR hangup_cause ILIKE '%no such channel%'
+                            THEN 1 ELSE 0
+                        END
+                    ),
+                    0
                 ) AS other_calls
             ")
             ->first();
