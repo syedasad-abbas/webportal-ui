@@ -29,6 +29,7 @@
                         'class' => 'bg-white',
                         'url' => route('admin.users.index'),
                         'enable_full_div_click' => true,
+                        'value_attr' => 'total_users',
                     ])
                     {!! ld_apply_filters('dashboard_cards_after_users', '') !!}
                     @include('backend.pages.dashboard.partials.card', [
@@ -69,6 +70,7 @@
                         'class' => 'bg-white',
                         'url' => route('admin.users.active'),
                         'enable_full_div_click' => true,
+                        'value_attr' => 'active_users',
                     ])
                     @include('backend.pages.dashboard.partials.card', [
                         'icon' => 'bi bi-power',
@@ -78,6 +80,7 @@
                         'class' => 'bg-white',
                         'url' => route('admin.users.offline'),
                         'enable_full_div_click' => true,
+                        'value_attr' => 'offline_users',
                     ])
                     @include('backend.pages.dashboard.partials.card', [
                         'icon' => 'bi bi-telephone-outbound',
@@ -87,6 +90,7 @@
                         'class' => 'bg-white',
                         'url' => route('admin.calls.dialing'),
                         'enable_full_div_click' => true,
+                        'value_attr' => 'dialing_users',
                     ])
                     @include('backend.pages.dashboard.partials.card', [
                         'icon' => 'bi bi-telephone-inbound',
@@ -96,6 +100,7 @@
                         'class' => 'bg-white',
                         'url' => route('admin.calls.in_call'),
                         'enable_full_div_click' => true,
+                        'value_attr' => 'in_call_users',
                     ])
                 </div>
             </div>
@@ -134,4 +139,54 @@
 
 @push('scripts')
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" integrity="sha384-wsgO4YJ9h5tqcfp/J2vh7vHwlGHNirMRHkRkNvztNFVQVw1Gc7YCOUMIqFZp2kOz" crossorigin="anonymous"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof io === 'undefined') {
+                return;
+            }
+
+            const wsUrl = @json(rtrim(config('services.backend.ws_url'), '/'));
+            let socket;
+            try {
+                socket = io(wsUrl, {
+                    transports: ['websocket', 'polling']
+                });
+            } catch (error) {
+                console.warn('Unable to establish dashboard socket connection', error);
+                return;
+            }
+
+            const formatNumber = (value) => Number(value || 0).toLocaleString();
+            const setMetric = (name, value) => {
+                const el = document.querySelector(`[data-dashboard-metric="${name}"]`);
+                if (el) {
+                    el.textContent = formatNumber(value);
+                }
+            };
+
+            socket.on('dashboard.metrics', (payload) => {
+                if (!payload) {
+                    return;
+                }
+
+                if (payload.presence) {
+                    setMetric('total_users', payload.presence.total);
+                    setMetric('active_users', payload.presence.active);
+                    setMetric('offline_users', payload.presence.offline);
+                }
+
+                setMetric('dialing_users', payload.dialingUsers ?? 0);
+                setMetric('in_call_users', payload.inCallUsers ?? 0);
+
+                if (
+                    window.DashboardActivityChart &&
+                    window.DashboardActivityChart.selectedUser === 0 &&
+                    payload.activity
+                ) {
+                    window.DashboardActivityChart.update(payload.activity);
+                }
+            });
+        });
+    </script>
 @endpush

@@ -1,5 +1,6 @@
 @php
     $enable_full_div_click = $enable_full_div_click ?? true;
+    $value_attr = $value_attr ?? null;
 @endphp
 
 <div class="{{ $class ?? 'bg-white' }} dark:bg-slate-800 w-full h-[160px] rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden p-6 pb-0 {{ $enable_full_div_click ? 'cursor-pointer hover:shadow-lg transition-shadow duration-300' : '' }}"
@@ -32,7 +33,11 @@
             @endif
         </div>
 
-        <div class="text-[#090909] dark:text-gray-100 text-xl md:text-3xl font-medium">
+        <div class="text-[#090909] dark:text-gray-100 text-xl md:text-3xl font-medium"
+            @if(!empty($value_attr))
+                data-dashboard-metric="{{ $value_attr }}"
+            @endif
+        >
             {!! $value ?? 0 !!}
         </div>
     </div>

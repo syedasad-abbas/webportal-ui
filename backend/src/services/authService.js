@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const db = require('../db');
 const config = require('../config');
+const { scheduleMetricsBroadcast } = require('./metricsService');
 
 const normalizePermissions = (permissions) => {
   if (!permissions) {
@@ -49,6 +50,9 @@ const authenticate = async (email, password, role) => {
   if (!match) {
     throw new Error('Invalid credentials');
   }
+
+  await db.query('UPDATE users SET last_seen_at = NOW(), updated_at = NOW() WHERE id = $1', [user.id]);
+  scheduleMetricsBroadcast();
 
   const token = generateToken(user);
   return { token, user };

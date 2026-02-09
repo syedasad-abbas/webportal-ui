@@ -11,7 +11,6 @@ use App\Services\Charts\UserChartService;
 use App\Services\LanguageService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
@@ -120,17 +119,16 @@ class DashboardController extends Controller
 
     private function countActiveSessions(): int
     {
-        if (! Schema::hasTable('sessions')) {
-            return 0;
-        }
+        $presenceMinutes = (int) config(
+            'session.presence_window_minutes',
+            (int) config('session.lifetime', 120)
+        );
+        $presenceMinutes = $presenceMinutes > 0 ? $presenceMinutes : 5;
+        $threshold = Carbon::now()->subMinutes($presenceMinutes);
 
-        $lifetime = (int) config('session.lifetime', 120);
-        $threshold = Carbon::now()->subMinutes($lifetime)->getTimestamp();
-
-        return (int) DB::table('sessions')
-            ->whereNotNull('user_id')
-            ->where('last_activity', '>=', $threshold)
-            ->distinct('user_id')
-            ->count('user_id');
+        return (int) User::query()
+            ->whereNotNull('last_seen_at')
+            ->where('last_seen_at', '>=', $threshold)
+            ->count();
     }
 }

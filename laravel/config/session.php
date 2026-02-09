@@ -31,7 +31,11 @@ return [
     |
     */
 
-    'lifetime' => env('SESSION_LIFETIME', 120),
+'lifetime' => env('SESSION_LIFETIME', 120),
+
+'presence_window_minutes' => env('SESSION_PRESENCE_MINUTES', 5),
+
+'last_seen_update_seconds' => env('SESSION_LAST_SEEN_UPDATE_SECONDS', 60),
 
     'expire_on_close' => false,
 

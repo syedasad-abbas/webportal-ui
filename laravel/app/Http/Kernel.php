@@ -35,6 +35,7 @@ class Kernel extends HttpKernel
             \App\Http\Middleware\SetlocaleMiddleware::class,
             // \Illuminate\Session\Middleware\AuthenticateSession::class,
             \Illuminate\View\Middleware\ShareErrorsFromSession::class,
+            \App\Http\Middleware\UpdateLastSeen::class,
             \App\Http\Middleware\VerifyCsrfToken::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
             \App\Http\Middleware\ModuleTranslationMiddleware::class,
@@ -65,8 +66,8 @@ class Kernel extends HttpKernel
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         'admin.auth' => \App\Http\Middleware\AdminAuth::class,
-        'user.auth'  => \App\Http\Middleware\UserAuth::class,         
-        
+        'user.auth'  => \App\Http\Middleware\UserAuth::class,
+        'last_seen' => \App\Http\Middleware\UpdateLastSeen::class,
     ];
 
 }

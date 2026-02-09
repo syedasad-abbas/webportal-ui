@@ -1,4 +1,5 @@
 const db = require('../db');
+const { scheduleMetricsBroadcast } = require('./metricsService');
 
 const LEAD_COMPLETION_STATUSES = ['called', 'failed'];
 
@@ -100,6 +101,7 @@ const startRun = async ({ userId, campaignId, agent }) => {
     const nextLead = await reserveNextLead(client, { campaignId, agent });
 
     await client.query('COMMIT');
+    scheduleMetricsBroadcast();
     return nextLead;
   } catch (error) {
     await client.query('ROLLBACK');
@@ -140,6 +142,7 @@ const stopRun = async ({ userId }) => {
     );
 
     await client.query('COMMIT');
+    scheduleMetricsBroadcast();
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;
@@ -181,6 +184,7 @@ const nextLead = async ({ userId, lastLeadId, lastLeadStatus }) => {
     }
 
     await client.query('COMMIT');
+    scheduleMetricsBroadcast();
     return nextLeadRow;
   } catch (error) {
     await client.query('ROLLBACK');

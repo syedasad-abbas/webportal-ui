@@ -82,6 +82,10 @@ module.exports = {
   internalTokens: {
     backendSync: optionalEnv(process.env.BACKEND_INTERNAL_TOKEN, null)
   },
+  metrics: {
+    presenceMinutes: toInt(process.env.PRESENCE_WINDOW_MINUTES, 5) || 5,
+    activityWindowHours: toInt(process.env.ACTIVITY_WINDOW_HOURS, 24) || 24
+  },
   frontend: {
     allowedRoles: parseCsvList(process.env.FRONTEND_ALLOWED_ROLES, [])
   },

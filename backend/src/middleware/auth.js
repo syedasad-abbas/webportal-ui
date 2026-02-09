@@ -1,5 +1,8 @@
 const jwt = require('jsonwebtoken');
 const config = require('../config');
+const db = require('../db');
+const { scheduleMetricsBroadcast } = require('../services/metricsService');
+const db = require('../db');
 
 const permissionAliases = {
   'dialer.create_call': ['dial']
@@ -12,6 +15,21 @@ const hasPermission = (granted, permission) => {
   const aliases = permissionAliases[permission] || [];
   return aliases.some((alias) => granted.includes(alias));
 };
+
+const touchLastSeen = (userId) =>
+  db
+    .query('UPDATE users SET last_seen_at = NOW(), updated_at = NOW() WHERE id = $1', [userId])
+    .catch((err) => {
+      console.warn('[auth] failed to update last seen', { userId, error: err.message });
+    });
+
+const touchLastSeen = (userId) =>
+  db
+    .query('UPDATE users SET last_seen_at = NOW(), updated_at = NOW() WHERE id = $1', [userId])
+    .then(() => scheduleMetricsBroadcast())
+    .catch((err) => {
+      console.warn('[auth] failed to update last seen', { userId, error: err.message });
+    });
 
 const authenticate = (roles = []) => {
   const allowedRoles = Array.isArray(roles) ? roles : [roles];
@@ -28,6 +46,7 @@ const authenticate = (roles = []) => {
         return res.status(403).json({ message: 'Forbidden' });
       }
       req.user = decoded;
+      touchLastSeen(decoded.id);
       return next();
     } catch (err) {
       return res.status(401).json({ message: 'Invalid token' });

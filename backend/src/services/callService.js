@@ -3,6 +3,7 @@ const db = require('../db');
 const freeswitch = require('../lib/freeswitch');
 const { normalizeGatewayName } = require('../lib/carrierUtils');
 const config = require('../config');
+const { scheduleMetricsBroadcast } = require('./metricsService');
 
 const normalizeDestination = (destination) => {
   if (!destination) {
@@ -46,6 +47,7 @@ const logCall = async ({ userId, destination, callerId, status, recordingPath, c
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())`,
     [userId, destination, callerId, status, recordingPath, callUuid, connectedAt || null, endedAt || null]
   );
+  scheduleMetricsBroadcast();
 };
 
 const selectCarrierPrefix = (prefixes) => {

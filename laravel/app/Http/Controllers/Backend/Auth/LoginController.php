@@ -75,6 +75,8 @@ class LoginController extends Controller
             return back()->withErrors(['email' => 'Your account is disabled.']);
         }
 
+        $user->forceFill(['last_seen_at' => now()])->save();
+
         session()->flash('success', 'Successfully Logged in!');
         return redirect()->route('admin.dashboard');
     }
@@ -91,6 +93,8 @@ class LoginController extends Controller
             return back()->withErrors(['email' => 'Your account is disabled.']);
         }
 
+        $user->forceFill(['last_seen_at' => now()])->save();
+
         session()->flash('success', 'Successfully Logged in!');
         return redirect()->route('admin.dashboard');
     }
@@ -106,6 +110,11 @@ class LoginController extends Controller
      */
     public function logout()
     {
+        $user = Auth::guard('web')->user();
+        if ($user) {
+            $user->forceFill(['last_seen_at' => null])->save();
+        }
+
         Auth::guard('web')->logout();
 
         return redirect()->route('user.login');
