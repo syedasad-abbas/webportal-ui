@@ -1,0 +1,30 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "webphone.fullname" . }}-ingress
+  {{- if .Values.ingress.tls.enabled }}
+  annotations:
+    # If you use cert-manager, uncomment and set your issuer:
+    # cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.className | quote }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.host | quote }}
+      secretName: {{ .Values.ingress.tls.secretName | quote }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.host | quote }}
+      http:
+        paths:
+          - path: {{ .Values.ingress.paths.laravel | quote }}
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "webphone.fullname" . }}-laravel
+                port:
+                  number: {{ .Values.service.laravel.port }}
+{{- end }}

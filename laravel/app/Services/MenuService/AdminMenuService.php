@@ -182,7 +182,7 @@ $this->addMenuItem([
 
 $this->addMenuItem([
     'label' => __('Campaigns'),
-    'icon' => 'phone.svg',
+    'icon' => 'megaphone.svg',
     'id' => 'campaigns',
     'route' => route('admin.campaigns.index'),
     'active' => Route::is('admin.campaigns.*'),

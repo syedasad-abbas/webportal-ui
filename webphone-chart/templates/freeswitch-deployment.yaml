@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "webphone.fullname" . }}-freeswitch
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ include "webphone.fullname" . }}
+      component: freeswitch
+  template:
+    metadata:
+      labels:
+        app: {{ include "webphone.fullname" . }}
+        component: freeswitch
+    spec:
+      hostNetwork: {{ .Values.freeswitch.hostNetwork }}
+      {{- if .Values.freeswitch.hostNetwork }}
+      dnsPolicy: ClusterFirstWithHostNet
+      {{- end }}
+      nodeSelector: {{ toJson .Values.freeswitch.nodeSelector }}
+      tolerations: {{ toJson .Values.freeswitch.tolerations }}
+      affinity: {{ toJson .Values.freeswitch.affinity }}
+      containers:
+        - name: freeswitch
+          image: "{{ .Values.image.freeswitch.repository }}:{{ .Values.image.freeswitch.tag }}"
+          imagePullPolicy: {{ .Values.image.freeswitch.pullPolicy }}
+          env:
+            - name: EVENT_SOCKET_PASSWORD
+              value: {{ .Values.freeswitch.eventSocketPassword | quote }}
+          volumeMounts:
+            - name: recordings
+              mountPath: /var/recordings
+            - name: gateways
+              mountPath: /etc/freeswitch/gateways
+      volumes:
+        - name: gateways
+          persistentVolumeClaim:
+            claimName: {{ include "webphone.fullname" . }}-freeswitch-gateways-pvc
+        - name: recordings
+          {{- if eq .Values.recordings.mode "hostPath" }}
+          hostPath:
+            path: {{ .Values.recordings.hostPath | quote }}
+            type: DirectoryOrCreate
+          {{- else }}
+          persistentVolumeClaim:
+            claimName: {{ include "webphone.fullname" . }}-recordings-pvc
+          {{- end }}

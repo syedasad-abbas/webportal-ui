@@ -11,7 +11,7 @@
                 </p>
             </div>
             <form method="GET" class="flex items-center gap-2">
-                @foreach(request()->except('user_activity_user') as $field => $value)
+                @foreach(request()->except(['user_activity_user', 'user_activity_period']) as $field => $value)
                     <input type="hidden" name="{{ $field }}" value="{{ $value }}">
                 @endforeach
                 <label for="user-activity-filter" class="text-sm font-medium text-gray-600 dark:text-gray-300">
@@ -29,6 +29,20 @@
                             {{ $option['name'] }}
                         </option>
                     @endforeach
+                </select>
+                <label for="user-activity-period" class="text-sm font-medium text-gray-600 dark:text-gray-300">
+                    {{ __('Period') }}
+                </label>
+                <select
+                    id="user-activity-period"
+                    name="user_activity_period"
+                    class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                    onchange="this.form.submit()"
+                >
+                    <option value="today" @selected(($user_activity_period ?? 'today') === 'today')>{{ __('Today (9 PM - 9 PM)') }}</option>
+                    <option value="last_7_days" @selected(($user_activity_period ?? 'today') === 'last_7_days')>{{ __('Last 7 days') }}</option>
+                    <option value="last_30_days" @selected(($user_activity_period ?? 'today') === 'last_30_days')>{{ __('Last 30 days') }}</option>
+                    <option value="this_month" @selected(($user_activity_period ?? 'today') === 'this_month')>{{ __('This month') }}</option>
                 </select>
             </form>
         </div>
@@ -159,6 +173,7 @@
 
         window.DashboardActivityChart = {
             selectedUser: Number(@json($user_activity_selected ?? 0)),
+            selectedPeriod: @json($user_activity_period ?? 'today'),
             update(activity) {
                 updateActivityCards(activity);
                 chart.updateOptions(createChartOptions(activity), false, true);

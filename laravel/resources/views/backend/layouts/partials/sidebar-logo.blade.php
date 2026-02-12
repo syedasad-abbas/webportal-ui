@@ -31,12 +31,15 @@
         class="justify-center flex items-center gap-2 sidebar-header py-5 px-5 h-[100px] transition-all duration-300"
     >
         <a href="{{ route('admin.dashboard') }}">
-            <span class="logo transition-opacity duration-300" :class="sidebarToggle && !isHovered ? 'hidden opacity-0' : 'opacity-100'">
+            <span class="logo flex items-center gap-2 transition-opacity duration-300" :class="sidebarToggle && !isHovered ? 'hidden opacity-0' : 'opacity-100'">
                 <img
                     class="dark:hidden max-h-[80px]"
                     src="{{ config('settings.site_logo_lite') ?? asset('images/logo/lara-dashboard.png') }}"
                     alt="{{ config('app.name') }}"
                 />
+                <span class="dark:hidden text-lg font-semibold text-gray-900 whitespace-nowrap">
+                    {{ config('app.name') }}
+                </span>
                 <img
                     class="hidden dark:block max-h-[80px]"
                     src="{{ config('settings.site_logo_dark') ?? '/images/logo/lara-dashboard-dark.png' }}"

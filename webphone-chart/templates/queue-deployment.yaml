@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "webphone.fullname" . }}-queue
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ include "webphone.fullname" . }}
+      component: queue
+  template:
+    metadata:
+      labels:
+        app: {{ include "webphone.fullname" . }}
+        component: queue
+    spec:
+      containers:
+        - name: queue
+          image: "{{ .Values.image.laravel.repository }}:{{ .Values.image.laravel.tag }}"
+          imagePullPolicy: {{ .Values.image.laravel.pullPolicy }}
+          command: {{ toJson .Values.queue.command }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "webphone.fullname" . }}-laravel-config
+          volumeMounts:
+            - name: laravel-storage
+              mountPath: /var/www/html/storage
+      volumes:
+        - name: laravel-storage
+          persistentVolumeClaim:
+            claimName: {{ include "webphone.fullname" . }}-laravel-storage-pvc

@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "webphone.fullname" . }}-backend
+spec:
+  type: {{ .Values.service.backend.type }}
+  selector:
+    app: {{ include "webphone.fullname" . }}
+    component: backend
+  ports:
+    - name: http
+      port: {{ .Values.service.backend.port }}
+      targetPort: {{ .Values.service.backend.port }}

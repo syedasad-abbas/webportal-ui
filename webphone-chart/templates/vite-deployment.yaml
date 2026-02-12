@@ -1,0 +1,32 @@
+{{- if .Values.vite.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "webphone.fullname" . }}-vite
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ include "webphone.fullname" . }}
+      component: vite
+  template:
+    metadata:
+      labels:
+        app: {{ include "webphone.fullname" . }}
+        component: vite
+    spec:
+      containers:
+        - name: vite
+          image: "{{ .Values.image.vite.repository }}:{{ .Values.image.vite.tag }}"
+          imagePullPolicy: {{ .Values.image.vite.pullPolicy }}
+          workingDir: /var/www/html
+          command: {{ toJson .Values.vite.command }}
+          ports:
+            - containerPort: {{ .Values.service.vite.port }}
+              name: http
+          env:
+            - name: VITE_DEV_SERVER_URL
+              value: {{ .Values.vite.env.VITE_DEV_SERVER_URL | quote }}
+            - name: VITE_DEV_SERVER_PORT
+              value: {{ .Values.vite.env.VITE_DEV_SERVER_PORT | quote }}
+{{- end }}

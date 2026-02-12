@@ -59,7 +59,12 @@ class DashboardController extends Controller
             ->distinct('user_id')
             ->count('user_id');
         $userActivityUser = (int) request()->get('user_activity_user', 0);
-        $userActivityStats = $this->getUserActivityStats($userActivityUser);
+        $userActivityPeriod = (string) request()->get('user_activity_period', 'today');
+        $allowedUserActivityPeriods = ['today', 'last_7_days', 'last_30_days', 'this_month'];
+        if (!in_array($userActivityPeriod, $allowedUserActivityPeriods, true)) {
+            $userActivityPeriod = 'today';
+        }
+        $userActivityStats = $this->getUserActivityStats($userActivityUser, $userActivityPeriod);
         $userOptions = User::orderBy('external_name')
             ->get(['id', 'external_name'])
             ->map(fn ($user) => [
@@ -77,6 +82,7 @@ class DashboardController extends Controller
                 'in_call_users' => number_format($inCallUsers),
                 'user_activity_stats' => $userActivityStats,
                 'user_activity_selected' => $userActivityUser,
+                'user_activity_period' => $userActivityPeriod,
                 'user_options' => $userOptions,
                 'total_roles' => number_format(Role::count()),
                 'total_permissions' => number_format(Permission::count()),
@@ -100,14 +106,35 @@ class DashboardController extends Controller
         );
     }
 
-    private function getUserActivityStats(int $userId = 0): array
+    private function getUserActivityStats(int $userId = 0, string $period = 'today'): array
     {
         $timezone = (string) config('app.timezone', 'UTC');
         $now = Carbon::now($timezone);
         $anchorHour = 21;
         $anchor = $now->copy()->setTime($anchorHour, 0, 0);
-        $windowStart = $now->lt($anchor) ? $anchor->subDay() : $anchor;
-        $windowEnd = $windowStart->copy()->addDay();
+        $todayWindowStart = $now->lt($anchor) ? $anchor->subDay() : $anchor;
+        $todayWindowEnd = $todayWindowStart->copy()->addDay();
+
+        switch ($period) {
+            case 'last_7_days':
+                $windowEnd = $todayWindowEnd->copy();
+                $windowStart = $windowEnd->copy()->subDays(7);
+                break;
+            case 'last_30_days':
+                $windowEnd = $todayWindowEnd->copy();
+                $windowStart = $windowEnd->copy()->subDays(30);
+                break;
+            case 'this_month':
+                $windowStart = $now->copy()->startOfMonth();
+                $windowEnd = $now->copy();
+                break;
+            case 'today':
+            default:
+                $windowStart = $todayWindowStart;
+                $windowEnd = $todayWindowEnd;
+                break;
+        }
+
         $dbWindowStart = $windowStart->copy()->setTimezone('UTC');
         $dbWindowEnd = $windowEnd->copy()->setTimezone('UTC');
 
@@ -149,6 +176,7 @@ class DashboardController extends Controller
             'ok_200' => (int) ($stats->ok_200 ?? 0),
             'err_503' => (int) ($stats->error_503 ?? 0),
             'other' => (int) ($stats->other_calls ?? 0),
+            'period' => $period,
             'window' => [
                 'start' => $windowStart,
                 'end' => $windowEnd

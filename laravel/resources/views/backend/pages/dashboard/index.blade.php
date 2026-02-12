@@ -182,6 +182,7 @@
                 if (
                     window.DashboardActivityChart &&
                     window.DashboardActivityChart.selectedUser === 0 &&
+                    window.DashboardActivityChart.selectedPeriod === 'today' &&
                     payload.activity
                 ) {
                     window.DashboardActivityChart.update(payload.activity);
