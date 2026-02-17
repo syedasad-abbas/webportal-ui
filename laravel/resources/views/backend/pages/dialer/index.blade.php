@@ -221,6 +221,8 @@ document.addEventListener('DOMContentLoaded', function () {
     let browserAudioActive = false;
     let webRtcClient = null;
     let browserAudioConnecting = false;
+    let browserAudioRetryTimer = null;
+    let browserAudioRetryCount = 0;
     let hangupInProgress = false;
     let isMuted = false;
     let callControlsEnabled = false;
@@ -388,9 +390,15 @@ document.addEventListener('DOMContentLoaded', function () {
         if (callTimerEl) callTimerEl.textContent = formatDuration(seconds);
     };
 
-    const startTimer = () => {
-        if (timerHandle) return;
-        callConnectedAt = callConnectedAt || Date.now();
+    const startTimer = (initialSeconds = 0) => {
+        const baseSeconds = Number.isFinite(Number(initialSeconds)) ? Math.max(0, Number(initialSeconds)) : 0;
+        if (timerHandle) {
+            if (!callConnectedAt && baseSeconds > 0) {
+                callConnectedAt = Date.now() - (baseSeconds * 1000);
+            }
+            return;
+        }
+        callConnectedAt = Date.now() - (baseSeconds * 1000);
         if (callTimerBadge) callTimerBadge.classList.remove('hidden');
         updateTimer();
         timerHandle = setInterval(updateTimer, 1000);
@@ -426,7 +434,23 @@ document.addEventListener('DOMContentLoaded', function () {
         updateActionButtons();
     };
 
-    const setStatus = (status, sipStatus = null, sipReason = null) => {
+    const isConnectedStatus = (normalized) => (
+        normalized === 'in_call' ||
+        normalized === 'incall' ||
+        normalized === 'in-call' ||
+        normalized === 'active' ||
+        normalized === 'answered' ||
+        normalized === 'connected' ||
+        normalized === 'bridged'
+    );
+
+    const isTerminalStatus = (normalized) => (
+        normalized === 'ended' ||
+        normalized === 'completed' ||
+        normalized === 'failed'
+    );
+
+    const setStatus = (status, sipStatus = null, sipReason = null, durationSeconds = 0) => {
         const normalized = (status || '').toLowerCase();
         const sipCode = sipStatus !== null && sipStatus !== undefined && !Number.isNaN(Number(sipStatus))
             ? Number(sipStatus)
@@ -437,8 +461,15 @@ document.addEventListener('DOMContentLoaded', function () {
             trying: 'Trying',
             ringing: 'Ringing',
             in_call: 'In Call',
+            incall: 'In Call',
+            'in-call': 'In Call',
+            active: 'In Call',
+            answered: 'In Call',
+            connected: 'In Call',
+            bridged: 'In Call',
             completed: 'Bye',
-            ended: 'Bye'
+            ended: 'Bye',
+            failed: 'Bye'
         };
 
         let label = labelMap[normalized] || 'Ready';
@@ -468,14 +499,14 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        if (normalized === 'in_call') {
-            startTimer();
+        if (isConnectedStatus(normalized)) {
+            startTimer(durationSeconds);
             if (conferenceName && webRtcClient && !browserAudioActive && !browserAudioConnecting && !hangupInProgress) {
                 connectBrowserAudio();
             }
         }
 
-        if (normalized === 'ended' || normalized === 'completed') {
+        if (isTerminalStatus(normalized)) {
             stopTimer();
             disconnectBrowserAudio();
             applyMuteState(false);
@@ -535,18 +566,40 @@ document.addEventListener('DOMContentLoaded', function () {
         try {
             await webRtcClient.joinConference(conferenceName);
             browserAudioActive = true;
+            browserAudioRetryCount = 0;
+            if (browserAudioRetryTimer) {
+                clearTimeout(browserAudioRetryTimer);
+                browserAudioRetryTimer = null;
+            }
             updateBrowserAudioStatus('Browser audio connected');
         } catch (error) {
             console.error('Failed to connect browser audio', error);
             browserAudioActive = false;
+            browserAudioRetryCount += 1;
+            const errorMessage = error && error.message ? String(error.message) : '';
             updateBrowserAudioStatus('Browser audio unavailable', true);
             showError('Unable to connect browser audio.');
+            if (errorMessage) {
+                console.warn(`[dialer] browser audio join failed: ${errorMessage}`);
+            }
+            if (callActive && conferenceName && browserAudioRetryCount < 4) {
+                const delayMs = 1200 * browserAudioRetryCount;
+                browserAudioRetryTimer = setTimeout(() => {
+                    browserAudioRetryTimer = null;
+                    connectBrowserAudio();
+                }, delayMs);
+            }
         } finally {
             browserAudioConnecting = false;
         }
     };
 
     const disconnectBrowserAudio = async () => {
+        if (browserAudioRetryTimer) {
+            clearTimeout(browserAudioRetryTimer);
+            browserAudioRetryTimer = null;
+        }
+        browserAudioRetryCount = 0;
         if (!webRtcClient) return;
         try {
             await webRtcClient.leaveConference();
@@ -616,14 +669,15 @@ document.addEventListener('DOMContentLoaded', function () {
             if (data.conferenceName) {
                 conferenceName = data.conferenceName;
             }
-            setStatus(data.status, data.sipStatus, data.sipReason);
+            setStatus(data.status, data.sipStatus, data.sipReason, data.durationSeconds);
 
-            if (data.status === 'in_call' || data.status === 'ringing' || data.status === 'queued') {
+            const currentStatus = (data.status || '').toLowerCase();
+            if (currentStatus === 'in_call' || currentStatus === 'ringing' || currentStatus === 'queued' || currentStatus === 'trying' || isConnectedStatus(currentStatus)) {
                 callActive = true;
                 setControls(true);
             }
 
-            if (data.status === 'ended' || data.status === 'completed') {
+            if (isTerminalStatus(currentStatus)) {
                 clearInterval(pollHandle);
                 callActive = false;
                 setControls(false);
@@ -691,7 +745,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     setControls(false);
                     refreshStartButton();
                     stopTimer();
-                    disconnectBrowserAudio();
+                    await disconnectBrowserAudio();
                     await applyMuteState(false);
                 } else if (isMuteAction) {
                     await applyMuteState(action === 'mute');
@@ -1015,7 +1069,7 @@ document.addEventListener('DOMContentLoaded', function () {
         alertBox.classList.add('hidden');
         alertBox.textContent = '';
 
-        disconnectBrowserAudio();
+        await disconnectBrowserAudio();
         conferenceName = null;
         callUuid = null;
 
@@ -1082,7 +1136,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 alertBox.classList.remove('hidden');
                 refreshStartButton();
                 setStatus('ended');
-                disconnectBrowserAudio();
+                await disconnectBrowserAudio();
             }
         } catch (error) {
             alertBox.textContent = 'Network error while queuing the call.';
@@ -1090,7 +1144,7 @@ document.addEventListener('DOMContentLoaded', function () {
             refreshStartButton();
             setStatus('ended');
             showError('Network error while queuing the call.');
-            disconnectBrowserAudio();
+            await disconnectBrowserAudio();
         }
     });
 

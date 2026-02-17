@@ -31,7 +31,8 @@ router.post('/', authenticate(), requirePermissions([dialPermission]), async (re
       conference: response.conference
     });
   } catch (err) {
-    return res.status(500).json({ message: err.message });
+    const statusCode = Number.isInteger(err?.statusCode) ? err.statusCode : 500;
+    return res.status(statusCode).json({ message: err.message });
   }
 });
 

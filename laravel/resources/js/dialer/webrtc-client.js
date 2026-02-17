@@ -28,6 +28,7 @@ class DialerWebRTC {
         this.currentConference = null;
         this.connected = false;
         this.ensurePromise = null;
+        this.sessionOp = Promise.resolve();
         this.pendingMute = false;
     }
 
@@ -48,11 +49,71 @@ class DialerWebRTC {
         this.connected = false;
     }
 
+    isClientConnected() {
+        if (!this.simpleUser) {
+            return false;
+        }
+        if (typeof this.simpleUser.isConnected === "function") {
+            return this.simpleUser.isConnected();
+        }
+        return this.connected;
+    }
+
+    withSessionOp(operation) {
+        const run = this.sessionOp.then(() => operation(), () => operation());
+        this.sessionOp = run.catch(() => {});
+        return run;
+    }
+
+    shouldRetryJoin(error) {
+        const message = (error?.message || "").toLowerCase();
+        return (
+            message.includes("peer connection undefined") ||
+            message.includes("per connection undefined") ||
+            message.includes("session already exists") ||
+            message.includes("not connected") ||
+            message.includes("disconnected")
+        );
+    }
+
+    async dialConference(conferenceName) {
+        const target = `sip:${conferenceName}@${this.domain}`;
+        let client = await this.ensureClient();
+        if (client.session) {
+            try {
+                await client.hangup();
+            } catch (error) {
+                console.error("Failed to hangup previous session", error);
+            }
+        }
+
+        try {
+            await client.call(target);
+            this.currentConference = conferenceName;
+            if (this.pendingMute) {
+                await this.applyMuteState(this.pendingMute);
+            }
+            return;
+        } catch (error) {
+            if (!this.shouldRetryJoin(error)) {
+                throw error;
+            }
+        }
+
+        await this.resetClient();
+        client = await this.ensureClient();
+        await client.call(target);
+        this.currentConference = conferenceName;
+        if (this.pendingMute) {
+            await this.applyMuteState(this.pendingMute);
+        }
+    }
+
     async ensureClient() {
         if (!this.isConfigured) {
             throw new Error("WebRTC configuration is incomplete");
         }
-        if (this.simpleUser && this.connected) {
+        if (this.simpleUser && this.isClientConnected()) {
             return this.simpleUser;
         }
         if (this.ensurePromise) {
@@ -80,11 +141,23 @@ class DialerWebRTC {
                                 }
                             }
                         }
+                    },
+                    delegate: {
+                        onServerConnect: () => {
+                            this.connected = true;
+                        },
+                        onServerDisconnect: () => {
+                            this.connected = false;
+                            this.currentConference = null;
+                        },
+                        onCallHangup: () => {
+                            this.currentConference = null;
+                        }
                     }
                 };
                 this.simpleUser = new SimpleUser(this.wsUrl, options);
             }
-            if (!this.connected) {
+            if (!this.isClientConnected()) {
                 await this.simpleUser.connect();
                 await this.simpleUser.register();
                 this.connected = true;
@@ -99,52 +172,31 @@ class DialerWebRTC {
     }
 
     async joinConference(conferenceName) {
-        if (!conferenceName) {
-            throw new Error("Conference name is required");
-        }
-        await this.resetClient();
-        let client = await this.ensureClient();
-        if (this.currentConference === conferenceName) {
-            return;
-        }
-        if (client.session) {
-            try {
-                await client.hangup();
-            } catch (error) {
-                console.error("Failed to hangup previous session", error);
+        return this.withSessionOp(async () => {
+            if (!conferenceName) {
+                throw new Error("Conference name is required");
             }
-        }
-        try {
-            await client.call(`sip:${conferenceName}@${this.domain}`);
-            this.currentConference = conferenceName;
-            if (this.pendingMute) {
-                await this.applyMuteState(this.pendingMute);
-            }
-        } catch (error) {
-            const message = error?.message || "";
-            if (/peer connection undefined|per connection undefined/i.test(message)) {
-                await this.resetClient();
-                client = await this.ensureClient();
-                await client.call(`sip:${conferenceName}@${this.domain}`);
-                this.currentConference = conferenceName;
+            if (this.currentConference === conferenceName && this.simpleUser?.session) {
                 return;
             }
-            throw error;
-        }
+            await this.dialConference(conferenceName);
+        });
     }
 
     async leaveConference() {
-        if (!this.simpleUser) {
-            return;
-        }
-        if (this.simpleUser.session) {
-            try {
-                await this.simpleUser.hangup();
-            } catch (error) {
-                console.error("Unable to hangup session", error);
+        return this.withSessionOp(async () => {
+            if (!this.simpleUser) {
+                return;
             }
-        }
-        this.currentConference = null;
+            if (this.simpleUser.session) {
+                try {
+                    await this.simpleUser.hangup();
+                } catch (error) {
+                    console.error("Unable to hangup session", error);
+                }
+            }
+            this.currentConference = null;
+        });
     }
 
     async disconnect() {

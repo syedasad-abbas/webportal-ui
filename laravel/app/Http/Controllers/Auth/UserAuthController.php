@@ -32,6 +32,9 @@ class UserAuthController extends Controller
         $request->session()->regenerate();
 
         try {
+            // Keep backend permissions/role in sync on every successful Laravel login.
+            $this->syncBackendUser($request);
+
             $response = Http::baseUrl(config('services.backend.url'))
                 ->post('/admin/login', [
                     'email' => $request->input('email'),

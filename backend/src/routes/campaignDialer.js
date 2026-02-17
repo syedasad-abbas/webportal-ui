@@ -1,6 +1,6 @@
 const express = require('express');
 const Joi = require('joi');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, requirePermissions } = require('../middleware/auth');
 const config = require('../config');
 const campaignDialerService = require('../services/campaignDialerService');
 
@@ -9,8 +9,9 @@ const dialerRoles = Array.isArray(config.frontend?.allowedRoles)
   ? config.frontend.allowedRoles
   : [];
 const authMiddleware = dialerRoles.length ? authenticate(dialerRoles) : authenticate();
+const dialPermission = config.permissions?.callDial || 'dial';
 
-router.post('/start', authMiddleware, async (req, res) => {
+router.post('/start', authMiddleware, requirePermissions([dialPermission]), async (req, res) => {
   const schema = Joi.object({
     campaignId: Joi.number().integer().positive().required(),
     agent: Joi.string().trim().min(1).max(100).required()
@@ -31,7 +32,7 @@ router.post('/start', authMiddleware, async (req, res) => {
   }
 });
 
-router.post('/stop', authMiddleware, async (req, res) => {
+router.post('/stop', authMiddleware, requirePermissions([dialPermission]), async (req, res) => {
   try {
     await campaignDialerService.stopRun({ userId: req.user.id });
     return res.json({ ok: true });
@@ -40,7 +41,7 @@ router.post('/stop', authMiddleware, async (req, res) => {
   }
 });
 
-router.get('/next', authMiddleware, async (req, res) => {
+router.get('/next', authMiddleware, requirePermissions([dialPermission]), async (req, res) => {
   const schema = Joi.object({
     lastLeadId: Joi.number().integer().positive().optional(),
     lastLeadStatus: Joi.string().valid('called', 'failed').optional()

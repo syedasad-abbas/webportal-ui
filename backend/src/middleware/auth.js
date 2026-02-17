@@ -4,6 +4,7 @@ const { scheduleMetricsBroadcast } = require('../services/metricsService');
 const db = require('../db');
 
 const permissionAliases = {
+  dial: ['dialer.create_call'],
   'dialer.create_call': ['dial']
 };
 

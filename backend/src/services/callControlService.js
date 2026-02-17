@@ -2,6 +2,31 @@ const db = require('../db');
 const freeswitch = require('../lib/freeswitch');
 const { scheduleMetricsBroadcast } = require('./metricsService');
 
+// FILE: backend/src/services/callControlService.js
+
+// 1) Add this helper near parseSipResponse (top of file)
+const toSipCode = (value) => {
+  if (value == null) {
+    return null;
+  }
+  const s = String(value).trim();
+  if (!s) {
+    return null;
+  }
+  if (/job-uuid/i.test(s)) {
+    return null;
+  }
+  if (/^-ERR/i.test(s)) {
+    return null;
+  }
+  const match = s.match(/\b([1-6]\d{2})\b/);
+  if (!match) {
+    return null;
+  }
+  const code = Number(match[1]);
+  return Number.isInteger(code) ? code : null;
+};
+
 const parseSipResponse = (value) => {
   if (!value || typeof value !== 'string') {
     return { code: null, reason: null };
@@ -68,6 +93,7 @@ const updateCallDiagnostics = async (callId, diagnostics) => {
   scheduleMetricsBroadcast();
 };
 
+// 2) Replace existing fetchCallDiagnostics with this
 const fetchCallDiagnostics = async (uuid) => {
   const [
     sipStatusRaw,
@@ -83,23 +109,29 @@ const fetchCallDiagnostics = async (uuid) => {
     freeswitch.getChannelVar(uuid, 'sip_last_response_text')
   ]);
 
-  let sipStatus = sipStatusRaw && !Number.isNaN(Number(sipStatusRaw))
-    ? Number(sipStatusRaw)
-    : null;
+  let sipStatus =
+    toSipCode(sipStatusRaw) ??
+    toSipCode(lastResponseText) ??
+    toSipCode(lastResponse);
+
   let sipReason = sipReasonRaw || null;
-  const progressDetails = parseSipResponse(lastResponseText || lastResponse);
-  if (!sipStatus && progressDetails.code) {
-    sipStatus = progressDetails.code;
+
+  // keep reason fallback, but only numeric for sipStatus
+  if (!sipReason) {
+    const progressDetails = parseSipResponse(lastResponseText || lastResponse);
+    sipReason = progressDetails.reason || null;
+    if (!sipStatus && progressDetails.code) {
+      sipStatus = toSipCode(progressDetails.code);
+    }
   }
-  if (!sipReason && progressDetails.reason) {
-    sipReason = progressDetails.reason;
-  }
+
   return {
-    sipStatus,
-    sipReason: sipReason || null,
+    sipStatus: sipStatus || null,
+    sipReason,
     hangupCause: hangupCauseRaw || null
   };
 };
+
 
 const getStatus = async ({ uuid, userId }) => {
   const call = await findCallByUuid(uuid, userId);
@@ -176,11 +208,27 @@ const unmute = async ({ uuid, userId }) => {
   await freeswitch.unmuteCall(uuid);
 };
 
+// 4) Update hangup() so it captures diagnostics in that path too
 const hangup = async ({ uuid, userId }) => {
   const call = await findCallByUuid(uuid, userId);
+
+  // capture any pre-hangup diagnostics
+  const pre = await fetchCallDiagnostics(uuid);
+  if (pre.sipStatus || pre.sipReason || pre.hangupCause) {
+    await updateCallDiagnostics(call.id, pre);
+  }
+
   await freeswitch.hangupCall(uuid);
+
+  // try once more after hangup for final cause/code
+  const post = await fetchCallDiagnostics(uuid);
+  if (post.sipStatus || post.sipReason || post.hangupCause) {
+    await updateCallDiagnostics(call.id, post);
+  }
+
   await updateCallCompletion(call.id, call.duration_seconds);
 };
+
 
 const sendDtmf = async ({ uuid, digits, userId }) => {
   if (!digits) {

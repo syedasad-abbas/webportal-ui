@@ -13,9 +13,13 @@ RUN apt-get update && apt-get install -y \
     curl \
     zip \
     libzip-dev \
+    libfreetype6-dev \
+    libjpeg62-turbo-dev \
+    libpng-dev \
     libpq-dev \
      cron \
-    && docker-php-ext-install zip pdo pdo_mysql  pdo_pgsql \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install zip pdo pdo_mysql pdo_pgsql gd \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Node.js (for building Vite assets inside the container)

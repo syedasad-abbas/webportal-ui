@@ -42,8 +42,11 @@ class LoginController extends Controller
         $this->middleware('guest')->except('logout');
     }
     protected function authenticated(Request $request, $user)
-{
-    try {
+    {
+        try {
+        // Keep backend permissions/role in sync on every successful Laravel login.
+        $this->syncBackendUser($request, $user);
+
         // Post to backend admin login using the same email/password user typed
         $response = Http::baseUrl(config('services.backend.url'))
             ->post('/admin/login', [
@@ -83,11 +86,11 @@ class LoginController extends Controller
             }
             $request->session()->forget(['admin_token', 'admin_user']);
         }
-    } catch (\Throwable $e) {
-        Log::error('Backend admin login exception: '.$e->getMessage());
-        $request->session()->forget(['admin_token', 'admin_user']);
+        } catch (\Throwable $e) {
+            Log::error('Backend admin login exception: '.$e->getMessage());
+            $request->session()->forget(['admin_token', 'admin_user']);
+        }
     }
-}
 
     protected function normalizeBackendRole(?string $role): ?string
     {

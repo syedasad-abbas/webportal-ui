@@ -5,6 +5,64 @@ const { normalizeGatewayName } = require('../lib/carrierUtils');
 const config = require('../config');
 const { scheduleMetricsBroadcast } = require('./metricsService');
 
+const clientError = (message, statusCode = 400) => {
+  const err = new Error(message);
+  err.statusCode = statusCode;
+  return err;
+};
+
+const toSipCode = (value) => {
+  if (value == null) return null;
+  const s = String(value).trim();
+  if (!s) return null;
+  if (/job-uuid/i.test(s)) return null;
+  if (/^-ERR/i.test(s)) return null;
+
+  const m = s.match(/\b([1-6]\d{2})\b/); // 100..699
+  if (!m) return null;
+
+  const code = Number(m[1]);
+  return Number.isInteger(code) ? code : null;
+};
+
+const fetchCallDiagnostics = async (uuid) => {
+  const [sipTermStatus, sipTermPhrase, hangupCause, sipLastResponse, sipLastResponseText] = await Promise.all([
+    freeswitch.getChannelVar(uuid, 'sip_term_status'),
+    freeswitch.getChannelVar(uuid, 'sip_term_phrase'),
+    freeswitch.getChannelVar(uuid, 'hangup_cause'),
+    freeswitch.getChannelVar(uuid, 'sip_last_response'),
+    freeswitch.getChannelVar(uuid, 'sip_last_response_text')
+  ]);
+
+  const sipStatus =
+    toSipCode(sipTermStatus) ??
+    toSipCode(sipLastResponseText) ??
+    toSipCode(sipLastResponse);
+
+  return {
+    sipStatus: sipStatus || null,
+    sipReason: sipTermPhrase || sipLastResponseText || null,
+    hangupCause: hangupCause || null
+  };
+};
+
+const persistDiagnosticsByUuid = async ({ callUuid, userId, diagnostics }) => {
+  if (!diagnostics?.sipStatus && !diagnostics?.sipReason && !diagnostics?.hangupCause) return;
+
+  await db.query(
+    `UPDATE call_logs
+       SET sip_status = COALESCE($1, sip_status),
+           sip_reason = COALESCE($2, sip_reason),
+           hangup_cause = COALESCE($3, hangup_cause),
+           updated_at = NOW()
+     WHERE call_uuid = $4
+       AND user_id = $5`,
+    [diagnostics.sipStatus, diagnostics.sipReason, diagnostics.hangupCause, callUuid, userId]
+  );
+  scheduleMetricsBroadcast();
+};
+
+
 const normalizeDestination = (destination) => {
   if (!destination) {
     return destination;
@@ -50,6 +108,7 @@ const logCall = async ({ userId, destination, callerId, status, recordingPath, c
   scheduleMetricsBroadcast();
 };
 
+
 const selectCarrierPrefix = (prefixes) => {
   if (!Array.isArray(prefixes) || prefixes.length === 0) {
     return null;
@@ -83,14 +142,25 @@ const monitorCallProgress = async ({ callUuid, conferenceName, userId }) => {
     scheduleMetricsBroadcast();
   };
 
-  const markEnded = async () => {
+  const markEnded = async (diagnostics = null) => {
     await db.query(
       `UPDATE call_logs
-       SET ended_at = COALESCE(ended_at, NOW()),
-           status = CASE WHEN connected_at IS NULL THEN 'ended' ELSE 'completed' END,
-           updated_at = NOW()
-       WHERE call_uuid = $1 AND user_id = $2 AND ended_at IS NULL`,
-      [callUuid, userId]
+         SET ended_at = COALESCE(ended_at, NOW()),
+             status = CASE WHEN connected_at IS NULL THEN 'ended' ELSE 'completed' END,
+             sip_status = COALESCE($3, sip_status),
+             sip_reason = COALESCE($4, sip_reason),
+             hangup_cause = COALESCE($5, hangup_cause),
+             updated_at = NOW()
+       WHERE call_uuid = $1
+         AND user_id = $2
+         AND ended_at IS NULL`,
+      [
+        callUuid,
+        userId,
+        diagnostics?.sipStatus ?? null,
+        diagnostics?.sipReason ?? null,
+        diagnostics?.hangupCause ?? null
+      ]
     );
     scheduleMetricsBroadcast();
   };
@@ -100,9 +170,12 @@ const monitorCallProgress = async ({ callUuid, conferenceName, userId }) => {
       return;
     }
 
+    const diagnostics = await fetchCallDiagnostics(callUuid);
+    await persistDiagnosticsByUuid({ callUuid, userId, diagnostics });
+
     const exists = await freeswitch.callExists(callUuid);
     if (!exists) {
-      await markEnded();
+      await markEnded(diagnostics);
       return;
     }
 
@@ -141,7 +214,7 @@ const originate = async ({ user, destination, callerId }) => {
   const conferenceName = `call-${originationUuid}`;
   const normalizedDestination = normalizeDestination(destination);
   if (!normalizedDestination) {
-    throw new Error('Only US/CA destinations (+1) are allowed');
+    throw clientError('Only US/CA destinations (+1) are allowed', 400);
   }
   const userResult = await db.query(
     `SELECT users.id,
@@ -301,6 +374,18 @@ const originate = async ({ user, destination, callerId }) => {
       callUuid: originationUuid,
       endedAt: new Date()
     });
+    const failCode = toSipCode(err.message);
+    if (failCode) {
+      await db.query(
+        `UPDATE call_logs
+           SET sip_status = COALESCE($1, sip_status),
+               sip_reason = COALESCE($2, sip_reason),
+               updated_at = NOW()
+         WHERE call_uuid = $3
+           AND user_id = $4`,
+        [failCode, err.message, originationUuid, user.id]
+      );
+    }
     throw err;
   }
 };
