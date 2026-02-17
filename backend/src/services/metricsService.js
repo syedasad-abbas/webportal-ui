@@ -96,36 +96,24 @@ const fetchDashboardMetrics = async () => {
         COALESCE(COUNT(*), 0)::int AS total_calls,
         COALESCE(SUM(
           CASE
-            WHEN sip_status = 200 OR status = 'completed' THEN 1
+            WHEN COALESCE(sip_status, 0) = 200 OR status = 'completed' THEN 1
             ELSE 0
           END
         ), 0)::int AS ok_200,
         COALESCE(SUM(
           CASE
-            WHEN sip_status = 503
-              OR sip_reason ILIKE '%no such channel%'
-              OR hangup_cause ILIKE '%no such channel%'
+            WHEN COALESCE(sip_status, 0) = 503
+              AND NOT (COALESCE(sip_status, 0) = 200 OR status = 'completed')
             THEN 1 ELSE 0
           END
         ), 0)::int AS err_503,
-        GREATEST(
-          COALESCE(COUNT(*), 0)
-          - COALESCE(SUM(
-              CASE
-                WHEN sip_status = 200 OR status = 'completed' THEN 1
-                ELSE 0
-              END
-            ), 0)
-          - COALESCE(SUM(
-              CASE
-                WHEN sip_status = 503
-                  OR sip_reason ILIKE '%no such channel%'
-                  OR hangup_cause ILIKE '%no such channel%'
-                THEN 1 ELSE 0
-              END
-            ), 0),
-          0
-        )::int AS other_calls
+        COALESCE(SUM(
+          CASE
+            WHEN NOT (COALESCE(sip_status, 0) = 200 OR status = 'completed')
+              AND COALESCE(sip_status, 0) <> 503
+            THEN 1 ELSE 0
+          END
+        ), 0)::int AS other_calls
       FROM call_logs, window_bounds
       WHERE COALESCE(created_at, ended_at, connected_at) >= window_bounds.window_start_utc
         AND COALESCE(created_at, ended_at, connected_at) < window_bounds.window_end_utc

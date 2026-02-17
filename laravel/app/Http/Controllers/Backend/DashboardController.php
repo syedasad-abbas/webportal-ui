@@ -146,27 +146,20 @@ class DashboardController extends Controller
 
         $stats = $query->selectRaw("
                 COUNT(*) AS total_calls,
-                SUM(CASE WHEN sip_status = 200 OR status = 'completed' THEN 1 ELSE 0 END) AS ok_200,
+                SUM(CASE WHEN COALESCE(sip_status, 0) = 200 OR status = 'completed' THEN 1 ELSE 0 END) AS ok_200,
                 SUM(
                     CASE
-                        WHEN sip_status = 503
-                          OR sip_reason ILIKE '%no such channel%'
-                          OR hangup_cause ILIKE '%no such channel%'
+                        WHEN COALESCE(sip_status, 0) = 503
+                          AND NOT (COALESCE(sip_status, 0) = 200 OR status = 'completed')
                         THEN 1 ELSE 0
                     END
                 ) AS error_503,
-                GREATEST(
-                    COUNT(*)
-                    - SUM(CASE WHEN sip_status = 200 OR status = 'completed' THEN 1 ELSE 0 END)
-                    - SUM(
-                        CASE
-                            WHEN sip_status = 503
-                              OR sip_reason ILIKE '%no such channel%'
-                              OR hangup_cause ILIKE '%no such channel%'
-                            THEN 1 ELSE 0
-                        END
-                    ),
-                    0
+                SUM(
+                    CASE
+                        WHEN NOT (COALESCE(sip_status, 0) = 200 OR status = 'completed')
+                          AND COALESCE(sip_status, 0) <> 503
+                        THEN 1 ELSE 0
+                    END
                 ) AS other_calls
             ")
             ->first();
