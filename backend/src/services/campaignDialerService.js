@@ -2,6 +2,7 @@ const db = require('../db');
 const { scheduleMetricsBroadcast } = require('./metricsService');
 
 const LEAD_COMPLETION_STATUSES = ['called', 'failed'];
+const LEAD_SCOPES = ['all', 'failed'];
 
 const validateCampaignReady = (campaignRow) => {
   if (!campaignRow) {
@@ -15,13 +16,13 @@ const validateCampaignReady = (campaignRow) => {
   }
 };
 
-const reserveNextLead = async (client, { campaignId, agent }) => {
+const reserveNextLead = async (client, { campaignId, agent, sourceStatus = 'new' }) => {
   const result = await client.query(
     `WITH candidate AS (
         SELECT id, phone
           FROM campaign_leads
          WHERE campaign_id = $1
-           AND status = 'new'
+           AND status = $3
          ORDER BY id
          FOR UPDATE SKIP LOCKED
          LIMIT 1
@@ -31,10 +32,10 @@ const reserveNextLead = async (client, { campaignId, agent }) => {
              agent = $2,
              reserved_at = NOW(),
              updated_at = NOW()
-        FROM candidate
+       FROM candidate
        WHERE leads.id = candidate.id
     RETURNING leads.id, leads.phone`,
-    [campaignId, agent]
+    [campaignId, agent, sourceStatus]
   );
 
   return result.rows[0] || null;
@@ -64,7 +65,9 @@ const finalizeLeadIfNeeded = async (client, { leadId, campaignId, agent, status 
   }
 };
 
-const startRun = async ({ userId, campaignId, agent }) => {
+const startRun = async ({ userId, campaignId, agent, leadScope = 'all' }) => {
+  const normalizedScope = LEAD_SCOPES.includes(leadScope) ? leadScope : 'all';
+  const sourceStatus = normalizedScope === 'failed' ? 'retry' : 'new';
   const client = await db.pool.connect();
   try {
     await client.query('BEGIN');
@@ -88,17 +91,37 @@ const startRun = async ({ userId, campaignId, agent }) => {
 
     await client.query(
       `UPDATE campaign_leads
-          SET status = 'new',
+          SET status = 'failed',
+              updated_at = NOW()
+        WHERE campaign_id = $1
+          AND status = 'retry'`,
+      [campaignId]
+    );
+
+    await client.query(
+      `UPDATE campaign_leads
+          SET status = $3,
               agent = NULL,
               reserved_at = NULL,
               updated_at = NOW()
         WHERE campaign_id = $1
           AND agent = $2
           AND status = 'in_progress'`,
-      [campaignId, agent]
+      [campaignId, agent, sourceStatus]
     );
 
-    const nextLead = await reserveNextLead(client, { campaignId, agent });
+    if (normalizedScope === 'failed') {
+      await client.query(
+        `UPDATE campaign_leads
+            SET status = 'retry',
+                updated_at = NOW()
+          WHERE campaign_id = $1
+            AND status = 'failed'`,
+        [campaignId]
+      );
+    }
+
+    const nextLead = await reserveNextLead(client, { campaignId, agent, sourceStatus });
 
     await client.query('COMMIT');
     scheduleMetricsBroadcast();
@@ -151,7 +174,9 @@ const stopRun = async ({ userId }) => {
   }
 };
 
-const nextLead = async ({ userId, lastLeadId, lastLeadStatus }) => {
+const nextLead = async ({ userId, lastLeadId, lastLeadStatus, leadScope = 'all' }) => {
+  const normalizedScope = LEAD_SCOPES.includes(leadScope) ? leadScope : 'all';
+  const sourceStatus = normalizedScope === 'failed' ? 'retry' : 'new';
   const client = await db.pool.connect();
   try {
     await client.query('BEGIN');
@@ -176,7 +201,8 @@ const nextLead = async ({ userId, lastLeadId, lastLeadStatus }) => {
 
     const nextLeadRow = await reserveNextLead(client, {
       campaignId: run.campaign_id,
-      agent: run.agent
+      agent: run.agent,
+      sourceStatus
     });
 
     if (!nextLeadRow) {

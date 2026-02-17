@@ -68,9 +68,17 @@
                     <button type="button" id="btnStartCampaign" class="btn-primary">
                     {{ __('Start campaign') }}
                     </button>
+                    <button type="button" id="btnRestartFailedCampaign" class="btn-default">
+                    {{ __('Restart Failed Campaign') }}
+                    </button>
                     <button type="button" id="btnStopCampaign" class="btn-danger">
                     {{ __('Stop campaign') }}
                     </button>
+                </div>
+                <div class="mt-2">
+                    <span id="campaignModeBadge" class="inline-flex items-center rounded-full border border-gray-300 bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">
+                        {{ __('Mode: All Leads') }}
+                    </span>
                 </div>
                 </div>
                 @endcan
@@ -868,9 +876,12 @@ document.addEventListener('DOMContentLoaded', function () {
     const campaignSelect = document.getElementById('campaign_id');
     const agentInput = document.getElementById('agent_name');
     const btnStartCampaign = document.getElementById('btnStartCampaign');
+    const btnRestartFailedCampaign = document.getElementById('btnRestartFailedCampaign');
     const btnStopCampaign = document.getElementById('btnStopCampaign');
+    const campaignModeBadge = document.getElementById('campaignModeBadge');
     const campaignRoutes = {
         start: '{{ route('admin.dialer.campaign.start') }}',
+        restartFailed: '{{ route('admin.dialer.campaign.restart_failed') }}',
         stop: '{{ route('admin.dialer.campaign.stop') }}',
         next: '{{ route('admin.dialer.campaign.next') }}',
     };
@@ -879,7 +890,32 @@ document.addEventListener('DOMContentLoaded', function () {
         running: false,
         currentLeadId: null,
         fetchingNext: false,
+        leadScope: 'all',
     };
+
+    const updateCampaignModeBadge = () => {
+        if (!campaignModeBadge) return;
+        const failedOnly = campaignState.leadScope === 'failed';
+        campaignModeBadge.textContent = failedOnly ? 'Mode: Failed Only' : 'Mode: All Leads';
+        campaignModeBadge.classList.remove(
+            'border-gray-300','bg-gray-100','text-gray-700',
+            'dark:border-gray-700','dark:bg-gray-800','dark:text-gray-200',
+            'border-amber-300','bg-amber-100','text-amber-800',
+            'dark:border-amber-700','dark:bg-amber-900/40','dark:text-amber-200'
+        );
+        if (failedOnly) {
+            campaignModeBadge.classList.add(
+                'border-amber-300','bg-amber-100','text-amber-800',
+                'dark:border-amber-700','dark:bg-amber-900/40','dark:text-amber-200'
+            );
+        } else {
+            campaignModeBadge.classList.add(
+                'border-gray-300','bg-gray-100','text-gray-700',
+                'dark:border-gray-700','dark:bg-gray-800','dark:text-gray-200'
+            );
+        }
+    };
+    updateCampaignModeBadge();
 
     const campaignAlert = (message = '') => {
         if (!alertBox) return;
@@ -940,6 +976,8 @@ document.addEventListener('DOMContentLoaded', function () {
             campaignAlert('Campaign started but no leads were returned.');
             campaignState.running = false;
             campaignState.currentLeadId = null;
+            campaignState.leadScope = 'all';
+            updateCampaignModeBadge();
             unlockManualDial();
             return;
         }
@@ -962,7 +1000,8 @@ document.addEventListener('DOMContentLoaded', function () {
             const data = await campaignRequest(campaignRoutes.next, {
                 params: {
                     last_lead_id: lastLeadId,
-                    last_lead_status: lastLeadStatus
+                    last_lead_status: lastLeadStatus,
+                    lead_scope: campaignState.leadScope || 'all'
                 }
             });
 
@@ -972,6 +1011,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 campaignAlert('Campaign completed. No more leads available.');
                 campaignState.running = false;
                 campaignState.currentLeadId = null;
+                campaignState.leadScope = 'all';
+                updateCampaignModeBadge();
                 setDestination('');
                 unlockManualDial();
             }
@@ -979,6 +1020,8 @@ document.addEventListener('DOMContentLoaded', function () {
             campaignAlert(error.message || 'Unable to fetch next lead.');
             campaignState.running = false;
             campaignState.currentLeadId = null;
+            campaignState.leadScope = 'all';
+            updateCampaignModeBadge();
             unlockManualDial();
         } finally {
             campaignState.fetchingNext = false;
@@ -1000,6 +1043,8 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         campaignState.running = true;
+        campaignState.leadScope = 'all';
+        updateCampaignModeBadge();
         lockManualDial();
 
         try {
@@ -1022,6 +1067,55 @@ document.addEventListener('DOMContentLoaded', function () {
         } catch (error) {
             campaignAlert(error.message || 'Unable to start campaign.');
             campaignState.running = false;
+            campaignState.leadScope = 'all';
+            updateCampaignModeBadge();
+            unlockManualDial();
+        }
+    };
+
+    const restartFailedCampaignFlow = async () => {
+        if (!campaignSelect || !agentInput) return;
+        if (campaignState.running) {
+            campaignAlert('Campaign is already running.');
+            return;
+        }
+
+        const campaignId = campaignSelect.value;
+        const agent = (agentInput.value || '').trim();
+        if (!campaignId || !agent) {
+            campaignAlert('Select campaign and enter agent name.');
+            return;
+        }
+
+        campaignState.running = true;
+        campaignState.leadScope = 'failed';
+        updateCampaignModeBadge();
+        lockManualDial();
+
+        try {
+            const data = await campaignRequest(campaignRoutes.restartFailed, {
+                method: 'POST',
+                body: {
+                    campaign_id: campaignId,
+                    agent: agent
+                }
+            });
+
+            if (data.next?.phone) {
+                dialCampaignLead(data.next);
+            } else {
+                campaignAlert('No failed leads available for this campaign.');
+                campaignState.running = false;
+                campaignState.currentLeadId = null;
+                campaignState.leadScope = 'all';
+                updateCampaignModeBadge();
+                unlockManualDial();
+            }
+        } catch (error) {
+            campaignAlert(error.message || 'Unable to restart failed campaign.');
+            campaignState.running = false;
+            campaignState.leadScope = 'all';
+            updateCampaignModeBadge();
             unlockManualDial();
         }
     };
@@ -1031,6 +1125,8 @@ document.addEventListener('DOMContentLoaded', function () {
             await campaignRequest(campaignRoutes.stop, { method: 'POST' });
             campaignState.running = false;
             campaignState.currentLeadId = null;
+            campaignState.leadScope = 'all';
+            updateCampaignModeBadge();
             campaignAlert('');
             setDestination('');
             unlockManualDial();
@@ -1054,6 +1150,7 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     btnStartCampaign?.addEventListener('click', startCampaignFlow);
+    btnRestartFailedCampaign?.addEventListener('click', restartFailedCampaignFlow);
     btnStopCampaign?.addEventListener('click', stopCampaignFlow);
 
     // ===== Start call (inline; no popup) =====

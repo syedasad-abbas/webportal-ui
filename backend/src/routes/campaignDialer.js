@@ -14,7 +14,8 @@ const dialPermission = config.permissions?.callDial || 'dial';
 router.post('/start', authMiddleware, requirePermissions([dialPermission]), async (req, res) => {
   const schema = Joi.object({
     campaignId: Joi.number().integer().positive().required(),
-    agent: Joi.string().trim().min(1).max(100).required()
+    agent: Joi.string().trim().min(1).max(100).required(),
+    leadScope: Joi.string().valid('all', 'failed').default('all')
   });
   const { error, value } = schema.validate(req.body || {});
   if (error) {
@@ -24,7 +25,8 @@ router.post('/start', authMiddleware, requirePermissions([dialPermission]), asyn
     const nextLead = await campaignDialerService.startRun({
       userId: req.user.id,
       campaignId: value.campaignId,
-      agent: value.agent.trim()
+      agent: value.agent.trim(),
+      leadScope: value.leadScope
     });
     return res.json({ ok: true, next: nextLead });
   } catch (err) {
@@ -44,7 +46,8 @@ router.post('/stop', authMiddleware, requirePermissions([dialPermission]), async
 router.get('/next', authMiddleware, requirePermissions([dialPermission]), async (req, res) => {
   const schema = Joi.object({
     lastLeadId: Joi.number().integer().positive().optional(),
-    lastLeadStatus: Joi.string().valid('called', 'failed').optional()
+    lastLeadStatus: Joi.string().valid('called', 'failed').optional(),
+    leadScope: Joi.string().valid('all', 'failed').default('all')
   });
   const { error, value } = schema.validate(req.query || {});
   if (error) {
@@ -54,7 +57,8 @@ router.get('/next', authMiddleware, requirePermissions([dialPermission]), async 
     const nextLead = await campaignDialerService.nextLead({
       userId: req.user.id,
       lastLeadId: value.lastLeadId ? Number(value.lastLeadId) : undefined,
-      lastLeadStatus: value.lastLeadStatus
+      lastLeadStatus: value.lastLeadStatus,
+      leadScope: value.leadScope
     });
     return res.json({ ok: true, next: nextLead });
   } catch (err) {

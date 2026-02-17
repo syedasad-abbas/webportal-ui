@@ -173,6 +173,27 @@ class DialerController extends Controller
         $resp = $this->backend($token)->post('/dialer/campaign/start', [
             'campaignId' => $data['campaign_id'],
             'agent' => $data['agent'],
+            'leadScope' => 'all',
+        ]);
+
+        return response()->json($resp->json(), $resp->status());
+    }
+
+    public function restartFailedCampaign(Request $request)
+    {
+        $this->assertCampaignPermission($request);
+
+        $data = $request->validate([
+            'campaign_id' => ['required', 'integer', 'min:1'],
+            'agent' => ['required', 'string', 'max:100'],
+        ]);
+
+        $token = $this->requireBackendToken($request);
+
+        $resp = $this->backend($token)->post('/dialer/campaign/start', [
+            'campaignId' => $data['campaign_id'],
+            'agent' => $data['agent'],
+            'leadScope' => 'failed',
         ]);
 
         return response()->json($resp->json(), $resp->status());
@@ -198,10 +219,13 @@ class DialerController extends Controller
             'last_lead_status' => ['nullable', 'in:called,failed'],
             'lastLeadId' => ['nullable', 'integer', 'min:1'],
             'lastLeadStatus' => ['nullable', 'in:called,failed'],
+            'lead_scope' => ['nullable', 'in:all,failed'],
+            'leadScope' => ['nullable', 'in:all,failed'],
         ]);
 
         $lastLeadId = $validated['last_lead_id'] ?? $validated['lastLeadId'] ?? null;
         $lastLeadStatus = $validated['last_lead_status'] ?? $validated['lastLeadStatus'] ?? null;
+        $leadScope = $validated['lead_scope'] ?? $validated['leadScope'] ?? 'all';
 
         $query = [];
 
@@ -212,6 +236,7 @@ class DialerController extends Controller
         if ($lastLeadStatus) {
             $query['lastLeadStatus'] = $lastLeadStatus;
         }
+        $query['leadScope'] = $leadScope;
 
         $token = $this->requireBackendToken($request);
 

@@ -129,6 +129,7 @@ Route::delete('/carrier/{carrierId}', [CarrierController::class, 'destroy'])->na
 
         Route::middleware('can:campaign.play')->group(function () {
             Route::post('/dialer/campaign/start', [DialerController::class, 'startCampaign'])->name('dialer.campaign.start');
+            Route::post('/dialer/campaign/restart-failed', [DialerController::class, 'restartFailedCampaign'])->name('dialer.campaign.restart_failed');
             Route::post('/dialer/campaign/stop', [DialerController::class, 'stopCampaign'])->name('dialer.campaign.stop');
             Route::get('/dialer/campaign/next', [DialerController::class, 'nextLead'])->name('dialer.campaign.next');
         });
