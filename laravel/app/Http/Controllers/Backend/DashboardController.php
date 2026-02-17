@@ -31,8 +31,11 @@ class DashboardController extends Controller
         $activeUsers = $this->countActiveSessions();
         $offlineUsers = max($totalUsers - $activeUsers, 0);
         $inCallUsersQuery = DB::table('call_logs')
-            ->whereNotNull('connected_at')
             ->whereNull('ended_at')
+            ->where(function ($query) {
+                $query->whereNotNull('connected_at')
+                    ->orWhere('status', 'in_call');
+            })
             ->select('user_id')
             ->distinct();
 
@@ -40,22 +43,19 @@ class DashboardController extends Controller
             ->fromSub(function ($query) {
                 $query->from('call_logs')
                     ->select('user_id')
-                    ->whereNull('connected_at')
                     ->whereNull('ended_at')
-                    ->distinct()
-                    ->union(
-                        DB::table('campaign_runs')
-                            ->select('user_id')
-                            ->where('is_running', true)
-                            ->distinct()
-                    );
+                    ->whereIn('status', ['queued', 'ringing', 'trying'])
+                    ->distinct();
             }, 'dialing')
             ->whereNotIn('user_id', $inCallUsersQuery)
             ->distinct('user_id')
             ->count('user_id');
         $inCallUsers = DB::table('call_logs')
-            ->whereNotNull('connected_at')
             ->whereNull('ended_at')
+            ->where(function ($query) {
+                $query->whereNotNull('connected_at')
+                    ->orWhere('status', 'in_call');
+            })
             ->distinct('user_id')
             ->count('user_id');
         $userActivityUser = (int) request()->get('user_activity_user', 0);

@@ -5,7 +5,6 @@ const { emitSocketEvent } = require('../socket');
 const presenceMinutes = config.metrics?.presenceMinutes || 5;
 const activityWindowHours = config.metrics?.activityWindowHours || 24;
 const broadcastIntervalSeconds = config.metrics?.broadcastIntervalSeconds || 15;
-const dialingWindowMinutes = config.metrics?.dialingWindowMinutes || 5;
 const activityTimezone = config.metrics?.activityTimezone || 'Asia/Karachi';
 const activityAnchorHour = Number.isFinite(config.metrics?.activityAnchorHour)
   ? config.metrics.activityAnchorHour
@@ -36,29 +35,17 @@ const fetchDashboardMetrics = async () => {
       WITH in_call AS (
         SELECT DISTINCT user_id
           FROM call_logs
-         WHERE connected_at IS NOT NULL
-           AND ended_at IS NULL
+         WHERE ended_at IS NULL
+           AND (connected_at IS NOT NULL OR status = 'in_call')
       ),
       dialing_calls AS (
         SELECT DISTINCT user_id
           FROM call_logs
-         WHERE connected_at IS NULL
-           AND ended_at IS NULL
+         WHERE ended_at IS NULL
            AND status IN ('queued', 'ringing', 'trying')
-           AND created_at IS NOT NULL
-           AND created_at >= NOW() - INTERVAL '${dialingWindowMinutes} minutes'
-      ),
-      dialing_campaigns AS (
-        SELECT DISTINCT user_id
-          FROM campaign_runs
-         WHERE is_running = true
       )
       SELECT COALESCE(COUNT(DISTINCT d.user_id), 0)::int AS dialing_users
-        FROM (
-          SELECT user_id FROM dialing_calls
-          UNION
-          SELECT user_id FROM dialing_campaigns
-        ) d
+        FROM dialing_calls d
        WHERE d.user_id NOT IN (SELECT user_id FROM in_call)
     `
   );
@@ -66,8 +53,8 @@ const fetchDashboardMetrics = async () => {
   const inCallQuery = await db.query(
     `SELECT COALESCE(COUNT(DISTINCT user_id), 0)::int AS in_call_users
        FROM call_logs
-      WHERE connected_at IS NOT NULL
-        AND ended_at IS NULL`
+      WHERE ended_at IS NULL
+        AND (connected_at IS NOT NULL OR status = 'in_call')`
   );
 
   const activityQuery = await db.query(
