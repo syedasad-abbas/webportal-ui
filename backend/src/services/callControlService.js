@@ -167,7 +167,8 @@ const getStatus = async ({ uuid, userId }) => {
     (callstate && callstate.toUpperCase() === 'ACTIVE') ||
     (channelState && channelState.toUpperCase() === 'CS_EXECUTE');
   const durationSeconds = billsec ? Number(billsec) : 0;
-  const connected = answered || durationSeconds > 0;
+  const connectedFromLog = Boolean(call.connected_at);
+  const connected = answered || durationSeconds > 0 || connectedFromLog;
 
   if (connected) {
     await db.query(
@@ -183,7 +184,7 @@ const getStatus = async ({ uuid, userId }) => {
 
   let status = connected ? 'in_call' : 'ringing';
   const sipCode = diagnostics.sipStatus;
-  if (!answered && sipCode) {
+  if (!connected && sipCode) {
     if (sipCode >= 200 && sipCode < 300) {
       status = 'in_call';
     } else if (sipCode >= 400) {

@@ -197,6 +197,10 @@ const monitorCallProgress = async ({ callUuid, conferenceName, userId }) => {
         console.log('[call] joined conference', { userId, callUuid, conference: conferenceName });
         conferenceLogged = true;
       }
+      if (!answeredLogged) {
+          answeredLogged = true;
+          await markAnswered();
+        }
     }
 
     setTimeout(poll, 1500);
