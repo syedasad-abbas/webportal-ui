@@ -69,7 +69,7 @@ const updateCallCompletion = async (callId, durationSeconds) => {
     `UPDATE call_logs
      SET status = 'completed',
          ended_at = COALESCE(ended_at, NOW()),
-         duration_seconds = COALESCE(duration_seconds, $1)
+         duration_seconds = GREATEST(COALESCE(duration_seconds, 0), COALESCE($1, 0))
      WHERE id = $2`,
     [durationSeconds || null, callId]
   );
@@ -167,13 +167,21 @@ const getStatus = async ({ uuid, userId }) => {
     (callstate && callstate.toUpperCase() === 'ACTIVE') ||
     (channelState && channelState.toUpperCase() === 'CS_EXECUTE');
   const durationSeconds = billsec ? Number(billsec) : 0;
+  const connected = answered || durationSeconds > 0;
 
-  if (answered && !call.connected_at) {
-    await db.query('UPDATE call_logs SET connected_at = NOW() WHERE id = $1', [call.id]);
+  if (connected) {
+    await db.query(
+      `UPDATE call_logs
+          SET connected_at = COALESCE(connected_at, NOW()),
+              duration_seconds = GREATEST(COALESCE(duration_seconds, 0), $2),
+              updated_at = NOW()
+        WHERE id = $1`,
+      [call.id, durationSeconds]
+    );
     scheduleMetricsBroadcast();
   }
 
-  let status = answered ? 'in_call' : 'ringing';
+  let status = connected ? 'in_call' : 'ringing';
   const sipCode = diagnostics.sipStatus;
   if (!answered && sipCode) {
     if (sipCode >= 200 && sipCode < 300) {

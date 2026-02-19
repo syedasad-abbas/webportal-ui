@@ -15,18 +15,21 @@ router.post('/start', authMiddleware, requirePermissions([dialPermission]), asyn
   const schema = Joi.object({
     campaignId: Joi.number().integer().positive().required(),
     agent: Joi.string().trim().min(1).max(100).required(),
-    leadScope: Joi.string().valid('all', 'failed').default('all')
+    leadScope: Joi.string().valid('all', 'failed').optional(),
+    lead_scope: Joi.string().valid('all', 'failed').optional(),
+    leadscope: Joi.string().valid('all', 'failed').optional()
   });
   const { error, value } = schema.validate(req.body || {});
   if (error) {
     return res.status(400).json({ message: error.message });
   }
+  const normalizedLeadScope = value.leadScope ?? value.lead_scope ?? value.leadscope ?? 'all';
   try {
     const nextLead = await campaignDialerService.startRun({
       userId: req.user.id,
       campaignId: value.campaignId,
       agent: value.agent.trim(),
-      leadScope: value.leadScope
+      leadScope: normalizedLeadScope
     });
     return res.json({ ok: true, next: nextLead });
   } catch (err) {
@@ -47,18 +50,21 @@ router.get('/next', authMiddleware, requirePermissions([dialPermission]), async 
   const schema = Joi.object({
     lastLeadId: Joi.number().integer().positive().optional(),
     lastLeadStatus: Joi.string().valid('called', 'failed').optional(),
-    leadScope: Joi.string().valid('all', 'failed').default('all')
+    leadScope: Joi.string().valid('all', 'failed').optional(),
+    lead_scope: Joi.string().valid('all', 'failed').optional(),
+    leadscope: Joi.string().valid('all', 'failed').optional()
   });
   const { error, value } = schema.validate(req.query || {});
   if (error) {
     return res.status(400).json({ message: error.message });
   }
+  const normalizedLeadScope = value.leadScope ?? value.lead_scope ?? value.leadscope ?? 'all';
   try {
     const nextLead = await campaignDialerService.nextLead({
       userId: req.user.id,
       lastLeadId: value.lastLeadId ? Number(value.lastLeadId) : undefined,
       lastLeadStatus: value.lastLeadStatus,
-      leadScope: value.leadScope
+      leadScope: normalizedLeadScope
     });
     return res.json({ ok: true, next: nextLead });
   } catch (err) {

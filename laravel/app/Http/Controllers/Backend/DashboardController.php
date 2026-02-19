@@ -65,6 +65,13 @@ class DashboardController extends Controller
             $userActivityPeriod = 'today';
         }
         $userActivityStats = $this->getUserActivityStats($userActivityUser, $userActivityPeriod);
+        $userCallTimeSelected = (int) request()->get('user_call_time_user', 0);
+        $userCallTimePeriod = (string) request()->get('user_call_time_period', 'last_7_days');
+        $allowedCallTimePeriods = ['last_24_hours', 'last_7_days', 'this_month'];
+        if (!in_array($userCallTimePeriod, $allowedCallTimePeriods, true)) {
+            $userCallTimePeriod = 'last_7_days';
+        }
+        $userCallTimeTimeline = $this->getUserCallTimeTimeline();
         $userOptions = User::orderBy('external_name')
             ->get(['id', 'external_name'])
             ->map(fn ($user) => [
@@ -83,6 +90,9 @@ class DashboardController extends Controller
                 'user_activity_stats' => $userActivityStats,
                 'user_activity_selected' => $userActivityUser,
                 'user_activity_period' => $userActivityPeriod,
+                'user_call_time_selected' => $userCallTimeSelected,
+                'user_call_time_period' => $userCallTimePeriod,
+                'user_call_time_timeline' => $userCallTimeTimeline,
                 'user_options' => $userOptions,
                 'total_roles' => number_format(Role::count()),
                 'total_permissions' => number_format(Permission::count()),
@@ -174,6 +184,179 @@ class DashboardController extends Controller
                 'start' => $windowStart,
                 'end' => $windowEnd
             ]
+        ];
+    }
+
+    private function getUserCallTimeTimeline(): array
+    {
+        $last24Rows = DB::select(
+            "
+            WITH bounds AS (
+                SELECT
+                    date_trunc('hour', NOW()) - INTERVAL '23 hour' AS window_start,
+                    date_trunc('hour', NOW()) + INTERVAL '1 hour' AS window_end
+            ),
+            buckets AS (
+                SELECT generate_series(window_start, window_end - INTERVAL '1 hour', INTERVAL '1 hour') AS bucket_utc
+                FROM bounds
+            ),
+            bucketed AS (
+                SELECT
+                    b.bucket_utc,
+                    c.user_id,
+                    COALESCE(
+                        NULLIF(c.duration_seconds, 0),
+                        GREATEST(
+                            EXTRACT(EPOCH FROM COALESCE(c.ended_at, NOW()) - COALESCE(c.connected_at, c.created_at)),
+                            0
+                        )
+                    )::int AS seconds_in_bucket
+                FROM buckets b
+                JOIN call_logs c
+                    ON COALESCE(c.ended_at, c.created_at) >= b.bucket_utc
+                    AND COALESCE(c.ended_at, c.created_at) < b.bucket_utc + INTERVAL '1 hour'
+            )
+            SELECT bucket_utc, user_id, SUM(seconds_in_bucket)::int AS seconds
+            FROM bucketed
+            GROUP BY bucket_utc, user_id
+            ORDER BY bucket_utc, user_id
+            "
+        );
+
+        $last7Rows = DB::select(
+            "
+            WITH bounds AS (
+                SELECT
+                    date_trunc('day', NOW()) - INTERVAL '6 day' AS window_start,
+                    date_trunc('day', NOW()) + INTERVAL '1 day' AS window_end
+            ),
+            buckets AS (
+                SELECT generate_series(window_start, window_end - INTERVAL '1 day', INTERVAL '1 day') AS bucket_utc
+                FROM bounds
+            ),
+            bucketed AS (
+                SELECT
+                    b.bucket_utc,
+                    c.user_id,
+                    COALESCE(
+                        NULLIF(c.duration_seconds, 0),
+                        GREATEST(
+                            EXTRACT(EPOCH FROM COALESCE(c.ended_at, NOW()) - COALESCE(c.connected_at, c.created_at)),
+                            0
+                        )
+                    )::int AS seconds_in_bucket
+                FROM buckets b
+                JOIN call_logs c
+                    ON COALESCE(c.ended_at, c.created_at) >= b.bucket_utc
+                    AND COALESCE(c.ended_at, c.created_at) < b.bucket_utc + INTERVAL '1 day'
+            )
+            SELECT bucket_utc, user_id, SUM(seconds_in_bucket)::int AS seconds
+            FROM bucketed
+            GROUP BY bucket_utc, user_id
+            ORDER BY bucket_utc, user_id
+            "
+        );
+
+        $thisMonthRows = DB::select(
+            "
+            WITH bounds AS (
+                SELECT
+                    date_trunc('month', NOW()) AS window_start,
+                    date_trunc('day', NOW()) + INTERVAL '1 day' AS window_end
+            ),
+            buckets AS (
+                SELECT generate_series(window_start, window_end - INTERVAL '1 day', INTERVAL '1 day') AS bucket_utc
+                FROM bounds
+            ),
+            bucketed AS (
+                SELECT
+                    b.bucket_utc,
+                    c.user_id,
+                    COALESCE(
+                        NULLIF(c.duration_seconds, 0),
+                        GREATEST(
+                            EXTRACT(EPOCH FROM COALESCE(c.ended_at, NOW()) - COALESCE(c.connected_at, c.created_at)),
+                            0
+                        )
+                    )::int AS seconds_in_bucket
+                FROM buckets b
+                JOIN call_logs c
+                    ON COALESCE(c.ended_at, c.created_at) >= b.bucket_utc
+                    AND COALESCE(c.ended_at, c.created_at) < b.bucket_utc + INTERVAL '1 day'
+            )
+            SELECT bucket_utc, user_id, SUM(seconds_in_bucket)::int AS seconds
+            FROM bucketed
+            GROUP BY bucket_utc, user_id
+            ORDER BY bucket_utc, user_id
+            "
+        );
+
+        $buildLabels = static function (int $days): array {
+            $end = Carbon::now('UTC')->startOfDay();
+            $labels = [];
+            for ($i = $days - 1; $i >= 0; $i--) {
+                $labels[] = $end->copy()->subDays($i)->toIso8601String();
+            }
+            return $labels;
+        };
+
+        $buildHourLabels = static function (int $hours): array {
+            $end = Carbon::now('UTC')->startOfHour();
+            $labels = [];
+            for ($i = $hours - 1; $i >= 0; $i--) {
+                $labels[] = $end->copy()->subHours($i)->toIso8601String();
+            }
+            return $labels;
+        };
+
+        $last7Labels = $buildLabels(7);
+        $last24Labels = $buildHourLabels(24);
+        $monthStart = Carbon::now('UTC')->startOfMonth();
+        $monthDays = (int) max(1, (int) $monthStart->diffInDays(Carbon::now('UTC')->startOfDay()) + 1);
+        $thisMonthLabels = $buildLabels($monthDays);
+
+        $toSeries = static function (array $rows, array $labels, string $granularity = 'day'): array {
+            $indexByLabel = [];
+            foreach ($labels as $idx => $label) {
+                $indexByLabel[$label] = $idx;
+            }
+
+            $total = array_fill(0, count($labels), 0);
+            $byUser = [];
+
+            foreach ($rows as $row) {
+                $bucket = Carbon::parse((string) $row->bucket_utc, 'UTC');
+                $bucket = $granularity === 'hour'
+                    ? $bucket->startOfHour()->toIso8601String()
+                    : $bucket->startOfDay()->toIso8601String();
+                if (!array_key_exists($bucket, $indexByLabel)) {
+                    continue;
+                }
+
+                $idx = $indexByLabel[$bucket];
+                $minutes = round(((int) ($row->seconds ?? 0)) / 60, 2);
+                $userKey = (string) ((int) ($row->user_id ?? 0));
+
+                $total[$idx] += $minutes;
+                if (!isset($byUser[$userKey])) {
+                    $byUser[$userKey] = array_fill(0, count($labels), 0);
+                }
+                $byUser[$userKey][$idx] += $minutes;
+            }
+
+            return [
+                'labels' => $labels,
+                'total' => $total,
+                'byUser' => $byUser,
+            ];
+        };
+
+        return [
+            'periods' => [
+                'last_24_hours' => $toSeries($last24Rows, $last24Labels, 'hour'),
+                'last_7_days' => $toSeries($last7Rows, $last7Labels, 'day'),
+                'this_month' => $toSeries($thisMonthRows, $thisMonthLabels, 'day'),
+            ],
         ];
     }
 

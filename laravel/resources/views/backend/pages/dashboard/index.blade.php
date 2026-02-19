@@ -127,6 +127,16 @@
             <div class="grid grid-cols-12 gap-4 md:gap-6">
                 <div class="col-span-12">
                     <div class="grid grid-cols-12 gap-4 md:gap-6">
+                        @include('backend.pages.dashboard.partials.user-call-time-chart')
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-6">
+            <div class="grid grid-cols-12 gap-4 md:gap-6">
+                <div class="col-span-12">
+                    <div class="grid grid-cols-12 gap-4 md:gap-6">
                         @include('backend.pages.dashboard.partials.post-chart')
                     </div>
                 </div>
@@ -186,6 +196,10 @@
                     payload.activity
                 ) {
                     window.DashboardActivityChart.update(payload.activity);
+                }
+
+                if (window.DashboardUserCallTimeChart && payload.callTimeTimeline) {
+                    window.DashboardUserCallTimeChart.update(payload.callTimeTimeline);
                 }
             });
 

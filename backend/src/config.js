@@ -87,6 +87,7 @@ module.exports = {
     activityWindowHours: toInt(process.env.ACTIVITY_WINDOW_HOURS, 24) || 24,
     broadcastIntervalSeconds: toInt(process.env.METRICS_BROADCAST_SECONDS, 15) || 15,
     dialingWindowMinutes: toInt(process.env.METRICS_DIALING_WINDOW_MINUTES, 5) || 5,
+    callTimelineMinutes: toInt(process.env.METRICS_CALL_TIMELINE_MINUTES, 30) || 30,
     activityTimezone: process.env.METRICS_ACTIVITY_TIMEZONE || 'Asia/Karachi',
     activityAnchorHour: toInt(process.env.METRICS_ACTIVITY_ANCHOR_HOUR, 21) || 21
   },

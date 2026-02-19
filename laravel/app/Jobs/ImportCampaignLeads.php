@@ -107,11 +107,23 @@ class ImportCampaignLeads implements ShouldQueue
         if ($extension === 'csv') {
             $reader = Reader::createFromPath($path);
             $firstRow = $reader->fetchOne();
+            if (! is_array($firstRow) || $firstRow === []) {
+                return;
+            }
             $hasHeader = $this->hasPhoneHeader($firstRow);
 
             if ($hasHeader) {
-                $reader->setHeaderOffset(0);
-                yield from $reader->getRecords();
+                $headers = $this->makeHeadersUnique($this->normalizeHeaders($firstRow));
+                $index = 0;
+                foreach ($reader->getRecords() as $row) {
+                    if ($index++ === 0) {
+                        continue;
+                    }
+                    $record = $this->buildRecordFromRow($headers, (array) $row);
+                    if ($record !== []) {
+                        yield $record;
+                    }
+                }
                 return;
             }
 
@@ -152,16 +164,10 @@ class ImportCampaignLeads implements ShouldQueue
             return;
         }
 
-        $headers = $this->normalizeHeaders($firstRow);
+        $headers = $this->makeHeadersUnique($this->normalizeHeaders($firstRow));
 
         foreach ($rows as $row) {
-            $record = [];
-            foreach ($headers as $index => $header) {
-                if ($header === '') {
-                    continue;
-                }
-                $record[$header] = $row[$index] ?? null;
-            }
+            $record = $this->buildRecordFromRow($headers, (array) $row);
             if ($record !== []) {
                 yield $record;
             }
@@ -171,9 +177,43 @@ class ImportCampaignLeads implements ShouldQueue
     protected function normalizeHeaders(array $headers): array
     {
         return array_map(
-            static fn ($value) => preg_replace('/\s+/', ' ', strtolower(trim((string) ($value ?? '')))),
+            static fn ($value) => preg_replace('/\s+/', ' ', strtolower(trim((string) preg_replace('/^\xEF\xBB\xBF/', '', (string) ($value ?? ''))))),
             $headers
         );
+    }
+
+    protected function makeHeadersUnique(array $headers): array
+    {
+        $seen = [];
+
+        foreach ($headers as $index => $header) {
+            if ($header === '') {
+                continue;
+            }
+
+            if (! isset($seen[$header])) {
+                $seen[$header] = 1;
+                continue;
+            }
+
+            $seen[$header]++;
+            $headers[$index] = "{$header}_{$seen[$header]}";
+        }
+
+        return $headers;
+    }
+
+    protected function buildRecordFromRow(array $headers, array $row): array
+    {
+        $record = [];
+        foreach ($headers as $index => $header) {
+            if ($header === '') {
+                continue;
+            }
+            $record[$header] = $row[$index] ?? null;
+        }
+
+        return $record;
     }
 
     protected function hasPhoneHeader(array $row): bool
