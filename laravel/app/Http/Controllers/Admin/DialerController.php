@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Campaign;
 use App\Models\CampaignRun;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 
@@ -64,6 +65,9 @@ class DialerController extends Controller
 
         $campaigns = collect();
         $run = null;
+        $agents = User::orderBy('external_name')
+            ->get(['id', 'external_name', 'email']);
+
         if ($user && $user->can('campaign.play')) {
             $campaigns = Campaign::latest()->get(['id', 'list_id', 'list_name']);
             $run = CampaignRun::where('user_id', $user->id)->latest('id')->first();
@@ -74,6 +78,7 @@ class DialerController extends Controller
             'webrtcError' => $webrtcError,
             'campaigns' => $campaigns,
             'run' => $run,
+            'agents' => $agents,
         ]);
     }
 
@@ -147,7 +152,11 @@ class DialerController extends Controller
 
     public function hangup(Request $request, string $uuid)
     {
-        return $this->proxyRequest($request, 'post', "/calls/{$uuid}/hangup");
+        $data = $request->validate([
+            'durationSeconds' => ['nullable', 'integer', 'min:0'],
+        ]);
+
+        return $this->proxyRequest($request, 'post', "/calls/{$uuid}/hangup", $data);
     }
 
     public function dtmf(Request $request, string $uuid)

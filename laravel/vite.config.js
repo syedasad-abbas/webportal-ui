@@ -9,8 +9,8 @@ let paths = [
     'resources/js/app.js',
 ];
 
-const devServerUrl = process.env.VITE_DEV_SERVER_URL || 'http://vm2.technonies.com:5173';
-let devServerHost = 'vm2.technonies.com';
+const devServerUrl = process.env.VITE_DEV_SERVER_URL || 'http://localhost:5173';
+let devServerHost = 'localhost';
 let devServerPort = Number(process.env.VITE_DEV_SERVER_PORT) || 5173;
 let devServerClientPort = devServerPort;
 let devServerProtocol = 'http:';

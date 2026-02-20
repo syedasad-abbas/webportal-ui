@@ -58,21 +58,82 @@
 
                     <div>
                     <label class="block text-xs font-semibold text-gray-800 dark:text-gray-100">{{ __('Agent') }}</label>
-                    <input
+                    @php
+                        $selectedAgent = optional($run)->agent;
+                        $agentMatches = false;
+                    @endphp
+                    <select
                         id="agent_name"
-                        value="{{ optional($run)->agent }}"
-                        class="h-11 min-w-[230px] rounded-lg border px-3 text-sm text-gray-800 dark:text-white/90 dark:bg-gray-900 dark:border-gray-700 placeholder:text-gray-400 dark:placeholder:text-white/60"
-                        placeholder="asad" />
+                        class="h-11 min-w-[230px] rounded-lg border px-3 pr-10 text-sm text-gray-800 dark:text-white/90 dark:bg-gray-900 dark:border-gray-700"
+                    >
+                        <option value="">{{ __('Select agent') }}</option>
+                        @foreach(($agents ?? collect()) as $agent)
+                            @php
+                                $value = $agent->external_name ?: $agent->email;
+                                $label = $agent->external_name ? "{$agent->external_name} ({$agent->email})" : $agent->email;
+                                $isSelected = $selectedAgent && $value === $selectedAgent;
+                                $agentMatches = $agentMatches || $isSelected;
+                            @endphp
+                            <option value="{{ $value }}" @selected($isSelected)>
+                                {{ $label }}
+                            </option>
+                        @endforeach
+                        @if($selectedAgent && ! $agentMatches)
+                            <option value="{{ $selectedAgent }}" selected>{{ $selectedAgent }}</option>
+                        @endif
+                    </select>
                     </div>
 
+                    <div class="flex flex-col gap-1">
+                        <span class="text-xs font-semibold text-gray-800 dark:text-gray-100">{{ __('Actions') }}</span>
+                        <div class="flex items-center gap-2">
+                            <span class="flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-4 py-2 text-xs font-semibold text-indigo-900 shadow-sm dark:border-indigo-500/40 dark:bg-indigo-900/30 dark:text-indigo-100">
+                                <i class="bi bi-gear-fill text-base"></i>
+                                {{ __('Campaign') }}
+                            </span>
+                            <div class="relative">
+                                <button type="button" id="campaign-action-filter" data-dropdown-toggle="campaign-action-dropdown"
+                                    class="btn-primary flex items-center justify-center gap-2 rounded-full px-5 py-2 text-sm">
+                                    <i class="bi bi-sliders text-base"></i>
+                                    <span>{{ __('Filter') }}</span>
+                                    <i class="bi bi-chevron-down text-xs"></i>
+                                </button>
+                                <div id="campaign-action-dropdown"
+                                    class="z-30 hidden w-64 rounded-lg border border-gray-100 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                                    <ul class="py-1 text-sm text-gray-700 dark:text-gray-200">
+                                        <li>
+                                            <button type="button" class="flex w-full items-center justify-between rounded-md px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white" data-campaign-action="start">
+                                                <span>{{ __('Start campaign') }}</span>
+                                                <i class="bi bi-play-fill text-indigo-600 dark:text-white"></i>
+                                            </button>
+                                        </li>
+                                        <li>
+                                            <button type="button" class="flex w-full items-center justify-between rounded-md px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white" data-campaign-action="restart">
+                                                <span>{{ __('Restart Failed Campaign') }}</span>
+                                                <i class="bi bi-arrow-repeat text-indigo-600 dark:text-white"></i>
+                                            </button>
+                                        </li>
+                                        <li>
+                                            <button type="button" class="flex w-full items-center justify-between rounded-md px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white" data-campaign-action="stop">
+                                                <span>{{ __('Stop campaign') }}</span>
+                                                <i class="bi bi-stop-circle text-indigo-600 dark:text-white"></i>
+                                            </button>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="sr-only">
                     <button type="button" id="btnStartCampaign" class="btn-primary">
-                    {{ __('Start campaign') }}
+                        {{ __('Start campaign') }}
                     </button>
                     <button type="button" id="btnRestartFailedCampaign" class="btn-default">
-                    {{ __('Restart Failed Campaign') }}
+                        {{ __('Restart Failed Campaign') }}
                     </button>
                     <button type="button" id="btnStopCampaign" class="btn-danger">
-                    {{ __('Stop campaign') }}
+                        {{ __('Stop campaign') }}
                     </button>
                 </div>
                 <div class="mt-2">
@@ -84,9 +145,6 @@
                 @endcan
 
 
-                <div class="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800 dark:border-green-900/40 dark:bg-green-900/20 dark:text-green-300">
-                    {{ __('Ready · Calls run inline with mute/unmute, hang up, DTMF, and status badges.') }}
-                </div>
                 @if (!empty($webrtcError))
                     <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500 dark:bg-amber-800 dark:text-white">
                         {{ $webrtcError }}
@@ -396,6 +454,11 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!callConnectedAt) return;
         const seconds = Math.floor((Date.now() - callConnectedAt) / 1000);
         if (callTimerEl) callTimerEl.textContent = formatDuration(seconds);
+    };
+
+    const getCallDurationSeconds = () => {
+        if (!callConnectedAt) return null;
+        return Math.max(0, Math.floor((Date.now() - callConnectedAt) / 1000));
     };
 
     const startTimer = (initialSeconds = 0) => {
@@ -724,14 +787,25 @@ document.addEventListener('DOMContentLoaded', function () {
                 } else if (isMuteAction) {
                     button.disabled = true;
                 }
-                const response = await fetch(`/admin/dialer/calls/${callUuid}/${action}`, {
+                const requestOptions = {
                     method: 'POST',
                     headers: {
                         'Accept': 'application/json',
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': csrfToken
                     }
-                });
+                };
+
+                if (action === 'hangup') {
+                    const payload = {};
+                    const durationSeconds = getCallDurationSeconds();
+                    if (durationSeconds !== null) {
+                        payload.durationSeconds = durationSeconds;
+                    }
+                    requestOptions.body = JSON.stringify(payload);
+                }
+
+                const response = await fetch(`/admin/dialer/calls/${callUuid}/${action}`, requestOptions);
 
                 if (!response.ok) {
                     let data = {};
@@ -878,6 +952,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const btnStartCampaign = document.getElementById('btnStartCampaign');
     const btnRestartFailedCampaign = document.getElementById('btnRestartFailedCampaign');
     const btnStopCampaign = document.getElementById('btnStopCampaign');
+    const campaignActionSelect = document.getElementById('campaign_action_select');
     const campaignModeBadge = document.getElementById('campaignModeBadge');
     const campaignRoutes = {
         start: '{{ route('admin.dialer.campaign.start') }}',
@@ -1148,6 +1223,18 @@ document.addEventListener('DOMContentLoaded', function () {
             lastLeadStatus: finalStatus
         });
     };
+
+    document.querySelectorAll('[data-campaign-action]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const action = button.getAttribute('data-campaign-action');
+            const handlerMap = {
+                start: btnStartCampaign,
+                restart: btnRestartFailedCampaign,
+                stop: btnStopCampaign,
+            };
+            handlerMap[action]?.click();
+        });
+    });
 
     btnStartCampaign?.addEventListener('click', startCampaignFlow);
     btnRestartFailedCampaign?.addEventListener('click', restartFailedCampaignFlow);

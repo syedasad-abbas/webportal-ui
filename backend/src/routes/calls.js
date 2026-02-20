@@ -68,7 +68,11 @@ router.post('/:uuid/unmute', authenticate(), requirePermissions([dialPermission]
 
 router.post('/:uuid/hangup', authenticate(), requirePermissions([dialPermission]), async (req, res) => {
   try {
-    await callControlService.hangup({ uuid: req.params.uuid, userId: req.user.id });
+    await callControlService.hangup({
+      uuid: req.params.uuid,
+      userId: req.user.id,
+      durationSeconds: req.body?.durationSeconds
+    });
     return res.json({ status: 'ended' });
   } catch (err) {
     return res.status(400).json({ message: err.message });

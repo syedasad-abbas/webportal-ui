@@ -522,6 +522,8 @@ layer(base);
   /* "Glow" color (brand) */
   --dialpad-glow: rgba(70, 95, 255, 0.25);
   --dialpad-glow-strong: rgba(70, 95, 255, 0.38);
+  --dialpad-blush-base: rgba(255, 192, 203, 0.25);
+  --dialpad-blush-strong: rgba(255, 110, 160, 0.45);
 }
 
 /* Dark overrides */
@@ -536,6 +538,8 @@ layer(base);
 
   --dialpad-glow: rgba(70, 95, 255, 0.22);
   --dialpad-glow-strong: rgba(70, 95, 255, 0.34);
+  --dialpad-blush-base: rgba(255, 170, 210, 0.35);
+  --dialpad-blush-strong: rgba(255, 125, 185, 0.55);
 }
 
 /* Wrapper (optional, only works if you add class="dialpad" in HTML) */
@@ -567,6 +571,7 @@ layer(base);
 
 /* BUTTON — This applies because you already use .dialpad-key in Blade */
 .dialpad-key {
+  position: relative;
   border: 1px solid var(--dialpad-border);
   border-radius: 16px;
   padding: 0.75rem 0.5rem;
@@ -590,6 +595,23 @@ layer(base);
     border-color 0.2s ease;
 }
 
+.dialpad-key::before {
+  content: "";
+  position: absolute;
+  inset: 10px;
+  border-radius: inherit;
+  background: radial-gradient(circle, var(--dialpad-blush-base), transparent 70%);
+  opacity: 0.85;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  pointer-events: none;
+}
+
+.dialpad-key:hover::before,
+.dialpad-key:focus-visible::before {
+  opacity: 1;
+  transform: scale(1.02);
+}
+
 /* Your Blade subtext is a DIV (2nd child). Style it. */
 .dialpad-key > div:nth-child(2) {
   color: var(--dialpad-subtext) !important;
@@ -604,9 +626,11 @@ layer(base);
 
   box-shadow: var(--dialpad-shadow-hover),
     0 0 0 4px var(--dialpad-glow),
-    0 0 22px var(--dialpad-glow-strong);
+    0 0 28px var(--dialpad-glow-strong),
+    0 0 32px var(--dialpad-blush-strong);
 
-  border-color: rgba(70, 95, 255, 0.30);
+  border-color: rgba(99, 91, 255, 0.45);
+  color: var(--dialpad-text);
 }
 
 /* Active (press) */
@@ -621,7 +645,9 @@ layer(base);
   outline: none;
   box-shadow: var(--dialpad-shadow-hover),
     0 0 0 4px var(--dialpad-glow),
-    0 0 26px var(--dialpad-glow-strong);
+    0 0 32px var(--dialpad-glow-strong),
+    0 0 36px var(--dialpad-blush-strong);
+  border-color: rgba(99, 91, 255, 0.5);
 }
 
 /* Optional: make * and # a bit smaller if you add this class */

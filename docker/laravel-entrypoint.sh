@@ -19,4 +19,9 @@ if [ ! -f public/build/manifest.json ]; then
 fi
 
 service cron start
-exec apache2-foreground
+
+if [ "$#" -eq 0 ]; then
+  set -- apache2-foreground
+fi
+
+exec "$@"

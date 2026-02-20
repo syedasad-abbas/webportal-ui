@@ -9,7 +9,6 @@ const __dirname = path.dirname(__filename);
 async function collectModuleAssetsPaths(paths, modulesPath) {
   const mainPaths = paths || [];
   modulesPath = path.join(__dirname, modulesPath);
-
   const moduleStatusesPath = path.join(__dirname, 'modules_statuses.json');
 
   try {
@@ -17,7 +16,16 @@ async function collectModuleAssetsPaths(paths, modulesPath) {
     const moduleStatusesContent = await fs.readFile(moduleStatusesPath, 'utf-8');
     const moduleStatuses = JSON.parse(moduleStatusesContent);
 
-    // Read module directories
+    // Ensure Modules directory exists before reading
+    try {
+      await fs.access(modulesPath);
+    } catch (error) {
+      if (error.code === 'ENOENT') {
+        return mainPaths; // Nothing to load if Modules folder is missing
+      }
+      throw error;
+    }
+
     const moduleDirectories = await fs.readdir(modulesPath);
 
     for (const moduleDir of moduleDirectories) {
