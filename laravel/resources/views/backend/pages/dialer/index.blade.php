@@ -174,6 +174,15 @@
                                     <input type="hidden" name="destination" id="dialpad-input" required>
                                 </div>
 
+                                <div class="flex justify-end mt-2">
+                                    <button type="button" id="dialpad-toggle"
+                                        class="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200 transition-colors"
+                                        title="{{ __('Minimize dialpad') }}">
+                                        <i class="bi bi-dash-lg text-sm"></i>
+                                        <span id="dialpad-toggle-label">{{ __('Minimize') }}</span>
+                                    </button>
+                                </div>
+                                <div id="dialpad-collapsible">
                                 <div class="dialpad-grid mt-4" aria-label="Dial pad">
                                     @php
                                         $keys = [
@@ -196,10 +205,11 @@
                                     @endforeach
                                 </div>
 
-                                <div class="dialpad-actions mt-3">
+                                  <div class="dialpad-actions mt-3">
                                     <button type="button" class="btn-default" id="dialpad-clear">{{ __('Clear') }}</button>
                                     <button type="button" class="btn-default" id="dialpad-backspace">{{ __('Delete') }}</button>
                                 </div>
+                                </div>{{-- end dialpad-collapsible --}}
                             </div>
                         </div>
 
@@ -1331,6 +1341,30 @@ document.addEventListener('DOMContentLoaded', function () {
             await disconnectBrowserAudio();
         }
     });
+
+      // ===== Dialpad toggle =====
+    const dialpadToggle = document.getElementById('dialpad-toggle');
+    const dialpadCollapsible = document.getElementById('dialpad-collapsible');
+    const dialpadToggleLabel = document.getElementById('dialpad-toggle-label');
+
+    let dialpadVisible = true;
+
+    if (dialpadToggle && dialpadCollapsible) {
+        dialpadToggle.addEventListener('click', () => {
+            dialpadVisible = !dialpadVisible;
+            if (dialpadVisible) {
+                dialpadCollapsible.classList.remove('hidden');
+                dialpadToggleLabel.textContent = '{{ __('Minimize') }}';
+                dialpadToggle.querySelector('i').className = 'bi bi-dash-lg text-sm';
+                dialpadToggle.title = '{{ __('Minimize dialpad') }}';
+            } else {
+                dialpadCollapsible.classList.add('hidden');
+                dialpadToggleLabel.textContent = '{{ __('Show') }}';
+                dialpadToggle.querySelector('i').className = 'bi bi-plus-lg text-sm';
+                dialpadToggle.title = '{{ __('Show dialpad') }}';
+            }
+        });
+    }
 
     // initial
     setControls(false);
