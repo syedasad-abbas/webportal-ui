@@ -10,41 +10,106 @@
                     ]) }}
                 </p>
             </div>
-            <form method="GET" class="flex items-center gap-2">
-                @foreach(request()->except(['user_activity_user', 'user_activity_period']) as $field => $value)
-                    <input type="hidden" name="{{ $field }}" value="{{ $value }}">
-                @endforeach
-                <label for="user-activity-filter" class="text-sm font-medium text-gray-600 dark:text-gray-300">
-                    {{ __('User Activity') }}
-                </label>
-                <select
-                    id="user-activity-filter"
-                    name="user_activity_user"
-                    class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-                    onchange="this.form.submit()"
-                >
-                    <option value="0">{{ __('All Users') }}</option>
-                    @foreach($user_options as $option)
-                        <option value="{{ $option['id'] }}" @selected($user_activity_selected == $option['id'])>
-                            {{ $option['name'] }}
-                        </option>
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+                <form method="GET" id="user-activity-user-form" class="flex items-center gap-2">
+                    @foreach(request()->except(['user_activity_user']) as $field => $value)
+                        <input type="hidden" name="{{ $field }}" value="{{ $value }}">
                     @endforeach
-                </select>
-                <label for="user-activity-period" class="text-sm font-medium text-gray-600 dark:text-gray-300">
-                    {{ __('Period') }}
-                </label>
-                <select
-                    id="user-activity-period"
-                    name="user_activity_period"
-                    class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-                    onchange="this.form.submit()"
-                >
-                    <option value="today" @selected(($user_activity_period ?? 'today') === 'today')>{{ __('Today (9 PM - 9 PM)') }}</option>
-                    <option value="last_7_days" @selected(($user_activity_period ?? 'today') === 'last_7_days')>{{ __('Last 7 days') }}</option>
-                    <option value="last_30_days" @selected(($user_activity_period ?? 'today') === 'last_30_days')>{{ __('Last 30 days') }}</option>
-                    <option value="this_month" @selected(($user_activity_period ?? 'today') === 'this_month')>{{ __('This month') }}</option>
-                </select>
-            </form>
+                    <input type="hidden" name="user_activity_user" value="{{ $user_activity_selected }}">
+                    <span class="flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-900 shadow-sm dark:border-indigo-500/40 dark:bg-indigo-900/30 dark:text-indigo-100">
+                        <i class="bi bi-people-fill text-base"></i>
+                        {{ __('Users') }}
+                    </span>
+                    <div class="relative">
+                        <button type="button" id="user-activity-user-filter" data-dropdown-toggle="user-activity-user-dropdown"
+                            class="btn-primary flex items-center justify-center gap-2 rounded-full px-5 py-2 text-sm">
+                            <i class="bi bi-sliders text-base"></i>
+                            <span>{{ __('Filter') }}</span>
+                            <i class="bi bi-chevron-down text-xs"></i>
+                        </button>
+                        <div id="user-activity-user-dropdown"
+                            class="z-20 hidden w-56 rounded-lg border border-gray-100 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                            <ul class="max-h-64 overflow-y-auto py-1 text-sm text-gray-700 dark:text-gray-200">
+                                <li>
+                                    <button type="button"
+                                        class="flex w-full items-center justify-between rounded-md px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white {{ (int)$user_activity_selected === 0 ? 'bg-indigo-50 dark:bg-gray-700' : '' }}"
+                                        data-filter-trigger
+                                        data-form="user-activity-user-form"
+                                        data-input="user_activity_user"
+                                        data-value="0">
+                                        <span>{{ __('All Users') }}</span>
+                                        @if((int)$user_activity_selected === 0)
+                                            <i class="bi bi-check text-indigo-600 dark:text-white"></i>
+                                        @endif
+                                    </button>
+                                </li>
+                                @foreach($user_options as $option)
+                                    <li>
+                                        <button type="button"
+                                            class="flex w-full items-center justify-between rounded-md px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white {{ (int)$user_activity_selected === (int)$option['id'] ? 'bg-indigo-50 dark:bg-gray-700' : '' }}"
+                                            data-filter-trigger
+                                            data-form="user-activity-user-form"
+                                            data-input="user_activity_user"
+                                            data-value="{{ $option['id'] }}">
+                                            <span>{{ $option['name'] }}</span>
+                                            @if((int)$user_activity_selected === (int)$option['id'])
+                                                <i class="bi bi-check text-indigo-600 dark:text-white"></i>
+                                            @endif
+                                        </button>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    </div>
+                </form>
+
+                <form method="GET" id="user-activity-period-form" class="flex items-center gap-2">
+                    @foreach(request()->except(['user_activity_period']) as $field => $value)
+                        <input type="hidden" name="{{ $field }}" value="{{ $value }}">
+                    @endforeach
+                    <input type="hidden" name="user_activity_period" value="{{ $user_activity_period ?? 'today' }}">
+                    <span class="flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-900 shadow-sm dark:border-indigo-500/40 dark:bg-indigo-900/30 dark:text-indigo-100">
+                        <i class="bi bi-clock-history text-base"></i>
+                        {{ __('Period') }}
+                    </span>
+                    <div class="relative">
+                        <button type="button" id="user-activity-period-filter" data-dropdown-toggle="user-activity-period-dropdown"
+                            class="btn-primary flex items-center justify-center gap-2 rounded-full px-5 py-2 text-sm">
+                            <i class="bi bi-sliders text-base"></i>
+                            <span>{{ __('Filter') }}</span>
+                            <i class="bi bi-chevron-down text-xs"></i>
+                        </button>
+                        <div id="user-activity-period-dropdown"
+                            class="z-20 hidden w-60 rounded-lg border border-gray-100 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                            <ul class="py-1 text-sm text-gray-700 dark:text-gray-200">
+                                @php
+                                    $periodOptions = [
+                                        'today' => __('Today (9 PM - 9 PM)'),
+                                        'last_7_days' => __('Last 7 days'),
+                                        'last_30_days' => __('Last 30 days'),
+                                        'this_month' => __('This month'),
+                                    ];
+                                @endphp
+                                @foreach($periodOptions as $value => $label)
+                                    <li>
+                                        <button type="button"
+                                            class="flex w-full items-center justify-between rounded-md px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white {{ ($user_activity_period ?? 'today') === $value ? 'bg-indigo-50 dark:bg-gray-700' : '' }}"
+                                            data-filter-trigger
+                                            data-form="user-activity-period-form"
+                                            data-input="user_activity_period"
+                                            data-value="{{ $value }}">
+                                            <span>{{ $label }}</span>
+                                            @if(($user_activity_period ?? 'today') === $value)
+                                                <i class="bi bi-check text-indigo-600 dark:text-white"></i>
+                                            @endif
+                                        </button>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    </div>
+                </form>
+            </div>
         </div>
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-4 mb-6">
             <div class="rounded-lg border border-gray-200 bg-gray-50 p-3 text-center dark:border-gray-700 dark:bg-gray-900/40">
@@ -179,6 +244,31 @@
                 chart.updateOptions(createChartOptions(activity), false, true);
             }
         };
+
+        document.querySelectorAll('[data-filter-trigger]').forEach((trigger) => {
+            trigger.addEventListener('click', function(event) {
+                event.preventDefault();
+                const formId = this.getAttribute('data-form');
+                const inputName = this.getAttribute('data-input');
+                const value = this.getAttribute('data-value');
+                if (!formId || !inputName) {
+                    return;
+                }
+                const form = document.getElementById(formId);
+                if (!form) {
+                    return;
+                }
+                let input = form.querySelector(`input[name="${inputName}"]`);
+                if (!input) {
+                    input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = inputName;
+                    form.appendChild(input);
+                }
+                input.value = value;
+                form.submit();
+            });
+        });
     });
 </script>
 @endpush

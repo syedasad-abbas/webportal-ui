@@ -156,17 +156,22 @@ class DashboardController extends Controller
 
         $stats = $query->selectRaw("
                 COUNT(*) AS total_calls,
-                SUM(CASE WHEN COALESCE(sip_status, 0) = 200 OR status = 'completed' THEN 1 ELSE 0 END) AS ok_200,
+                SUM(
+                    CASE
+                        WHEN COALESCE(duration_seconds, 0) > 0 THEN 1
+                        ELSE 0
+                    END
+                ) AS ok_200,
                 SUM(
                     CASE
                         WHEN COALESCE(sip_status, 0) = 503
-                          AND NOT (COALESCE(sip_status, 0) = 200 OR status = 'completed')
+                          AND NOT (COALESCE(duration_seconds, 0) > 0)
                         THEN 1 ELSE 0
                     END
                 ) AS error_503,
                 SUM(
                     CASE
-                        WHEN NOT (COALESCE(sip_status, 0) = 200 OR status = 'completed')
+                        WHEN NOT (COALESCE(duration_seconds, 0) > 0)
                           AND COALESCE(sip_status, 0) <> 503
                         THEN 1 ELSE 0
                     END
@@ -204,13 +209,7 @@ class DashboardController extends Controller
                 SELECT
                     b.bucket_utc,
                     c.user_id,
-                    COALESCE(
-                        NULLIF(c.duration_seconds, 0),
-                        GREATEST(
-                            EXTRACT(EPOCH FROM COALESCE(c.ended_at, NOW()) - COALESCE(c.connected_at, c.created_at)),
-                            0
-                        )
-                    )::int AS seconds_in_bucket
+                    COALESCE(c.duration_seconds, 0)::int AS seconds_in_bucket
                 FROM buckets b
                 JOIN call_logs c
                     ON COALESCE(c.ended_at, c.created_at) >= b.bucket_utc
@@ -238,13 +237,7 @@ class DashboardController extends Controller
                 SELECT
                     b.bucket_utc,
                     c.user_id,
-                    COALESCE(
-                        NULLIF(c.duration_seconds, 0),
-                        GREATEST(
-                            EXTRACT(EPOCH FROM COALESCE(c.ended_at, NOW()) - COALESCE(c.connected_at, c.created_at)),
-                            0
-                        )
-                    )::int AS seconds_in_bucket
+                    COALESCE(c.duration_seconds, 0)::int AS seconds_in_bucket
                 FROM buckets b
                 JOIN call_logs c
                     ON COALESCE(c.ended_at, c.created_at) >= b.bucket_utc
@@ -272,13 +265,7 @@ class DashboardController extends Controller
                 SELECT
                     b.bucket_utc,
                     c.user_id,
-                    COALESCE(
-                        NULLIF(c.duration_seconds, 0),
-                        GREATEST(
-                            EXTRACT(EPOCH FROM COALESCE(c.ended_at, NOW()) - COALESCE(c.connected_at, c.created_at)),
-                            0
-                        )
-                    )::int AS seconds_in_bucket
+                    COALESCE(c.duration_seconds, 0)::int AS seconds_in_bucket
                 FROM buckets b
                 JOIN call_logs c
                     ON COALESCE(c.ended_at, c.created_at) >= b.bucket_utc

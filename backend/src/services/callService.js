@@ -196,6 +196,10 @@ const monitorCallProgress = async ({ callUuid, conferenceName, userId }) => {
       if ((confName && confName === conferenceName) || (confMemberId && Number(confMemberId) > 0)) {
         console.log('[call] joined conference', { userId, callUuid, conference: conferenceName });
         conferenceLogged = true;
+        if (!answeredLogged) {
+          answeredLogged = true;
+          await markAnswered();
+        }
       }
       if (!answeredLogged) {
           answeredLogged = true;

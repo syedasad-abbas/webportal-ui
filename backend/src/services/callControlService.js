@@ -53,6 +53,17 @@ const parseSipResponse = (value) => {
   return { code: null, reason: trimmed };
 };
 
+const normalizeDurationSeconds = (value) => {
+  if (value == null) {
+    return null;
+  }
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric) || numeric < 0) {
+    return null;
+  }
+  return Math.round(numeric);
+};
+
 const findCallByUuid = async (uuid, userId) => {
   const result = await db.query(
     'SELECT * FROM call_logs WHERE call_uuid = $1 AND user_id = $2 ORDER BY created_at DESC LIMIT 1',
@@ -218,8 +229,11 @@ const unmute = async ({ uuid, userId }) => {
 };
 
 // 4) Update hangup() so it captures diagnostics in that path too
-const hangup = async ({ uuid, userId }) => {
+const hangup = async ({ uuid, userId, durationSeconds }) => {
   const call = await findCallByUuid(uuid, userId);
+  const explicitDuration = normalizeDurationSeconds(durationSeconds);
+  const existingDuration = normalizeDurationSeconds(call.duration_seconds);
+  const durationToPersist = explicitDuration ?? existingDuration;
 
   // capture any pre-hangup diagnostics
   const pre = await fetchCallDiagnostics(uuid);
@@ -235,7 +249,7 @@ const hangup = async ({ uuid, userId }) => {
     await updateCallDiagnostics(call.id, post);
   }
 
-  await updateCallCompletion(call.id, call.duration_seconds);
+  await updateCallCompletion(call.id, durationToPersist);
 };
 
 

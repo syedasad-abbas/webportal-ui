@@ -7,40 +7,105 @@
                     {{ __('Call time in minutes') }}
                 </p>
             </div>
-            <form method="GET" class="flex items-center gap-2">
-                @foreach(request()->except(['user_call_time_user', 'user_call_time_period']) as $field => $value)
-                    <input type="hidden" name="{{ $field }}" value="{{ $value }}">
-                @endforeach
-                <label for="user-call-time-user" class="text-sm font-medium text-gray-600 dark:text-gray-300">
-                    {{ __('User') }}
-                </label>
-                <select
-                    id="user-call-time-user"
-                    name="user_call_time_user"
-                    class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-                    onchange="this.form.submit()"
-                >
-                    <option value="0">{{ __('All Users') }}</option>
-                    @foreach($user_options as $option)
-                        <option value="{{ $option['id'] }}" @selected(($user_call_time_selected ?? 0) == $option['id'])>
-                            {{ $option['name'] }}
-                        </option>
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+                <form method="GET" id="user-call-time-user-form" class="flex items-center gap-2">
+                    @foreach(request()->except(['user_call_time_user']) as $field => $value)
+                        <input type="hidden" name="{{ $field }}" value="{{ $value }}">
                     @endforeach
-                </select>
-                <label for="user-call-time-period" class="text-sm font-medium text-gray-600 dark:text-gray-300">
-                    {{ __('Period') }}
-                </label>
-                <select
-                    id="user-call-time-period"
-                    name="user_call_time_period"
-                    class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-                    onchange="this.form.submit()"
-                >
-                    <option value="last_24_hours" @selected(($user_call_time_period ?? 'last_7_days') === 'last_24_hours')>{{ __('Last 24 hours') }}</option>
-                    <option value="last_7_days" @selected(($user_call_time_period ?? 'last_7_days') === 'last_7_days')>{{ __('Last 7 days') }}</option>
-                    <option value="this_month" @selected(($user_call_time_period ?? 'last_7_days') === 'this_month')>{{ __('This month') }}</option>
-                </select>
-            </form>
+                    <input type="hidden" name="user_call_time_user" value="{{ $user_call_time_selected ?? 0 }}">
+                    <span class="flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-900 shadow-sm dark:border-indigo-500/40 dark:bg-indigo-900/30 dark:text-indigo-100">
+                        <i class="bi bi-person-lines-fill text-base"></i>
+                        {{ __('User') }}
+                    </span>
+                    <div class="relative">
+                        <button type="button" id="user-call-time-user-filter" data-dropdown-toggle="user-call-time-user-dropdown"
+                            class="btn-primary flex items-center justify-center gap-2 rounded-full px-5 py-2 text-sm">
+                            <i class="bi bi-sliders text-base"></i>
+                            <span>{{ __('Filter') }}</span>
+                            <i class="bi bi-chevron-down text-xs"></i>
+                        </button>
+                        <div id="user-call-time-user-dropdown"
+                            class="z-20 hidden w-56 rounded-lg border border-gray-100 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                            <ul class="max-h-64 overflow-y-auto py-1 text-sm text-gray-700 dark:text-gray-200">
+                                <li>
+                                    <button type="button"
+                                        class="flex w-full items-center justify-between rounded-md px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white {{ (int)($user_call_time_selected ?? 0) === 0 ? 'bg-indigo-50 dark:bg-gray-700' : '' }}"
+                                        data-filter-trigger
+                                        data-form="user-call-time-user-form"
+                                        data-input="user_call_time_user"
+                                        data-value="0">
+                                        <span>{{ __('All Users') }}</span>
+                                        @if((int)($user_call_time_selected ?? 0) === 0)
+                                            <i class="bi bi-check text-indigo-600 dark:text-white"></i>
+                                        @endif
+                                    </button>
+                                </li>
+                                @foreach($user_options as $option)
+                                    <li>
+                                        <button type="button"
+                                            class="flex w-full items-center justify-between rounded-md px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white {{ (int)($user_call_time_selected ?? 0) === (int)$option['id'] ? 'bg-indigo-50 dark:bg-gray-700' : '' }}"
+                                            data-filter-trigger
+                                            data-form="user-call-time-user-form"
+                                            data-input="user_call_time_user"
+                                            data-value="{{ $option['id'] }}">
+                                            <span>{{ $option['name'] }}</span>
+                                            @if((int)($user_call_time_selected ?? 0) === (int)$option['id'])
+                                                <i class="bi bi-check text-indigo-600 dark:text-white"></i>
+                                            @endif
+                                        </button>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    </div>
+                </form>
+
+                <form method="GET" id="user-call-time-period-form" class="flex items-center gap-2">
+                    @foreach(request()->except(['user_call_time_period']) as $field => $value)
+                        <input type="hidden" name="{{ $field }}" value="{{ $value }}">
+                    @endforeach
+                    <input type="hidden" name="user_call_time_period" value="{{ $user_call_time_period ?? 'last_7_days' }}">
+                    <span class="flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-900 shadow-sm dark:border-indigo-500/40 dark:bg-indigo-900/30 dark:text-indigo-100">
+                        <i class="bi bi-calendar-week text-base"></i>
+                        {{ __('Period') }}
+                    </span>
+                    <div class="relative">
+                        <button type="button" id="user-call-time-period-filter" data-dropdown-toggle="user-call-time-period-dropdown"
+                            class="btn-primary flex items-center justify-center gap-2 rounded-full px-5 py-2 text-sm">
+                            <i class="bi bi-sliders text-base"></i>
+                            <span>{{ __('Filter') }}</span>
+                            <i class="bi bi-chevron-down text-xs"></i>
+                        </button>
+                        <div id="user-call-time-period-dropdown"
+                            class="z-20 hidden w-56 rounded-lg border border-gray-100 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                            <ul class="py-1 text-sm text-gray-700 dark:text-gray-200">
+                                @php
+                                    $callTimePeriods = [
+                                        'last_24_hours' => __('Last 24 hours'),
+                                        'last_7_days' => __('Last 7 days'),
+                                        'this_month' => __('This month'),
+                                    ];
+                                @endphp
+                                @foreach($callTimePeriods as $value => $label)
+                                    <li>
+                                        <button type="button"
+                                            class="flex w-full items-center justify-between rounded-md px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white {{ ($user_call_time_period ?? 'last_7_days') === $value ? 'bg-indigo-50 dark:bg-gray-700' : '' }}"
+                                            data-filter-trigger
+                                            data-form="user-call-time-period-form"
+                                            data-input="user_call_time_period"
+                                            data-value="{{ $value }}">
+                                            <span>{{ $label }}</span>
+                                            @if(($user_call_time_period ?? 'last_7_days') === $value)
+                                                <i class="bi bi-check text-indigo-600 dark:text-white"></i>
+                                            @endif
+                                        </button>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    </div>
+                </form>
+            </div>
         </div>
         <div id="user-call-time-chart" class="h-80"></div>
     </div>
@@ -98,7 +163,7 @@
                     curve: 'smooth',
                     width: 3
                 },
-                colors: ['#0EA5E9'],
+                colors: ['#635BFF'],
                 markers: {
                     size: 3,
                     strokeWidth: 0

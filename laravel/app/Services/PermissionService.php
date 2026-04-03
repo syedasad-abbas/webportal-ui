@@ -61,6 +61,8 @@ class PermissionService
                 'permissions' => [
                     'campaign.add',
                     'campaign.play',
+                    'campaign.edit',
+                    'campaign.delete',
                 ],
             ],
 
