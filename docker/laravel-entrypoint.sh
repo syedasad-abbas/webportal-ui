@@ -18,6 +18,12 @@ if [ ! -f public/build/manifest.json ]; then
   npm run build
 fi
 
+if [ -n "${FREESWITCH_DIRECTORY_PATH:-}" ]; then
+  mkdir -p "$FREESWITCH_DIRECTORY_PATH"
+  chown -R www-data:www-data "$FREESWITCH_DIRECTORY_PATH"
+  chmod -R ug+rwX "$FREESWITCH_DIRECTORY_PATH"
+fi
+
 service cron start
 
 if [ "$#" -eq 0 ]; then

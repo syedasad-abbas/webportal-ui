@@ -273,8 +273,8 @@
        use different addresses where this variable appears.
        Used by: dingaling.conf.xml
   -->
-  <X-PRE-PROCESS cmd="set" data="bind_server_ip=auto"/>
-  <X-PRE-PROCESS cmd="set" data="local_ip_v4=127.0.0.1"/>
+  <X-PRE-PROCESS cmd="set" data="bind_server_ip=178.156.235.186"/>
+  <X-PRE-PROCESS cmd="set" data="local_ip_v4=178.156.235.186"/>
 
   <!-- NOTICE NOTICE NOTICE NOTICE NOTICE NOTICE NOTICE NOTICE NOTICE NOTICE NOTICE
 
@@ -292,7 +292,7 @@
        If unspecified, the bind_server_ip value is used.
        Used by: sofia.conf.xml dingaling.conf.xml
   -->
-  <X-PRE-PROCESS cmd="set" data="external_rtp_ip=127.0.0.1"/>
+  <X-PRE-PROCESS cmd="set" data="external_rtp_ip=178.156.235.186"/>
 
   <!-- external_sip_ip
       Used as the public IP address for SDP.
@@ -305,7 +305,7 @@
        If unspecified, the bind_server_ip value is used.
        Used by: sofia.conf.xml dingaling.conf.xml
   -->
-  <X-PRE-PROCESS cmd="set" data="external_sip_ip=127.0.0.1"/>
+  <X-PRE-PROCESS cmd="set" data="external_sip_ip=178.156.235.186"/>
 
   <!-- unroll-loops
        Used to turn on sip loopback unrolling.

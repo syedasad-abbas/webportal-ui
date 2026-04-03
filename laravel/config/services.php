@@ -44,5 +44,9 @@ return [
         'ice_servers' => array_values(array_filter(array_map('trim', explode(',', env('WEBRTC_ICE_SERVERS', 'stun:stun.l.google.com:19302'))))),
     ],
 
+    'freeswitch' => [
+        'directory_path' => env('FREESWITCH_DIRECTORY_PATH', '/var/www/freeswitch-directory/default'),
+    ],
+
 
 ];

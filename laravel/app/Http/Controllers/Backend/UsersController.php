@@ -11,6 +11,7 @@ use App\Http\Requests\User\UpdateUserRequest;
 use App\Models\User;
 use App\Models\Carrier;
 use App\Services\RolesService;
+use App\Services\SipDirectorySyncService;
 use App\Services\UserService;
 use Illuminate\Contracts\Support\Renderable;
 use Illuminate\Http\RedirectResponse;
@@ -24,7 +25,8 @@ class UsersController extends Controller
 {
     public function __construct(
         private readonly UserService $userService,
-        private readonly RolesService $rolesService
+        private readonly RolesService $rolesService,
+        private readonly SipDirectorySyncService $sipDirectorySyncService
     ) {
     }
 
@@ -145,6 +147,7 @@ class UsersController extends Controller
         /** @var User $user */
         $user = ld_apply_filters('user_store_after_save', $user, $request);
         $this->persistSipCredentials($request, $user);
+        $this->sipDirectorySyncService->syncUser($user);
 
         // Roles assignment
         if ($request->filled('roles')) {
@@ -195,6 +198,8 @@ class UsersController extends Controller
         $this->checkAuthorization(Auth::user(), ['user.edit']);
 
         $user = User::findOrFail($id);
+        $user->loadMissing('sipCredential');
+        $previousSipUsername = $user->sipCredential?->sip_username;
 
         $this->preventSuperAdminModification($user);
 
@@ -252,6 +257,7 @@ class UsersController extends Controller
         $user->save();
         $user = ld_apply_filters('user_update_after_save', $user, $request);
         $this->persistSipCredentials($request, $user);
+        $this->sipDirectorySyncService->syncUser($user, $previousSipUsername);
 
         ld_do_action('user_update_after', $user);
 
@@ -369,6 +375,8 @@ class UsersController extends Controller
     {
         $this->checkAuthorization(Auth::user(), ['user.delete']);
         $user = $this->userService->getUserById($id);
+        $user->loadMissing('sipCredential');
+        $sipUsername = $user->sipCredential?->sip_username;
 
         $this->preventSuperAdminModification($user);
 
@@ -380,6 +388,7 @@ class UsersController extends Controller
         $user = ld_apply_filters('user_delete_before', $user);
         $user->delete();
         $user = ld_apply_filters('user_delete_after', $user);
+        $this->sipDirectorySyncService->deleteByUsername($sipUsername);
 
         session()->flash('success', __('User has been deleted.'));
         $this->storeActionLog(ActionType::DELETED, ['user' => $user]);
@@ -411,21 +420,26 @@ class UsersController extends Controller
 
         $users = User::whereIn('id', $ids)->get();
         $deletedCount = 0;
+        $deletedSipUsernames = [];
 
         foreach ($users as $user) {
             if ($user->hasRole('superadmin')) {
                 continue;
             }
 
+            $user->loadMissing('sipCredential');
             $user = ld_apply_filters('user_delete_before', $user);
             $user->delete();
             ld_apply_filters('user_delete_after', $user);
 
+            $deletedSipUsernames[] = $user->sipCredential?->sip_username;
             $this->storeActionLog(ActionType::DELETED, ['user' => $user]);
             ld_do_action('user_delete_after', $user);
 
             $deletedCount++;
         }
+
+        $this->sipDirectorySyncService->deleteByUsernames($deletedSipUsernames);
 
         if ($deletedCount > 0) {
             session()->flash('success', __(':count users deleted successfully', ['count' => $deletedCount]));

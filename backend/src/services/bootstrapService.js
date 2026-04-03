@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const db = require('../db');
 const config = require('../config');
+const { syncGateway } = require('../lib/gatewayConfig');
 
 const ensureSchemaUpgrades = async () => {
   await db.query(
@@ -116,6 +117,32 @@ const seedDefaults = async () => {
   }
 };
 
+const syncExistingCarrierGateways = async () => {
+  const result = await db.query(
+    `SELECT id,
+            name,
+            sip_domain,
+            sip_port,
+            transport,
+            outbound_proxy,
+            registration_required,
+            registration_username,
+            registration_password
+     FROM carriers`
+  );
+
+  for (const carrier of result.rows) {
+    try {
+      await syncGateway(carrier);
+    } catch (err) {
+      console.warn('[bootstrap] carrier gateway sync failed', {
+        carrierId: carrier.id,
+        message: err.message
+      });
+    }
+  }
+};
+
 const ensureDefaults = async () => {
   // Always run schema upgrades
   await ensureSchemaUpgrades();
@@ -124,10 +151,12 @@ const ensureDefaults = async () => {
   const shouldSeed = process.env.BOOTSTRAP_DEFAULTS !== 'false';
   if (!shouldSeed) {
     console.log('BOOTSTRAP_DEFAULTS=false → skipping default group/carrier/admin seeding');
+    await syncExistingCarrierGateways();
     return;
   }
 
   await seedDefaults();
+  await syncExistingCarrierGateways();
 };
 
 module.exports = {

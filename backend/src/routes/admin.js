@@ -11,6 +11,7 @@ const authService = require('../services/authService');
 const userService = require('../services/userService');
 const groupService = require('../services/groupService');
 const carrierService = require('../services/carrierService');
+const { reloadXml } = require('../lib/freeswitch');
 const { authenticate } = require('../middleware/auth');
 const config = require('../config');
 // End workers
@@ -173,6 +174,15 @@ router.delete('/users/:userId', authenticate(['admin', 'superadmin']), async (re
     return res.status(204).send();
   } catch (err) {
     return res.status(400).json({ message: err.message });
+  }
+});
+
+router.post('/freeswitch/reloadxml', allowInternalOrAdmin, async (_req, res) => {
+  try {
+    const response = await reloadXml();
+    return res.json({ message: response });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
   }
 });
 // Group management routes
