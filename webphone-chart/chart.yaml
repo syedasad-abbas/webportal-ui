@@ -1,0 +1,6 @@
+apiVersion: v2
+name: webphone
+description: Webphone stack (nginx/laravel/backend/postgres/freeswitch/vite/queue)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

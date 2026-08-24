@@ -1,0 +1,6 @@
+<!-- Save this as clock.svg -->
+<svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2"
+     viewBox="0 0 24 24" class="icon" width="20" height="20">
+  <path stroke-linecap="round" stroke-linejoin="round"
+        d="M12 6v6l4 2m4-2a8 8 0 11-16 0 8 8 0 0116 0z"/>
+</svg>

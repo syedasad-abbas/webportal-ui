@@ -1,0 +1,20 @@
+<include>
+  <!--
+    Inbound DID(s) -> round-robin web agents.
+
+    Any destination_number matched here is handed to inbound.lua, which reports
+    the call to the backend and parks the caller in a conference. The backend
+    rings logged-in agents one at a time (round-robin) and bridges the first
+    answerer into the same conference.
+
+    The dialplan accepts numeric destinations here, then inbound.lua asks the
+    backend whether the exact normalized DID is active in the UI-managed list.
+  -->
+  <extension name="inbound_did_roundrobin">
+    <condition field="destination_number" expression="^(\+?[0-9]{3,20})$">
+      <action application="set" data="domain_name=$${domain}"/>
+      <action application="set" data="inbound_did=$1"/>
+      <action application="lua" data="inbound.lua"/>
+    </condition>
+  </extension>
+</include>

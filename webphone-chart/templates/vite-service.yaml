@@ -1,0 +1,15 @@
+{{- if .Values.vite.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "webphone.fullname" . }}-vite
+spec:
+  type: {{ .Values.service.vite.type }}
+  selector:
+    app: {{ include "webphone.fullname" . }}
+    component: vite
+  ports:
+    - name: http
+      port: {{ .Values.service.vite.port }}
+      targetPort: {{ .Values.service.vite.port }}
+{{- end }}

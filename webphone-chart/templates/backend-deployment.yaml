@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "webphone.fullname" . }}-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ include "webphone.fullname" . }}
+      component: backend
+  template:
+    metadata:
+      labels:
+        app: {{ include "webphone.fullname" . }}
+        component: backend
+    spec:
+      containers:
+        - name: backend
+          image: "{{ .Values.image.backend.repository }}:{{ .Values.image.backend.tag }}"
+          imagePullPolicy: {{ .Values.image.backend.pullPolicy }}
+          workingDir: /app
+          command: {{ toJson .Values.backend.command }}
+          ports:
+            - containerPort: {{ .Values.backend.port }}
+              name: http
+          envFrom:
+            - configMapRef:
+                name: {{ include "webphone.fullname" . }}-backend-config
+          env:
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "webphone.fullname" . }}-backend-secret
+                  key: DB_PASSWORD
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "webphone.fullname" . }}-backend-secret
+                  key: JWT_SECRET
+            - name: FREESWITCH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "webphone.fullname" . }}-backend-secret
+                  key: FREESWITCH_PASSWORD
+            - name: BACKEND_INTERNAL_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "webphone.fullname" . }}-backend-secret
+                  key: BACKEND_INTERNAL_TOKEN
+            - name: DEFAULT_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "webphone.fullname" . }}-backend-secret
+                  key: DEFAULT_ADMIN_PASSWORD
+          volumeMounts:
+            - name: recordings
+              mountPath: /recordings
+            - name: gateways
+              mountPath: /mnt/gateways
+      volumes:
+        - name: gateways
+          persistentVolumeClaim:
+            claimName: {{ include "webphone.fullname" . }}-freeswitch-gateways-pvc
+        - name: recordings
+          {{- if eq .Values.recordings.mode "hostPath" }}
+          hostPath:
+            path: {{ .Values.recordings.hostPath | quote }}
+            type: DirectoryOrCreate
+          {{- else }}
+          persistentVolumeClaim:
+            claimName: {{ include "webphone.fullname" . }}-recordings-pvc
+          {{- end }}

@@ -1,0 +1,63 @@
+{{- if .Values.postgres.storage.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "webphone.fullname" . }}-postgres-pvc
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: {{ .Values.postgres.storage.size | quote }}
+  {{- if .Values.postgres.storage.storageClassName }}
+  storageClassName: {{ .Values.postgres.storage.storageClassName | quote }}
+  {{- end }}
+---
+{{- end }}
+
+{{- if .Values.laravelStorage.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "webphone.fullname" . }}-laravel-storage-pvc
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: {{ .Values.laravelStorage.size | quote }}
+  {{- if .Values.laravelStorage.storageClassName }}
+  storageClassName: {{ .Values.laravelStorage.storageClassName | quote }}
+  {{- end }}
+---
+{{- end }}
+
+{{- if .Values.freeswitch.gatewaysPVC.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "webphone.fullname" . }}-freeswitch-gateways-pvc
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: {{ .Values.freeswitch.gatewaysPVC.size | quote }}
+  {{- if .Values.freeswitch.gatewaysPVC.storageClassName }}
+  storageClassName: {{ .Values.freeswitch.gatewaysPVC.storageClassName | quote }}
+  {{- end }}
+---
+{{- end }}
+
+{{- if and (eq .Values.recordings.mode "pvc") .Values.recordings.pvc.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "webphone.fullname" . }}-recordings-pvc
+spec:
+  # NOTE: if backend + freeswitch are on different nodes, you likely need RWX storage.
+  accessModes: ["ReadWriteMany"]
+  resources:
+    requests:
+      storage: {{ .Values.recordings.pvc.size | quote }}
+  {{- if .Values.recordings.pvc.storageClassName }}
+  storageClassName: {{ .Values.recordings.pvc.storageClassName | quote }}
+  {{- end }}
+{{- end }}

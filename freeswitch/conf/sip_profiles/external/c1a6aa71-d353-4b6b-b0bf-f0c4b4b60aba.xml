@@ -1,0 +1,16 @@
+<include>
+  <gateway name="c1a6aa71-d353-4b6b-b0bf-f0c4b4b60aba">
+    <param name="username" value="jambonz"/>
+    <param name="password" value="test123"/>
+    <param name="from-user" value="jambonz"/>
+    <param name="from-domain" value="jambonz.custom"/>
+    <param name="extension" value="jambonz"/>
+    <param name="proxy" value="jambonz.custom:5084"/>
+    <param name="register-proxy" value="jambonz.custom:5084"/>
+    <param name="register-transport" value="tcp"/>
+    <param name="register" value="true"/>
+    <param name="expire-seconds" value="3600"/>
+    <param name="retry-seconds" value="30"/>
+    <param name="ping" value="30"/>
+  </gateway>
+</include>

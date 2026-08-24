@@ -1,0 +1,32 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Database\Seeders;
+
+use App\Models\User;
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
+
+class UserSeeder extends Seeder
+{
+    /**
+     * Run the database seeds.
+     */
+    public function run(): void
+    {
+        User::updateOrCreate(
+            ['email' => 'superadmin@example.com'],
+            [
+                'external_name' => 'Super Admin',
+                'internal_name' => 'superadmin',
+                'password' => Hash::make('12345678'),
+                'password_hash' => Hash::make('12345678'),
+                'full_name' => 'Super Admin',
+                'role' => 'superadmin',
+            ]
+        );
+
+        $this->command->info('Seeded: Super Admin user ensured.');
+    }
+}

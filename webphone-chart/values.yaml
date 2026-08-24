@@ -1,0 +1,141 @@
+image:
+  laravel:
+    repository: your-registry/webphone-laravel
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  backend:
+    repository: node
+    tag: "20-alpine"
+    pullPolicy: IfNotPresent
+  postgres:
+    repository: postgres
+    tag: "16"
+    pullPolicy: IfNotPresent
+  freeswitch:
+    repository: your-registry/webphone-freeswitch
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  vite:
+    repository: node
+    tag: "20-alpine"
+    pullPolicy: IfNotPresent
+
+service:
+  laravel:
+    type: ClusterIP
+    port: 80
+  backend:
+    type: ClusterIP
+    port: 4000
+  vite:
+    type: ClusterIP
+    port: 5173
+  freeswitch:
+    # HostNetwork makes normal Service less useful; kept for completeness for event socket access if NOT hostNetwork.
+    type: ClusterIP
+    eventSocketPort: 8021
+
+ingress:
+  enabled: true
+  className: nginx
+  host: vm2.technonies.com
+  tls:
+    enabled: true
+    secretName: webphone-tls
+  paths:
+    laravel: /
+    # If you want vite exposed too, add a separate host or path depending on your setup.
+
+# --- Postgres ---
+postgres:
+  db: webphone
+  user: webphone
+  password: supersecret
+  storage:
+    enabled: true
+    size: 10Gi
+    storageClassName: ""  # set if needed
+
+# --- Laravel storage ---
+laravelStorage:
+  enabled: true
+  size: 5Gi
+  storageClassName: ""   # set if needed
+
+# --- FreeSWITCH gateways (and optionally shared recordings) ---
+freeswitch:
+  hostNetwork: true
+  nodeSelector: {}       # e.g. { "kubernetes.io/hostname": "your-node" }
+  tolerations: []
+  affinity: {}
+  eventSocketPassword: ClueCon
+
+  # FreeSWITCH config:
+  # Best practice: build config into image OR mount from ConfigMap/Secret.
+  # Here we assume you mount an existing config via a ConfigMap later, or bake into image.
+  confMount:
+    enabled: false
+
+  gatewaysPVC:
+    enabled: true
+    size: 1Gi
+    storageClassName: ""
+
+recordings:
+  # IMPORTANT: backend and freeswitch both need access.
+  # If you run freeswitch hostNetwork on a single node, simplest is hostPath.
+  mode: hostPath  # hostPath | pvc
+  hostPath: /root/recordings
+  pvc:
+    enabled: false
+    size: 20Gi
+    storageClassName: ""
+
+# --- Backend env (from your x-backend-env) ---
+backend:
+  port: 4000
+  env:
+    DB_HOST: postgres
+    DB_PORT: "5432"
+    DB_NAME: webphone
+    DB_USER: webphone
+    DB_PASSWORD: supersecret
+    JWT_SECRET: change-me
+    BACKEND_INTERNAL_TOKEN: sync-secret
+    DEFAULT_ADMIN_EMAIL: superadmin@example.com
+    DEFAULT_ADMIN_PASSWORD: "12345678"
+    FREESWITCH_HOST: "172.24.0.1"
+    FREESWITCH_PORT: "8021"
+    FREESWITCH_PASSWORD: ClueCon
+    FREESWITCH_RECORDINGS_PATH: /var/recordings
+    FREESWITCH_GATEWAY_PATH: /mnt/gateways
+    FREESWITCH_EXTERNAL_SIP_IP: "192.168.1.34"
+    BOOTSTRAP_DEFAULTS: "true"
+
+  # Your compose runs "npm install && npm start" with source mounted.
+  # In k8s you normally build an image instead. This keeps your behavior but is slower.
+  command: ["sh","-c","npm install && npm start"]
+
+# --- Laravel env (from compose) ---
+laravel:
+  env:
+    APP_ENV: local
+    APP_DEBUG: "true"
+    DB_CONNECTION: pgsql
+    DB_HOST: postgres
+    DB_PORT: "5432"
+    DB_DATABASE: webphone
+    DB_USERNAME: webphone
+    DB_PASSWORD: supersecret
+    BACKEND_URL: http://webphone-backend:4000
+    BACKEND_INTERNAL_TOKEN: sync-secret
+
+queue:
+  command: ["php","artisan","queue:work","--verbose","--tries=3","--timeout=90"]
+
+vite:
+  enabled: true
+  env:
+    VITE_DEV_SERVER_URL: https://vm2.technonies.com:8443
+    VITE_DEV_SERVER_PORT: "5173"
+  command: ["sh","-c","npm install && npm run dev -- --host 0.0.0.0 --port 5173"]
