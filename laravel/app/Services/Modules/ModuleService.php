@@ -51,7 +51,7 @@ class ModuleService
         $moduleStatuses = $this->getModuleStatuses();
 
         if (! File::exists($this->modulesPath)) {
-            throw new ModuleException(__('Modules directory does not exist. Please ensure the "Modules" directory is present in the application root.'));
+            return [];
         }
 
         $moduleDirectories = File::directories($this->modulesPath);
@@ -80,6 +80,8 @@ class ModuleService
 
     public function uploadModule(Request $request)
     {
+        File::ensureDirectoryExists($this->modulesPath);
+
         $file = $request->file('module');
         $filePath = $file->storeAs('modules', $file->getClientOriginalName());
 

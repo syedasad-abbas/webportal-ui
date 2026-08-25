@@ -8,7 +8,7 @@
 @php
     abort_unless(auth()->check() && auth()->user()->can('carrier.create'), 403);
 @endphp
-<div class="p-4 mx-auto max-w-7xl md:p-6">
+<div class="connectpro-admin-page p-4 mx-auto max-w-7xl md:p-6">
     <x-breadcrumbs :breadcrumbs="$breadcrumbs" />
 
     {!! ld_apply_filters('carriers_create_after_breadcrumbs', '') !!}

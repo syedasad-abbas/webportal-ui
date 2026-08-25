@@ -9,7 +9,7 @@ x-backend-env: &backend-env
   BACKEND_INTERNAL_TOKEN: ${BACKEND_INTERNAL_TOKEN:-sync-secret}
   DEFAULT_ADMIN_EMAIL: superadmin@example.com
   DEFAULT_ADMIN_PASSWORD: 12345678
-  # Empty means the backend discovers its Docker default gateway at runtime.
+  # FREESWITCH_HOST: empty = auto-detect via Docker gateway or host.docker.internal
   FREESWITCH_HOST: ${FREESWITCH_HOST:-}
   FREESWITCH_PORT: 8021
   FREESWITCH_PASSWORD: ClueCon
@@ -17,11 +17,10 @@ x-backend-env: &backend-env
   FREESWITCH_RECORDINGS_PATH: /var/recordings
   FREESWITCH_GATEWAY_PATH: /mnt/gateways
   FREESWITCH_DIRECTORY_PATH: /mnt/users
-  # These addresses have different jobs.  The public address belongs in
-  # carrier-facing SIP headers; registered browser users live in the local
-  # FreeSWITCH directory domain.
-  FREESWITCH_EXTERNAL_SIP_IP: ${PUBLIC_IP:-}
-  FREESWITCH_DIRECTORY_DOMAIN: ${SIP_DOMAIN:-}
+  # FREESWITCH_EXTERNAL_SIP_IP: empty = auto-detect from FreeSWITCH STUN/host IP
+  FREESWITCH_EXTERNAL_SIP_IP: ${FREESWITCH_EXTERNAL_SIP_IP:-}
+  # FREESWITCH_DIRECTORY_DOMAIN: empty = auto-detect from FreeSWITCH domain var
+  FREESWITCH_DIRECTORY_DOMAIN: ${FREESWITCH_DIRECTORY_DOMAIN:-}
 
 services:
   nginx:
@@ -73,6 +72,10 @@ services:
       - freeswitch_users:/etc/freeswitch/directory/webphone
     environment:
       EVENT_SOCKET_PASSWORD: ClueCon
+      # Backend URL for inbound.lua - FreeSWITCH uses host networking, so it
+      # reaches the backend container via the host-mapped port (4000:4000)
+      BACKEND_URL: http://127.0.0.1:4000
+      BACKEND_INTERNAL_TOKEN: ${BACKEND_INTERNAL_TOKEN:-sync-secret}
     ulimits:
       nofile:
         soft: 32768

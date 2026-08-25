@@ -5,7 +5,7 @@
 @endsection
 
 @section('admin-content')
-<div class="p-6 mx-auto max-w-7xl">
+<div class="connectpro-admin-page p-6 mx-auto max-w-7xl">
     <x-breadcrumbs :breadcrumbs="$breadcrumbs" />
 
     {!! ld_apply_filters('roles_create_after_breadcrumbs', '') !!}

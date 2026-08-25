@@ -292,6 +292,13 @@ class DialerWebRTC {
         }
         await this.applyMuteState(muted);
     }
+
+    async sendDtmf(digits) {
+        if (!this.simpleUser?.session || typeof this.simpleUser.sendDTMF !== "function") {
+            throw new Error("No active browser call is available for DTMF");
+        }
+        await this.simpleUser.sendDTMF(String(digits));
+    }
 }
 
 if (typeof window !== "undefined") {

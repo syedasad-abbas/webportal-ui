@@ -4,8 +4,8 @@
 -- then parks the caller in a conference. The agent leg originated by the
 -- backend lands in the same conference, bridging caller <-> agent.
 
-local BACKEND_URL = "http://127.0.0.1:4000/freeswitch/inbound"
-local INTERNAL_TOKEN = "sync-secret"
+local BACKEND_URL = os.getenv("BACKEND_URL") or "http://127.0.0.1:4000/freeswitch/inbound"
+local INTERNAL_TOKEN = os.getenv("BACKEND_INTERNAL_TOKEN") or "sync-secret"
 
 local uuid = session:getVariable("uuid") or ""
 local did = session:getVariable("destination_number") or ""
@@ -55,7 +55,7 @@ session:execute("conference", conference .. "@default")
 
 -- When the caller leaves (hangs up), tell the backend to stop hunting for agents.
 local stop_cmd = string.format(
-  "curl http://127.0.0.1:4000/freeswitch/inbound/%s/hangup content-type application/x-www-form-urlencoded post token=%s",
-  uuid, INTERNAL_TOKEN
+  "curl %s/inbound/%s/hangup content-type application/x-www-form-urlencoded post token=%s",
+  BACKEND_URL, uuid, INTERNAL_TOKEN
 )
 api:executeString(stop_cmd)

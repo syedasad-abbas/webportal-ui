@@ -86,6 +86,14 @@ class DialerController extends Controller
             'campaigns' => $campaigns,
             'run' => $run,
             'agents' => $agents,
+            'contactPermissions' => [
+                'view' => (bool) $user?->can('contacts.view'),
+                'create' => (bool) $user?->can('contacts.create'),
+                'edit' => (bool) $user?->can('contacts.edit'),
+                'delete' => (bool) $user?->can('contacts.delete'),
+                'comment' => (bool) $user?->can('contacts.comment'),
+                'labels' => (bool) $user?->can('contacts.labels'),
+            ],
             'inboundSocket' => [
                 'url' => config('services.backend.ws_url'),
                 'userId' => $user?->id,

@@ -37,8 +37,21 @@ return [
     ],
 
     'webrtc' => [
-        'ws' => env('WEBRTC_WS'),
-        'domain' => env('WEBRTC_SIP_DOMAIN'),
+        'ws' => env('WEBRTC_WS') ?: (function () {
+            $appUrl = env('APP_URL', 'http://localhost');
+            $parsed = parse_url($appUrl);
+            $host = $parsed['host'] ?? 'localhost';
+            $scheme = $parsed['scheme'] ?? 'http';
+            $port = $parsed['port'] ?? null;
+            $protocol = ($scheme === 'https') ? 'wss' : 'ws';
+            $portSuffix = $port ? ":$port" : '';
+            return "{$protocol}://{$host}{$portSuffix}:5066";
+        })(),
+        'domain' => env('WEBRTC_SIP_DOMAIN') ?: (function () {
+            $appUrl = env('APP_URL', 'http://localhost');
+            $parsed = parse_url($appUrl);
+            return $parsed['host'] ?? 'localhost';
+        })(),
         'username' => env('WEBRTC_SIP_USER', '1000'),
         'password' => env('WEBRTC_SIP_PASSWORD', '1234'),
         'ice_servers' => array_values(array_filter(array_map('trim', explode(',', env('WEBRTC_ICE_SERVERS', 'stun:stun.l.google.com:19302'))))),

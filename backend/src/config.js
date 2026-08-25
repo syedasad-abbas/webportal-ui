@@ -56,7 +56,25 @@ const detectDockerGateway = () => {
   }
 };
 
-module.exports = {
+// Detect the host's primary IP address (works both in Docker and on bare metal)
+const detectHostIp = () => {
+  try {
+    const { networkInterfaces } = require('os');
+    const interfaces = networkInterfaces();
+    for (const name of Object.keys(interfaces)) {
+      for (const iface of interfaces[name]) {
+        if (iface.family === 'IPv4' && !iface.internal) {
+          return iface.address;
+        }
+      }
+    }
+  } catch (err) {
+    // ignore
+  }
+  return null;
+};
+
+const baseConfig = {
   port: process.env.PORT || 4000,
   db: {
     host: process.env.DB_HOST || 'db',
@@ -67,7 +85,7 @@ module.exports = {
   },
   jwtSecret: process.env.JWT_SECRET || 'change_me',
   freeswitch: {
-    host: optionalEnv(process.env.FREESWITCH_HOST, detectDockerGateway() || 'freeswitch'),
+    host: optionalEnv(process.env.FREESWITCH_HOST, detectDockerGateway() || 'host.docker.internal'),
     port: process.env.FREESWITCH_PORT || 8021,
     password: process.env.FREESWITCH_PASSWORD || 'ClueCon',
     connectTimeoutMs: toInt(process.env.FREESWITCH_CONNECT_TIMEOUT_MS, 5000),
@@ -120,3 +138,74 @@ module.exports = {
     callDial: optionalEnv(process.env.CALL_DIAL_PERMISSION, 'dial')
   }
 };
+
+// Auto-detect external SIP IP and directory domain from FreeSWITCH at startup
+// when not explicitly configured via environment variables.
+let configInitialized = false;
+
+const initConfig = async () => {
+  if (configInitialized) return baseConfig;
+  configInitialized = true;
+
+  const { getGlobalVar } = require('./lib/freeswitch');
+
+  // Auto-detect external SIP IP from FreeSWITCH's STUN-discovered address
+  if (!baseConfig.freeswitch.externalSipIp) {
+    try {
+      const natAddr = await getGlobalVar('nat_public_addr');
+      if (natAddr) {
+        baseConfig.freeswitch.externalSipIp = natAddr;
+        console.log(`[config] Auto-detected external SIP IP from FreeSWITCH: ${natAddr}`);
+      }
+    } catch (err) {
+      // FreeSWITCH might not be ready yet, will use fallback
+    }
+
+    // Fallback: try external_sip_ip variable
+    if (!baseConfig.freeswitch.externalSipIp) {
+      try {
+        const externalSip = await getGlobalVar('external_sip_ip');
+        if (externalSip && externalSip !== 'stun:stun.freeswitch.org') {
+          baseConfig.freeswitch.externalSipIp = externalSip;
+          console.log(`[config] Using FreeSWITCH external_sip_ip: ${externalSip}`);
+        }
+      } catch (err) {
+        // ignore
+      }
+    }
+
+    // Final fallback: use Docker gateway IP (host's LAN IP from container)
+    if (!baseConfig.freeswitch.externalSipIp) {
+      const gatewayIp = detectDockerGateway();
+      if (gatewayIp) {
+        baseConfig.freeswitch.externalSipIp = gatewayIp;
+        console.log(`[config] Using Docker gateway IP as external SIP IP: ${gatewayIp}`);
+      }
+    }
+  }
+
+  // Auto-detect directory domain from FreeSWITCH's domain variable
+  if (!baseConfig.freeswitch.directoryDomain) {
+    try {
+      const domain = await getGlobalVar('domain');
+      if (domain) {
+        baseConfig.freeswitch.directoryDomain = domain;
+        console.log(`[config] Auto-detected directory domain from FreeSWITCH: ${domain}`);
+      }
+    } catch (err) {
+      // FreeSWITCH might not be ready yet, will use fallback
+    }
+
+    // Fallback: use external SIP IP as domain
+    if (!baseConfig.freeswitch.directoryDomain && baseConfig.freeswitch.externalSipIp) {
+      baseConfig.freeswitch.directoryDomain = baseConfig.freeswitch.externalSipIp;
+      console.log(`[config] Using external SIP IP as directory domain: ${baseConfig.freeswitch.externalSipIp}`);
+    }
+  }
+
+  return baseConfig;
+};
+
+module.exports = baseConfig;
+module.exports.initConfig = initConfig;
+module.exports.detectHostIp = detectHostIp;

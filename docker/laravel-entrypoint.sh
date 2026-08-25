@@ -3,6 +3,10 @@ set -euo pipefail
 
 cd /var/www/html
 
+# Fix permissions for Laravel storage (volume mounts override build-time perms)
+chown -R www-data:www-data storage bootstrap/cache
+chmod -R 775 storage bootstrap/cache
+
 if ! command -v npm >/dev/null 2>&1; then
   echo "npm is not available in this container." >&2
   exit 1

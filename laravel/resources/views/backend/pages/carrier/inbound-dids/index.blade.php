@@ -5,7 +5,7 @@
 @endsection
 
 @section('admin-content')
-<div class="p-4 mx-auto max-w-(--breakpoint-2xl) md:p-6">
+<div class="connectpro-admin-page p-4 mx-auto max-w-(--breakpoint-2xl) md:p-6">
     <x-breadcrumbs :breadcrumbs="$breadcrumbs" />
 
     <div class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">

@@ -24,6 +24,7 @@ use App\Http\Controllers\Admin\CarrierController;
 use App\Http\Controllers\Admin\InboundDidController;
 
 use App\Http\Controllers\Admin\DialerController;
+use App\Http\Controllers\Admin\DialerContactController;
 use App\Http\Controllers\Admin\CampaignController;
 
 use Illuminate\Support\Facades\Route;
@@ -139,6 +140,13 @@ Route::delete('/carrier/{carrierId}', [CarrierController::class, 'destroy'])->na
 
         Route::get('/dialer/calls/last', [DialerController::class, 'lastCall'])->name('dialer.calls.last');
         Route::put('/dialer/calls/{uuid}/notes', [DialerController::class, 'updateNotes'])->name('dialer.calls.notes');
+        Route::get('/dialer/contacts', [DialerContactController::class, 'index'])->name('dialer.contacts.index');
+        Route::post('/dialer/contacts', [DialerContactController::class, 'store'])->name('dialer.contacts.store');
+        Route::patch('/dialer/contacts/{contact}', [DialerContactController::class, 'update'])->name('dialer.contacts.update');
+        Route::delete('/dialer/contacts/{contact}', [DialerContactController::class, 'destroy'])->name('dialer.contacts.destroy');
+        Route::post('/dialer/contacts/{contact}/comments', [DialerContactController::class, 'comment'])->name('dialer.contacts.comments.store');
+        Route::get('/dialer/contacts/{contact}/activity', [DialerContactController::class, 'activity'])->name('dialer.contacts.activity');
+        Route::get('/dialer/contacts/{contact}/call-history', [DialerContactController::class, 'callHistory'])->name('dialer.contacts.call-history');
 
         Route::get('/dialer/calls/{uuid}/status', [DialerController::class, 'status'])->name('dialer.status');
 

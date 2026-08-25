@@ -191,15 +191,15 @@ layer(base);
 }
 
 @utility menu-item {
-  @apply relative flex items-center gap-3 px-5 py-3 font-medium text-theme-sm;
+  @apply relative flex items-center gap-3 rounded-xl px-3 py-2.5 font-medium text-theme-sm transition-colors;
 }
 
 @utility menu-item-active {
-  @apply bg-brand-500/[0.12] text-brand-400;
+  @apply bg-blue-50 text-blue-600 dark:bg-blue-600/15 dark:text-blue-400;
 }
 
 @utility menu-item-inactive {
-  @apply text-gray-300 hover:text-gray-300;
+  @apply text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white;
 }
 
 @utility menu-item-icon-active {
@@ -227,11 +227,11 @@ layer(base);
 }
 
 @utility menu-dropdown-item-active {
-  @apply bg-brand-500/[0.12] text-brand-400;
+  @apply bg-blue-50 text-blue-600 dark:bg-blue-600/15 dark:text-blue-400;
 }
 
 @utility menu-dropdown-item-inactive {
-  @apply text-gray-300 hover:bg-white/5;
+  @apply text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800;
 }
 
 @utility menu-dropdown-badge {
@@ -665,4 +665,541 @@ layer(base);
 .menu-item-campaigns .menu-item-icon {
   width: 20px;
   height: 20px;
+}
+
+/* ConnectPro shell and softphone styling. */
+.connectpro-sidebar nav h3 {
+  margin: 0 0 0.5rem;
+  padding: 0 0.75rem;
+  color: #98a2b3;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+}
+
+.connectpro-sidebar nav ul {
+  gap: 0.25rem;
+}
+
+.connectpro-sidebar .menu-item-icon {
+  width: 1.15rem;
+  height: 1.15rem;
+  opacity: 0.8;
+}
+
+.connectpro-sidebar .menu-item-inactive {
+  color: #cbd5e1;
+}
+
+.connectpro-sidebar .menu-item-inactive:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+}
+
+.connectpro-sidebar .menu-item-active {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
+  box-shadow: 0 12px 30px -16px rgba(37, 99, 235, 0.9);
+}
+
+.connectpro-sidebar .menu-item-arrow,
+.connectpro-sidebar .menu-item-icon {
+  filter: brightness(0) invert(1);
+}
+
+.connectpro-dialer .dialpad-grid {
+  gap: 0.55rem 0.75rem;
+  padding: 0 0.4rem;
+}
+
+.connectpro-dialer .dialpad-key {
+  width: 72px;
+  height: 72px;
+  min-height: 72px;
+  justify-self: center;
+  border: 1px solid #486078;
+  border-radius: 9999px;
+  background: transparent;
+  color: #ffffff;
+  box-shadow: none;
+  padding: 0;
+  font-size: 1.8rem;
+  font-weight: 400;
+}
+
+.connectpro-dialer .dialpad-key::before {
+  display: none;
+}
+
+.connectpro-dialer .dialpad-key:hover {
+  transform: translateY(-1px);
+  border-color: #60a5fa;
+  background: rgba(37, 99, 235, 0.15);
+  color: #ffffff;
+  box-shadow: 0 8px 24px -12px rgba(37, 99, 235, 0.8);
+}
+
+.connectpro-dialer .dialpad-key:active {
+  transform: scale(0.98);
+}
+
+.connectpro-control {
+  display: flex;
+  min-height: 64px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  border: 1px solid #314960;
+  border-radius: 0.875rem;
+  background: #0b1b2c;
+  color: #e2e8f0;
+  font-size: 0.7rem;
+  font-weight: 600;
+  transition: 160ms ease;
+}
+
+.connectpro-control:hover:not(:disabled) {
+  border-color: #3b82f6;
+  background: rgba(37, 99, 235, 0.15);
+  color: #60a5fa;
+}
+
+.connectpro-control-danger:hover:not(:disabled) {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.connectpro-control:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.dark .connectpro-dialer .dialpad-key {
+  border-color: #486078;
+  background: transparent;
+  color: #ffffff;
+  box-shadow: none;
+}
+
+.dark .connectpro-control {
+  border-color: #314960;
+  background: #0b1b2c;
+  color: #e2e8f0;
+  box-shadow: none;
+}
+
+@media (max-width: 420px) {
+  .connectpro-dialer .dialpad-key {
+    width: 64px;
+    height: 64px;
+    min-height: 64px;
+  }
+}
+
+.dark .connectpro-dialer .dialpad-key:hover,
+.dark .connectpro-control:hover:not(:disabled) {
+  border-color: rgba(59, 130, 246, 0.5);
+  background: rgba(37, 99, 235, 0.14);
+  color: #93c5fd;
+}
+
+.dark .connectpro-control-danger:hover:not(:disabled) {
+  border-color: rgba(239, 68, 68, 0.5);
+  background: rgba(239, 68, 68, 0.12);
+  color: #fca5a5;
+}
+
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: #d0d5dd transparent;
+}
+
+.dark .scrollbar-thin {
+  scrollbar-color: #374151 transparent;
+}
+
+/* ConnectPro light/dark shell. */
+html:not(.dark) .connectpro-sidebar .menu-item-inactive {
+  color: #475569;
+}
+
+html:not(.dark) .connectpro-sidebar .menu-item-inactive:hover {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+html:not(.dark) .connectpro-sidebar .menu-item-arrow,
+html:not(.dark) .connectpro-sidebar .menu-item-icon {
+  filter: none;
+}
+
+html:not(.dark) .connectpro-sidebar a[href] span.text-white {
+  color: #0f172a;
+}
+
+html:not(.dark) .connectpro-sidebar .menu-item-active span,
+html:not(.dark) .connectpro-sidebar .menu-item-active {
+  color: #ffffff;
+}
+
+html:not(.dark) .connectpro-sidebar .menu-item-active .menu-item-icon,
+html:not(.dark) .connectpro-sidebar .menu-item-active .menu-item-arrow {
+  filter: brightness(0) invert(1);
+}
+
+/* Management screens share the same refined visual language as the dialer. */
+.connectpro-admin-page {
+  color: #334155;
+}
+
+.connectpro-admin-page > .space-y-6 > div,
+.connectpro-admin-page > .rounded-2xl,
+.connectpro-admin-page form > .space-y-8 > div {
+  overflow: hidden;
+  border-color: #dbe5f0;
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 18px 45px -32px rgba(15, 23, 42, 0.35);
+}
+
+.connectpro-admin-page table {
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.875rem;
+}
+
+.connectpro-admin-page table thead,
+.connectpro-admin-page table thead tr,
+.connectpro-admin-page table thead th {
+  background: #f7faff;
+}
+
+.connectpro-admin-page table thead th {
+  padding-top: 0.9rem;
+  padding-bottom: 0.9rem;
+  color: #64748b;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.connectpro-admin-page table tbody tr {
+  transition: background-color 160ms ease;
+}
+
+.connectpro-admin-page table tbody tr:hover {
+  background: #f8fbff;
+}
+
+.connectpro-admin-page table tbody td {
+  border-color: #edf2f7;
+  color: #334155;
+}
+
+.connectpro-admin-page input:not([type="checkbox"]):not([type="radio"]),
+.connectpro-admin-page select,
+.connectpro-admin-page textarea,
+.connectpro-admin-page .form-control {
+  border-color: #cbd8e6;
+  border-radius: 0.75rem;
+  background: #f8fbff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.connectpro-admin-page input:not([type="checkbox"]):not([type="radio"]):focus,
+.connectpro-admin-page select:focus,
+.connectpro-admin-page textarea:focus,
+.connectpro-admin-page .form-control:focus {
+  border-color: #3b82f6;
+  background: #ffffff;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.11);
+}
+
+.connectpro-admin-page label {
+  margin-bottom: 0.45rem;
+  color: #475569;
+  font-weight: 600;
+}
+
+.connectpro-admin-page .btn-primary,
+.connectpro-admin-page .btn-default,
+.connectpro-admin-page .btn-danger {
+  border-radius: 0.75rem;
+  box-shadow: none;
+  transform: none;
+}
+
+.connectpro-admin-page .btn-primary:hover,
+.connectpro-admin-page .btn-default:hover,
+.connectpro-admin-page .btn-danger:hover {
+  transform: translateY(-1px);
+}
+
+.dark .connectpro-admin-page {
+  color: #cbd5e1;
+}
+
+.dark .connectpro-admin-page > .space-y-6 > div,
+.dark .connectpro-admin-page > .rounded-2xl,
+.dark .connectpro-admin-page form > .space-y-8 > div {
+  border-color: #263b50;
+  background: #091827;
+  box-shadow: 0 24px 55px -36px rgba(0, 0, 0, 0.9);
+}
+
+.dark .connectpro-admin-page table thead,
+.dark .connectpro-admin-page table thead tr,
+.dark .connectpro-admin-page table thead th {
+  background: #0d1d2e;
+}
+
+.dark .connectpro-admin-page table thead th {
+  color: #94a3b8;
+}
+
+.dark .connectpro-admin-page table tbody tr:hover {
+  background: rgba(37, 99, 235, 0.08);
+}
+
+.dark .connectpro-admin-page table tbody td {
+  border-color: #1f3347;
+  color: #cbd5e1;
+}
+
+.dark .connectpro-admin-page input:not([type="checkbox"]):not([type="radio"]),
+.dark .connectpro-admin-page select,
+.dark .connectpro-admin-page textarea,
+.dark .connectpro-admin-page .form-control {
+  border-color: #314960;
+  background: #0b1b2c;
+  color: #f8fafc;
+}
+
+.dark .connectpro-admin-page input:not([type="checkbox"]):not([type="radio"]):focus,
+.dark .connectpro-admin-page select:focus,
+.dark .connectpro-admin-page textarea:focus,
+.dark .connectpro-admin-page .form-control:focus {
+  border-color: #3b82f6;
+  background: #0d2033;
+}
+
+.dark .connectpro-admin-page label {
+  color: #aebed0;
+}
+
+/* The dialer follows bright mode without changing any call behavior. */
+html:not(.dark) .connectpro-dialer {
+  background: #f2f6fb;
+  color: #0f172a;
+}
+
+html:not(.dark) .connectpro-dialer > div > .grid > section,
+html:not(.dark) .connectpro-dialer #contact-workspace-panel {
+  border-color: #d7e2ed;
+  background: #ffffff;
+  box-shadow: 0 24px 60px -38px rgba(15, 23, 42, 0.4);
+}
+
+html:not(.dark) .connectpro-dialer h1,
+html:not(.dark) .connectpro-dialer h2,
+html:not(.dark) .connectpro-dialer h3,
+html:not(.dark) .connectpro-dialer h4,
+html:not(.dark) .connectpro-dialer #customer-name,
+html:not(.dark) .connectpro-dialer #customer-phone,
+html:not(.dark) .connectpro-dialer #call-timer-badge {
+  color: #0f172a;
+}
+
+html:not(.dark) .connectpro-dialer .connectpro-sip-badge {
+  border-color: #d7e2ed;
+  background: #ffffff;
+  box-shadow: 0 14px 34px -24px rgba(15, 23, 42, 0.45);
+}
+
+html:not(.dark) .connectpro-dialer .connectpro-sip-badge .text-slate-100 {
+  color: #0f172a;
+}
+
+html:not(.dark) .connectpro-dialer .text-slate-300,
+html:not(.dark) .connectpro-dialer .text-slate-200 {
+  color: #64748b;
+}
+
+html:not(.dark) .connectpro-dialer #dialer-form > .relative,
+html:not(.dark) .connectpro-dialer #contact-search,
+html:not(.dark) .connectpro-dialer #contact-label-filter,
+html:not(.dark) .connectpro-dialer #contact-label-input,
+html:not(.dark) .connectpro-dialer #contact-name-input,
+html:not(.dark) .connectpro-dialer #contact-company-input,
+html:not(.dark) .connectpro-dialer #contact-phone-input,
+html:not(.dark) .connectpro-dialer #contact-email-input,
+html:not(.dark) .connectpro-dialer #contact-comment-input {
+  border-color: #cbd8e6;
+  background: #f8fbff;
+  color: #0f172a;
+}
+
+html:not(.dark) .connectpro-dialer #contact-search-results {
+  border-color: #cbd8e6;
+  background: #ffffff;
+}
+
+html:not(.dark) .connectpro-dialer #contact-search-results strong {
+  color: #0f172a;
+}
+
+html:not(.dark) .connectpro-dialer #contact-comments article {
+  border-color: #dbe5f0;
+  background: #ffffff;
+}
+
+html:not(.dark) .connectpro-dialer #contact-comments article strong,
+html:not(.dark) .connectpro-dialer #contact-comments article p {
+  color: #334155;
+}
+
+.connectpro-dialer .contact-tabs {
+  scrollbar-width: none;
+}
+
+.connectpro-dialer .contact-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.connectpro-dialer [data-contact-tab] {
+  border-bottom-color: transparent;
+  transition: color 160ms ease, border-color 160ms ease, background-color 160ms ease;
+}
+
+.connectpro-dialer [data-contact-tab]:hover {
+  color: #93c5fd;
+}
+
+.connectpro-dialer [data-contact-tab].contact-tab-active {
+  border-bottom-color: #3b82f6;
+  color: #60a5fa;
+}
+
+html:not(.dark) .connectpro-dialer [data-contact-tab]:hover,
+html:not(.dark) .connectpro-dialer [data-contact-tab].contact-tab-active {
+  color: #2563eb;
+}
+
+html:not(.dark) .connectpro-dialer #contact-activity article > div,
+html:not(.dark) .connectpro-dialer #contact-call-history article > div {
+  border-color: #dbe5f0;
+  background: #ffffff;
+}
+
+html:not(.dark) .connectpro-dialer #contact-activity article strong,
+html:not(.dark) .connectpro-dialer #contact-activity article p,
+html:not(.dark) .connectpro-dialer #contact-call-history article strong,
+html:not(.dark) .connectpro-dialer #contact-call-history article p {
+  color: #334155;
+}
+
+html:not(.dark) .connectpro-dialer #dialpad-display {
+  color: #0f172a;
+}
+
+html:not(.dark) .connectpro-dialer #live-call-session,
+html:not(.dark) .connectpro-dialer #contact-workspace-panel > div:first-child {
+  border-color: #dbe5f0;
+}
+
+html:not(.dark) .connectpro-dialer #contact-workspace-panel > div.rounded-xl {
+  border-color: #dbe5f0;
+  background: #f7faff;
+}
+
+html:not(.dark) .connectpro-dialer #contact-workspace-panel > div.rounded-xl > div {
+  border-color: #dbe5f0;
+}
+
+html:not(.dark) .connectpro-dialer .dialpad-key {
+  border-color: #b9c9da;
+  background: #ffffff;
+  color: #0f172a;
+}
+
+html:not(.dark) .connectpro-dialer .dialpad-key:hover {
+  border-color: #3b82f6;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+html:not(.dark) .connectpro-control {
+  border-color: #cbd8e6;
+  background: #f8fbff;
+  color: #475569;
+}
+
+/* Phone-browser layout and touch ergonomics. */
+@media (max-width: 1023px) {
+  .connectpro-sidebar {
+    width: min(86vw, 19rem);
+    box-shadow: 24px 0 60px -32px rgba(2, 6, 23, 0.75);
+  }
+
+  .connectpro-dialer {
+    min-height: 100dvh;
+    padding-top: max(0.75rem, env(safe-area-inset-top));
+    padding-right: max(0.75rem, env(safe-area-inset-right));
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+    padding-left: max(0.75rem, env(safe-area-inset-left));
+  }
+}
+
+@media (max-width: 639px) {
+  .connectpro-dialer .dialpad-grid {
+    gap: 0.45rem 0.6rem;
+    padding: 0;
+  }
+
+  .connectpro-dialer .dialpad-key {
+    width: clamp(3.5rem, 19vw, 4rem);
+    height: clamp(3.5rem, 19vw, 4rem);
+    min-height: clamp(3.5rem, 19vw, 4rem);
+    font-size: 1.5rem;
+  }
+
+  .connectpro-dialer .connectpro-call-actions button {
+    min-height: 3.25rem;
+    padding-right: 0.75rem;
+    padding-left: 0.75rem;
+    font-size: 0.875rem;
+  }
+
+  .connectpro-dialer .connectpro-control {
+    min-height: 3.5rem;
+    border-radius: 0.75rem;
+  }
+
+  .connectpro-dialer #incoming-call-banner {
+    padding-top: max(1rem, env(safe-area-inset-top));
+    padding-right: max(1rem, env(safe-area-inset-right));
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+    padding-left: max(1rem, env(safe-area-inset-left));
+  }
+
+  .connectpro-dialer #incoming-call-banner > div > div {
+    padding: 1.5rem;
+    border-radius: 1.25rem;
+  }
+}
+
+@media (max-width: 359px) {
+  .connectpro-dialer .dialpad-key {
+    width: 3.25rem;
+    height: 3.25rem;
+    min-height: 3.25rem;
+  }
+
+  .connectpro-dialer .connectpro-call-actions {
+    gap: 0.5rem;
+  }
 }

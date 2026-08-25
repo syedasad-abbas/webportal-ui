@@ -9,7 +9,7 @@
   $isAdmin = auth()->check() && auth()->user()->hasAnyRole(['Admin', 'Superadmin']);
 @endphp
 
-<div class="p-4 mx-auto max-w-(--breakpoint-2xl) md:p-6">
+<div class="connectpro-admin-page p-4 mx-auto max-w-(--breakpoint-2xl) md:p-6">
     <x-breadcrumbs :breadcrumbs="$breadcrumbs">
         <x-slot name="title_after">
             <div class="flex items-center gap-2">

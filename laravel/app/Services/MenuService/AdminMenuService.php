@@ -104,13 +104,6 @@ class AdminMenuService
             'permissions' => 'dashboard.view',
         ]);
 
-        // Content Management Menu from registered post types
-        try {
-            $this->registerPostTypesInMenu();
-        } catch (\Exception $e) {
-            // Skip if there's an error
-        }
-
         $this->addMenuItem([
             'label' => __('Roles & Permissions'),
             'icon' => 'key.svg',
@@ -178,18 +171,6 @@ $this->addMenuItem([
     'permissions' => [], // empty => everyone (but still must be logged in)
 ]);
   
-//Campaigns menu 
-
-$this->addMenuItem([
-    'label' => __('Campaigns'),
-    'icon' => 'megaphone.svg',
-    'id' => 'campaigns',
-    'route' => route('admin.campaigns.index'),
-    'active' => Route::is('admin.campaigns.*'),
-    'priority' => 16,
-    'permissions' => ['campaign.add', 'campaign.play'],
-]);
-
 //recording menu
 
 $this->addMenuItem([

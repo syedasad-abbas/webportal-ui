@@ -6,7 +6,7 @@
 
 @section('admin-content')
 
-<div class="p-4 mx-auto max-w-[var(--breakpoint-2xl)] md:p-6">
+<div class="connectpro-admin-page p-4 mx-auto max-w-[var(--breakpoint-2xl)] md:p-6">
     <x-breadcrumbs :breadcrumbs="$breadcrumbs" />
 
     {!! ld_apply_filters('roles_edit_after_breadcrumbs', '') !!}

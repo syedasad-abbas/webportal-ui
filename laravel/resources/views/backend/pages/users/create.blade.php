@@ -5,7 +5,7 @@
 @endsection
 
 @section('admin-content')
-    <div class="p-4 mx-auto max-w-7xl md:p-6">
+    <div class="connectpro-admin-page p-4 mx-auto max-w-7xl md:p-6">
         <x-breadcrumbs :breadcrumbs="$breadcrumbs" />
 
         {!! ld_apply_filters('users_after_breadcrumbs', '') !!}

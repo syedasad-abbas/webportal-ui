@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="antialiased">
 
 <head>
     <meta charset="UTF-8">
@@ -7,6 +7,14 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', config('app.name'))</title>
+
+    <script>
+        (() => {
+            const savedTheme = localStorage.getItem('darkMode');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            document.documentElement.classList.toggle('dark', savedTheme === null ? prefersDark : savedTheme === 'true');
+        })();
+    </script>
 
     <link rel="icon" href="{{ config('settings.site_favicon') ?? asset('favicon.ico') }}" type="image/x-icon">
 
@@ -36,20 +44,27 @@
 <body x-data="{ 
     page: 'ecommerce', 
     loaded: true, 
-    darkMode: false, 
+    darkMode: document.documentElement.classList.contains('dark'),
     stickyMenu: false, 
     sidebarToggle: $persist(false), 
-    scrollTop: false 
+    scrollTop: false,
+    toggleTheme() {
+        this.darkMode = !this.darkMode;
+    },
+    applyTheme(value) {
+        document.documentElement.classList.toggle('dark', value);
+        localStorage.setItem('darkMode', JSON.stringify(value));
+    }
 }" 
 x-init="
-    darkMode = JSON.parse(localStorage.getItem('darkMode')) ?? false;
-    $watch('darkMode', value => localStorage.setItem('darkMode', JSON.stringify(value)));
+    applyTheme(darkMode);
+    $watch('darkMode', value => applyTheme(value));
     $watch('sidebarToggle', value => localStorage.setItem('sidebarToggle', JSON.stringify(value)))
 " 
-:class="{ 'dark bg-gray-900': darkMode === true }">
+:class="darkMode ? 'bg-gray-900' : 'bg-gray-50'">
     <!-- Preloader -->
     <div x-show="loaded" x-init="window.addEventListener('DOMContentLoaded', () => { setTimeout(() => loaded = false, 500) })"
-        class="fixed left-0 top-0 z-999999 flex h-screen w-screen items-center justify-center bg-white dark:bg-black">
+        class="fixed left-0 top-0 z-999999 flex h-screen w-screen items-center justify-center bg-white dark:bg-[#070b14]">
         <div class="h-16 w-16 animate-spin rounded-full border-4 border-solid border-brand-500 border-t-transparent">
         </div>
     </div>
@@ -59,16 +74,18 @@ x-init="
         @include('backend.layouts.partials.sidebar-logo')
 
         <!-- Content Area -->
-        <div class="relative flex flex-col flex-1 overflow-x-hidden overflow-y-auto bg-white dark:bg-gray-900">
+        <div class="relative flex min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto bg-gray-50 dark:bg-[#0b1120]">
             <!-- Small Device Overlay -->
             <div @click="sidebarToggle = false" :class="sidebarToggle ? 'block lg:hidden' : 'hidden'"
                 class="fixed w-full h-screen z-9 bg-gray-900/50"></div>
             <!-- End Small Device Overlay -->
 
-            @include('backend.layouts.partials.header')
+            @unless(request()->routeIs('admin.dialer.*'))
+                @include('backend.layouts.partials.header')
+            @endunless
 
             <!-- Main Content -->
-            <main>
+            <main class="min-h-0 flex-1">
                 @yield('admin-content')
             </main>
             <!-- End Main Content -->
@@ -80,42 +97,6 @@ x-init="
     @stack('scripts')
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const html = document.documentElement;
-            const darkModeToggle = document.getElementById('darkModeToggle');
-            const header = document.getElementById('appHeader');
-
-
-            // Update header background based on current mode
-            function updateHeaderBg() {
-                if (!header) return;
-                const isDark = html.classList.contains('dark');
-            }
-
-            // Initialize dark mode
-            const savedDarkMode = localStorage.getItem('darkMode');
-            if (savedDarkMode === 'true') {
-                html.classList.add('dark');
-            } else if (savedDarkMode === 'false') {
-                html.classList.remove('dark');
-            }
-
-            updateHeaderBg();
-
-            const observer = new MutationObserver(updateHeaderBg);
-            observer.observe(html, {
-                attributes: true,
-                attributeFilter: ['class']
-            });
-
-            if (darkModeToggle) {
-                darkModeToggle.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    const isDark = html.classList.toggle('dark');
-                    localStorage.setItem('darkMode', isDark);
-                    updateHeaderBg();
-                });
-            }
-
             // Initialize sidebar state from localStorage if it exists
             if (window.Alpine) {
                 const sidebarState = localStorage.getItem('sidebarToggle');

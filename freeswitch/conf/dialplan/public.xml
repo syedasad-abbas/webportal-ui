@@ -55,6 +55,13 @@
 	<action application="transfer" data="$1 XML default"/>
       </condition>
     </extension>
+
+    <!-- Allow the browser dialer to reach only the internal FreeSWITCH echo test. -->
+    <extension name="public_echo_test">
+      <condition field="destination_number" expression="^9196$">
+	<action application="transfer" data="9196 XML default"/>
+      </condition>
+    </extension>
     
     <!--
 	You can place files in the public directory to get included.

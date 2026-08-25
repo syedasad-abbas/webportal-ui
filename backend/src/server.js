@@ -29,6 +29,7 @@ app.use('/dialer/campaign', campaignDialerRoutes);
 app.use('/freeswitch', freeswitchRoutes);
 
 const start = async () => {
+  await config.initConfig();
   await ensureDefaults();
   await syncAllSipUsers();
   const io = initSocket(httpServer);
