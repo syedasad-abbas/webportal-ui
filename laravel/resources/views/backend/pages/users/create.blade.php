@@ -4,19 +4,24 @@
     {{ $breadcrumbs['title'] }} | {{ config('app.name') }}
 @endsection
 
+@push('styles')
+    @include('backend.pages.dialer.nightwave-form-styles')
+@endpush
+
 @section('admin-content')
-    <div class="connectpro-admin-page p-4 mx-auto max-w-7xl md:p-6">
+    <div class="connectpro-admin-page connectpro-record-form-page p-4 md:p-6">
         <x-breadcrumbs :breadcrumbs="$breadcrumbs" />
 
         {!! ld_apply_filters('users_after_breadcrumbs', '') !!}
 
-        <div class="space-y-6">
-            <div class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
-                <div class="p-5 space-y-6 border-t border-gray-100 dark:border-gray-800 sm:p-6">
+        <div class="connectpro-record-form-layout">
+            <div class="connectpro-record-form-card rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+                <div class="connectpro-record-form-body p-5 space-y-6 border-t border-gray-100 dark:border-gray-800 sm:p-6">
+                    <h2 class="connectpro-record-form-heading">{{ __('Details') }}</h2>
                     <form action="{{ route('admin.users.store') }}" method="POST" enctype="multipart/form-data" class="space-y-6">
                         @csrf
 
-                        <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                        <div class="connectpro-record-form-fields grid grid-cols-1 gap-6 sm:grid-cols-2">
 
                             {{-- External Name --}}
                             <div>
@@ -169,13 +174,20 @@
 
                         </div>
 
-                        <div class="mt-6 flex justify-start gap-4">
+                        <div class="connectpro-record-form-actions mt-6 flex justify-start gap-4">
                             <button type="submit" class="btn-primary">{{ __('Create user') }}</button>
                             <a href="{{ route('admin.dashboard') }}" class="btn-default">{{ __('Cancel') }}</a>
                         </div>
                     </form>
                 </div>
             </div>
+            <aside class="connectpro-record-form-context">
+                <span class="connectpro-record-context-icon"><i class="bi bi-shield-check"></i></span>
+                <h2>{{ __('Context & permissions') }}</h2>
+                <p class="mt-4">{{ __('User access is controlled by assigned roles and status.') }}</p>
+                <p class="mt-2">{{ __('SIP credentials connect this user to the calling service.') }}</p>
+                <p class="mt-2">{{ __('Sensitive account changes remain subject to your existing permissions.') }}</p>
+            </aside>
         </div>
     </div>
 @endsection

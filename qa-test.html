@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>QA Test Bookmarklet</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1a1a2e; color: #eee; }
+        .container { max-width: 800px; margin: 0 auto; }
+        h1 { color: #635bff; }
+        .bookmarklet { 
+            background: #16213e; padding: 15px; border-radius: 8px; margin: 20px 0;
+            border: 1px solid #635bff;
+        }
+        .bookmarklet a { 
+            color: #635bff; text-decoration: none; font-size: 18px; 
+            padding: 10px 20px; background: #0f3460; border-radius: 4px;
+        }
+        .bookmarklet a:hover { background: #635bff; color: white; }
+        .instructions { background: #0f3460; padding: 15px; border-radius: 8px; }
+        code { background: #1a1a2e; padding: 2px 6px; border-radius: 3px; }
+        .test-section { margin: 20px 0; padding: 15px; background: #16213e; border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>QA Test Suite</h1>
+        
+        <div class="bookmarklet">
+            <h3>Bookmarklet (Drag to Bookmarks Bar)</h3>
+            <a href="javascript:(function(){const R={passed:[],failed:[],warnings:[]};function p(t,d){R.passed.push(t);console.log('%cPASS: '+t+(d?' - '+d:''),'color:green')}function f(t,d){R.failed.push(t);console.error('%cFAIL: '+t+(d?' - '+d:''),'color:red')}function w(t,d){R.warnings.push(t);console.warn('%cWARN: '+t+(d?' - '+d:''),'color:orange')}console.log('%c========================================','color:cyan');console.log('%cQA BROWSER CONSOLE TEST','color:cyan;font-weight:bold');console.log('%c========================================','color:cyan');console.log('%c%c--- Dialpad Keys ---','color:yellow');const dialpadKeys=['1','2','3','4','5','6','7','8','9','0','*','#'];dialpadKeys.forEach(function(k){const sel=&quot;[data-value='&quot;+k+&quot;']&quot;;if(document.querySelector(sel))p('Dialpad key '+k,'Found');else{const keys=document.querySelectorAll('.dialpad-key,[class*=\&quot;dialpad\&quot;] button');let found=false;keys.forEach(function(el){if(el.textContent.trim()===k)found=true});if(found)p('Dialpad key '+k,'Found');else f('Dialpad key '+k,'Missing')}});console.log('%c%c--- Action Buttons ---','color:yellow');const actions=['hangup','mute','unmute','hold','transfer','record','backspace'];actions.forEach(function(a){const sel=&quot;[data-action='&quot;+a+&quot;']&quot;;const btn=document.querySelector(sel);if(btn){const disabled=btn.disabled||btn.getAttribute('disabled');if(disabled)w('Action: '+a,'Disabled');else p('Action: '+a,'Enabled')}else{const btns=document.querySelectorAll('button');let found=false;btns.forEach(function(b){if(b.textContent.toLowerCase().includes(a))found=true});if(found)p('Action: '+a,'Found by text');else f('Action: '+a,'Missing')}});console.log('%c%c--- Audio Elements ---','color:yellow');const audios=document.querySelectorAll('audio');if(audios.length>0){p('Audio elements',audios.length+' found');audios.forEach(function(a,i){console.log('  ['+i+'] id='+a.id+' src='+(a.src||'dynamic')+' muted='+a.muted)})}else w('Audio elements','Not in HTML');console.log('%c%c--- Web Phone Status ---','color:yellow');if(document.querySelector('#web-phone-state,.connectpro-sip-badge,[class*=\&quot;sip\&quot;][class*=\&quot;badge\&quot;]'))p('Web phone status','Present');else f('Web phone status','Missing');console.log('%c%c--- Contact Workspace ---','color:yellow');if(document.querySelector('#contact-workspace-panel,.contact-workspace'))p('Contact workspace','Present');else w('Contact workspace','Not found');console.log('%c%c--- Contact Tabs ---','color:yellow');const tabs=['notes','activity','history','info'];tabs.forEach(function(t){const sel=&quot;[data-contact-tab='&quot;+t+&quot;']&quot;;if(document.querySelector(sel))p('Tab: '+t,'Present');else{const allTabs=document.querySelectorAll('[role=\&quot;tab\&quot;],.tab,.nav-link');let found=false;allTabs.forEach(function(el){if(el.textContent.toLowerCase().includes(t))found=true});if(found)p('Tab: '+t,'Found by text');else f('Tab: '+t,'Missing')}});console.log('%c%c--- Navigation ---','color:yellow');const navItems=[{name:'Dashboard',href:'dashboard'},{name:'Dialer',href:'dialer'},{name:'Users',href:'users'},{name:'Roles',href:'roles'},{name:'Settings',href:'settings'}];navItems.forEach(function(n){const link=document.querySelector(&quot;a[href*='&quot;+n.href+&quot;']&quot;);if(link)p('Nav: '+n.name,'Present');else f('Nav: '+n.name,'Missing')});console.log('%c%c--- Dark Mode ---','color:yellow');if(document.querySelector('[id*=\&quot;DarkModeToggle\&quot;],[data-darkmode-toggle]'))p('Dark mode toggle','Present');else w('Dark mode toggle','Missing');console.log('%c%c--- Forms & Inputs ---','color:yellow');const forms=document.querySelectorAll('form');if(forms.length>0)p('Forms',forms.length+' found');const inputs=document.querySelectorAll('input');if(inputs.length>0)p('Input fields',inputs.length+' found');const tables=document.querySelectorAll('table');if(tables.length>0)p('Tables',tables.length+' found');console.log('%c%c--- WebRTC ---','color:yellow');if(window.DialerWebRTC)p('DialerWebRTC library','Loaded');else w('DialerWebRTC library','Not loaded');if(window.webrtcClient){p('WebRTC client','Initialized');if(window.webrtcClient.simpleUser)p('SimpleUser','Connected');else w('SimpleUser','Not initialized')}else w('WebRTC client','Not initialized');console.log('%c%c--- Audio Context Test ---','color:yellow');try{const AudioContext=window.AudioContext||window.webkitAudioContext;if(AudioContext){p('AudioContext API','Supported');const ctx=new AudioContext();p('AudioContext creation','Success');const osc=ctx.createOscillator();const gain=ctx.createGain();osc.connect(gain);gain.connect(ctx.destination);gain.gain.value=0.1;osc.frequency.value=440;osc.start();osc.stop(ctx.currentTime+0.1);p('Audio generation','Success');ctx.close()}else f('AudioContext API','Not supported')}catch(e){f('AudioContext test',e.message)}console.log('%c%c========================================','color:cyan');console.log('%cQA TEST SUMMARY','color:cyan;font-weight:bold');console.log('%c========================================','color:cyan');console.log('%cPASSED: '+R.passed.length,'color:green');console.log('%cFAILED: '+R.failed.length,'color:red');console.log('%cWARNINGS: '+R.warnings.length,'color:orange');console.log('%cTOTAL: '+(R.passed.length+R.failed.length+R.warnings.length),'color:cyan');if(R.failed.length>0){console.log('%c%c%c FAILURES:','color:red');R.failed.forEach(function(t,i){console.log('  '+(i+1)+'. '+t)})}if(R.warnings.length>0){console.log('%c%c%c WARNINGS:','color:orange');R.warnings.forEach(function(t,i){console.log('  '+(i+1)+'. '+t)})}console.log('%c%c========================================','color:cyan');return R;})();">QA Test All</a>
+        </div>
+        
+        <div class="instructions">
+            <h3>Instructions</h3>
+            <ol>
+                <li>Drag the "QA Test All" button to your bookmarks bar</li>
+                <li>Navigate to the Dialer page in the webportal</li>
+                <li>Click the bookmarklet to run all tests</li>
+                <li>Check the browser console (F12) for results</li>
+            </ol>
+        </div>
+        
+        <div class="test-section">
+            <h3>Alternative: Manual Console Test</h3>
+            <p>Or copy-paste this into the console:</p>
+            <code>document.querySelectorAll('button').length</code> - Count all buttons<br>
+            <code>document.querySelectorAll('audio').length</code> - Count audio elements<br>
+            <code>document.querySelectorAll('[data-value]').length</code> - Count dialpad keys<br>
+            <code>document.querySelectorAll('[data-action]').length</code> - Count action buttons
+        </div>
+    </div>
+</body>
+</html>

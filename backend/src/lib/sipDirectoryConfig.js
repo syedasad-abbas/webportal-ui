@@ -37,17 +37,20 @@ const writeSipUser = async ({ username, password }) => {
   return true;
 };
 
-const reloadDirectory = async () => {
+const triggerReload = async () => {
   try {
-    await freeswitch.reloadXml();
+    // Create a trigger file that the FreeSWITCH container watches for
+    const triggerPath = path.join(directoryPath, '.reload_trigger');
+    await fs.writeFile(triggerPath, Date.now().toString(), 'utf8');
   } catch (err) {
-    console.warn('[sip-directory] reload deferred:', err.message);
+    console.warn('[sip-directory] trigger creation failed:', err.message);
   }
 };
 
 const syncSipUser = async ({ username, password }) => {
   const written = await writeSipUser({ username, password });
-  if (written) await reloadDirectory();
+  if (written) await triggerReload();
+  return written;
 };
 
 const syncAllSipUsers = async () => {

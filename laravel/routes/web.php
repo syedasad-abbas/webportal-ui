@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Http\Controllers\Backend\ActionLogController;
 use App\Http\Controllers\Backend\DashboardController as BackendDashboardController;
 use App\Http\Controllers\Backend\EditorController;
 use App\Http\Controllers\Backend\LocaleController;
@@ -26,6 +25,7 @@ use App\Http\Controllers\Admin\InboundDidController;
 use App\Http\Controllers\Admin\DialerController;
 use App\Http\Controllers\Admin\DialerContactController;
 use App\Http\Controllers\Admin\CampaignController;
+use App\Http\Controllers\Admin\ContactCenterController;
 
 use Illuminate\Support\Facades\Route;
 
@@ -87,9 +87,6 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['auth']], 
     Route::get('users/{id}/login-as', [UserLoginAsController::class, 'loginAs'])->name('users.login-as');
     Route::post('users/switch-back', [UserLoginAsController::class, 'switchBack'])->name('users.switch-back');
 
-    // Action Log
-    Route::get('/action-log', [ActionLogController::class, 'index'])->name('actionlog.index');
-
     // Posts/Pages
     Route::get('/posts/{postType?}', [PostsController::class, 'index'])->name('posts.index');
     Route::get('/posts/{postType}/create', [PostsController::class, 'create'])->name('posts.create');
@@ -147,6 +144,15 @@ Route::delete('/carrier/{carrierId}', [CarrierController::class, 'destroy'])->na
         Route::post('/dialer/contacts/{contact}/comments', [DialerContactController::class, 'comment'])->name('dialer.contacts.comments.store');
         Route::get('/dialer/contacts/{contact}/activity', [DialerContactController::class, 'activity'])->name('dialer.contacts.activity');
         Route::get('/dialer/contacts/{contact}/call-history', [DialerContactController::class, 'callHistory'])->name('dialer.contacts.call-history');
+
+        Route::get('/contacts', [ContactCenterController::class, 'index'])->name('contacts.index');
+        Route::get('/contacts/create', [ContactCenterController::class, 'create'])->name('contacts.create');
+        Route::post('/contacts', [ContactCenterController::class, 'store'])->name('contacts.store');
+        Route::get('/contacts/activity', [ContactCenterController::class, 'activity'])->name('contacts.activity');
+        Route::get('/contacts/call-history', [ContactCenterController::class, 'callHistory'])->name('contacts.call-history');
+        Route::get('/contacts/{contact}/edit', [ContactCenterController::class, 'edit'])->name('contacts.edit');
+        Route::put('/contacts/{contact}', [ContactCenterController::class, 'update'])->name('contacts.update');
+        Route::get('/contacts/{contact}', [ContactCenterController::class, 'show'])->name('contacts.show');
 
         Route::get('/dialer/calls/{uuid}/status', [DialerController::class, 'status'])->name('dialer.status');
 

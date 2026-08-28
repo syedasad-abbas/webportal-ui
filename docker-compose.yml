@@ -9,8 +9,9 @@ x-backend-env: &backend-env
   BACKEND_INTERNAL_TOKEN: ${BACKEND_INTERNAL_TOKEN:-sync-secret}
   DEFAULT_ADMIN_EMAIL: superadmin@example.com
   DEFAULT_ADMIN_PASSWORD: 12345678
-  # FREESWITCH_HOST: empty = auto-detect via Docker gateway or host.docker.internal
+  # FREESWITCH_HOST: empty = read the host LAN IP published by host-networked FreeSWITCH
   FREESWITCH_HOST: ${FREESWITCH_HOST:-}
+  FREESWITCH_HOST_IP_FILE: /mnt/gateways/.host-ip
   FREESWITCH_PORT: 8021
   FREESWITCH_PASSWORD: ClueCon
   FREESWITCH_CONNECT_TIMEOUT_MS: 5000
@@ -72,6 +73,7 @@ services:
       - freeswitch_users:/etc/freeswitch/directory/webphone
     environment:
       EVENT_SOCKET_PASSWORD: ClueCon
+      FREESWITCH_HOST_IP_FILE: /etc/freeswitch/gateways/.host-ip
       # Backend URL for inbound.lua - FreeSWITCH uses host networking, so it
       # reaches the backend container via the host-mapped port (4000:4000)
       BACKEND_URL: http://127.0.0.1:4000

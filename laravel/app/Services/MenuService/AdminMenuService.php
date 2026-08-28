@@ -137,7 +137,7 @@ class AdminMenuService
         ]);
 
         $this->addMenuItem([
-            'label' => __('User'),
+            'label' => __('Users'),
             'icon' => 'user.svg',
             'id' => 'users-submenu',
             'active' => Route::is('admin.users.*'),
@@ -163,14 +163,14 @@ class AdminMenuService
 
 $this->addMenuItem([
     'label' => __('Dialer'),
-    'icon' => 'phone.svg',
+    'iconClass' => 'bi bi-telephone-fill',
     'id' => 'dialer',
     'route' => route('admin.dialer.index'),
     'active' => Route::is('admin.dialer.*'),
-    'priority' => 15,
+    'priority' => 10,
     'permissions' => [], // empty => everyone (but still must be logged in)
 ]);
-  
+
 //recording menu
 
 $this->addMenuItem([
@@ -189,7 +189,7 @@ $isAdmin = $user && $user->hasAnyRole(['Admin', 'Superadmin']); // or hasRole('S
 
 if ($isAdmin) {
     $this->addMenuItem([
-        'label' => __('carrier'),
+        'label' => __('Carrier'),
         'icon' => 'user.svg',
         'id' => 'carrier-submenu',
         'active' => Route::is('admin.carrier.*'),
@@ -254,32 +254,6 @@ $this->addMenuItem([
             'id' => 'modules',
             'priority' => 30,
             'permissions' => 'module.view',
-        ]);
-
-        $this->addMenuItem([
-            'label' => __('Monitoring'),
-            'icon' => 'tv.svg',
-            'id' => 'monitoring-submenu',
-            'active' => Route::is('admin.actionlog.*'),
-            'priority' => 40,
-            'permissions' => ['pulse.view', 'actionlog.view'],
-            'children' => [
-                [
-                    'label' => __('Action Logs'),
-                    'route' => route('admin.actionlog.index'),
-                    'active' => Route::is('admin.actionlog.index'),
-                    'priority' => 20,
-                    'permissions' => 'actionlog.view',
-                ],
-                [
-                    'label' => __('Laravel Pulse'),
-                    'route' => route('pulse'),
-                    'active' => false,
-                    'target' => '_blank',
-                    'priority' => 10,
-                    'permissions' => 'pulse.view',
-                ],
-            ],
         ]);
 
         $this->addMenuItem([

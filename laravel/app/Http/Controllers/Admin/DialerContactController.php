@@ -163,6 +163,16 @@ class DialerContactController extends Controller
             'company' => ['sometimes', 'nullable', 'string', 'max:255'],
             'phone' => [$sometimes, 'required', 'string', 'max:40'],
             'email' => ['sometimes', 'nullable', 'email', 'max:255'],
+            'secondary_phone' => ['sometimes', 'nullable', 'string', 'max:40'],
+            'avatar_url' => ['sometimes', 'nullable', 'url', 'max:2048'],
+            'address' => ['sometimes', 'nullable', 'string', 'max:1000'],
+            'account_id' => ['sometimes', 'nullable', 'string', 'max:80'],
+            'account_status' => ['sometimes', 'nullable', 'string', 'max:80'],
+            'customer_since' => ['sometimes', 'nullable', 'date'],
+            'industry' => ['sometimes', 'nullable', 'string', 'max:120'],
+            'employees' => ['sometimes', 'nullable', 'string', 'max:80'],
+            'annual_revenue' => ['sometimes', 'nullable', 'string', 'max:80'],
+            'preferred_contact_time' => ['sometimes', 'nullable', 'string', 'max:160'],
             'labels' => ['sometimes', 'array', 'max:10'],
             'labels.*' => ['string', 'max:30'],
             'is_flagged' => ['sometimes', 'boolean'],
@@ -171,7 +181,7 @@ class DialerContactController extends Controller
 
     protected function prepareContactData(array $data): array
     {
-        foreach (['name', 'company', 'phone', 'email'] as $field) {
+        foreach (['name', 'company', 'phone', 'email', 'secondary_phone', 'avatar_url', 'address', 'account_id', 'account_status', 'customer_since', 'industry', 'employees', 'annual_revenue', 'preferred_contact_time'] as $field) {
             if (array_key_exists($field, $data)) $data[$field] = filled($data[$field]) ? trim((string) $data[$field]) : null;
         }
         if (array_key_exists('email', $data) && $data['email']) $data['email'] = strtolower($data['email']);

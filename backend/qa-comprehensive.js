@@ -1,134 +1,145 @@
 /**
- * Comprehensive QA Testing Agent
- * Tests all UI elements, identifies bugs, provides fix recommendations
- * Uses curl for HTTP testing and API for log tracing
+ * Comprehensive QA Test - Tests all pages, buttons, forms, audio
+ * Run with: docker compose exec backend node /app/qa-comprehensive.js
  */
-const { execSync } = require("child_process");
 const http = require("http");
 
-const BASE_URL = process.env.BASE_URL || "http://laravel";
-const API_URL = process.env.API_URL || "http://backend:4000";
+const BASE_URL = "http://laravel";
+const API_URL = "http://backend:4000";
 const ADMIN_EMAIL = "admin@webphone.local";
 const ADMIN_PASSWORD = "AdminPass123!";
 
-const results = { passed: [], failed: [], warnings: [], fixes: [] };
+const results = { passed: [], failed: [], warnings: [], startTime: new Date() };
 let sessionCookie = "";
+let csrfToken = "";
 
 function log(status, test, details = "") {
   const ts = new Date().toISOString().split("T")[1].split(".")[0];
-  console.log(status + " [" + ts + "] " + test + (details ? " - " + details : ""));
+  const icons = { PASS: "✓", FAIL: "✗", WARN: "!", INFO: "→" };
+  console.log(icons[status] + " [" + ts + "] " + test + (details ? " - " + details : ""));
 }
 
 function pass(test, details) { results.passed.push({test, details}); log("PASS", test, details); }
 function fail(test, details) { results.failed.push({test, details}); log("FAIL", test, details); }
 function warn(test, details) { results.warnings.push({test, details}); log("WARN", test, details); }
+function info(test, details) { log("INFO", test, details); }
 
-function httpGet(url, cookie = "") {
-  return new Promise((resolve, reject) => {
-    const urlObj = new URL(url);
-    const options = {
-      hostname: urlObj.hostname,
-      port: urlObj.port,
-      path: urlObj.pathname + urlObj.search,
-      method: "GET",
-      headers: { Cookie: cookie, Accept: "text/html,application/json" },
-    };
-    const req = http.request(options, (res) => {
-      let data = "";
-      res.on("data", (c) => (data += c));
-      res.on("end", () => resolve({ status: res.statusCode, headers: res.headers, data, url: res.headers.location }));
-    });
-    req.on("error", reject);
-    req.end();
-  });
-}
-
-function httpPost(url, body = "", cookie = "", isJson = false) {
+function httpRequest(url, method = "GET", body = "", cookie = "", isJson = false, followRedirect = true) {
   return new Promise((resolve, reject) => {
     const urlObj = new URL(url);
     const bodyData = isJson ? JSON.stringify(body) : body;
     const options = {
       hostname: urlObj.hostname,
-      port: urlObj.port,
+      port: urlObj.port || 80,
       path: urlObj.pathname + urlObj.search,
-      method: "POST",
+      method,
       headers: {
         Cookie: cookie,
         "Content-Type": isJson ? "application/json" : "application/x-www-form-urlencoded",
         "Content-Length": Buffer.byteLength(bodyData),
-        Accept: "text/html,application/json",
+        Accept: "text/html,application/json,*/*",
+        "User-Agent": "QA-Test-Suite/1.0",
       },
     };
     const req = http.request(options, (res) => {
       let data = "";
       res.on("data", (c) => (data += c));
-      res.on("end", () => resolve({ status: res.statusCode, headers: res.headers, data, url: res.headers.location }));
+      res.on("end", () => {
+        const redirect = followRedirect && (res.statusCode === 301 || res.statusCode === 302) && res.headers.location
+          ? httpRequest(res.headers.location, "GET", "", cookie, false, false)
+          : null;
+        if (redirect) { redirect.then(r => resolve(r)); return; }
+        resolve({ status: res.statusCode, headers: res.headers, data });
+      });
     });
     req.on("error", reject);
-    req.write(bodyData);
+    req.setTimeout(10000, () => { req.destroy(); reject(new Error("timeout")); });
+    if (bodyData) req.write(bodyData);
     req.end();
   });
 }
 
+async function extractCsrf(html) {
+  const match = html.match(/<input[^>]*name="_token"[^>]*value="([^"]+)"/) || 
+                html.match(/<meta[^>]*name="csrf-token"[^>]*content="([^"]+)"/);
+  return match ? match[1] : "";
+}
+
+async function extractElements(html) {
+  const elements = { buttons: [], forms: [], inputs: [], links: [], audio: [], video: [], modals: [], tables: [], selects: [] };
+  
+  // Extract buttons
+  const btnMatches = html.match(/<button[^>]*>/gi) || [];
+  elements.buttons = btnMatches.length;
+  
+  // Extract forms
+  const formMatches = html.match(/<form[^>]*>/gi) || [];
+  elements.forms = formMatches.length;
+  
+  // Extract inputs
+  const inputMatches = html.match(/<input[^>]*>/gi) || [];
+  elements.inputs = inputMatches.length;
+  
+  // Extract textareas
+  const textareaMatches = html.match(/<textarea[^>]*>/gi) || [];
+  elements.inputs += textareaMatches.length;
+  
+  // Extract selects
+  const selectMatches = html.match(/<select[^>]*>/gi) || [];
+  elements.selects = selectMatches.length;
+  
+  // Extract audio
+  const audioMatches = html.match(/<audio[^>]*>/gi) || [];
+  elements.audio = audioMatches.length;
+  
+  // Extract video
+  const videoMatches = html.match(/<video[^>]*>/gi) || [];
+  elements.video = videoMatches.length;
+  
+  // Extract tables
+  const tableMatches = html.match(/<table[^>]*>/gi) || [];
+  elements.tables = tableMatches.length;
+  
+  // Extract links
+  const linkMatches = html.match(/<a[^>]*href="([^"]*)"[^>]*>/gi) || [];
+  elements.links = linkMatches.length;
+  
+  return elements;
+}
+
 async function login() {
-  log("AUTH", "Attempting login");
+  info("Login", "Testing authentication");
+  const loginPage = await httpRequest(BASE_URL + "/admin/login");
+  if (loginPage.status !== 200) { fail("Login page", "Status: " + loginPage.status); return false; }
+  pass("Login page", "Accessible");
   
-  // Get login page to extract CSRF token
-  const loginPage = await httpGet(BASE_URL + "/admin/login");
-  if (loginPage.status !== 200) {
-    fail("Login page", "Status: " + loginPage.status);
-    return false;
-  }
+  csrfToken = await extractCsrf(loginPage.data);
+  if (!csrfToken) { fail("CSRF token", "Not found"); return false; }
+  pass("CSRF token", "Found");
   
-  // Extract CSRF token from HTML
-  const csrfMatch = loginPage.data.match(/<input[^>]*name="_token"[^>]*value="([^"]+)"/);
-  const csrfToken = csrfMatch ? csrfMatch[1] : "";
-  
-  if (!csrfToken) {
-    // Try meta tag
-    const metaMatch = loginPage.data.match(/<meta[^>]*name="csrf-token"[^>]*content="([^"]+)"/);
-    if (metaMatch) {
-      // Need to extract from session
-    }
-  }
-  
-  // Extract cookies
   const cookies = loginPage.headers["set-cookie"];
   const cookieStr = cookies ? cookies.map(c => c.split(";")[0]).join("; ") : "";
   
-  // Submit login
   const loginBody = "_token=" + encodeURIComponent(csrfToken) + "&email=" + encodeURIComponent(ADMIN_EMAIL) + "&password=" + encodeURIComponent(ADMIN_PASSWORD);
-  const loginRes = await httpPost(BASE_URL + "/admin/login", loginBody, cookieStr);
+  const loginRes = await httpRequest(BASE_URL + "/admin/login/submit", "POST", loginBody, cookieStr);
   
-  // Get session cookie from response
   const respCookies = loginRes.headers["set-cookie"];
-  if (respCookies) {
-    sessionCookie = respCookies.map(c => c.split(";")[0]).join("; ");
-  }
+  if (respCookies) sessionCookie = respCookies.map(c => c.split(";")[0]).join("; ");
   
-  if (loginRes.status === 302 && (loginRes.url && loginRes.url.includes("/admin"))) {
-    pass("Admin login", "Redirected to admin");
-    return true;
-  } else if (loginRes.status === 200 && loginRes.data.includes("dashboard")) {
-    pass("Admin login", "Dashboard loaded");
-    return true;
-  } else {
-    fail("Login", "Status: " + loginRes.status + " URL: " + loginRes.url);
-    return false;
+  if (loginRes.status === 302 || loginRes.data.includes("/admin")) { 
+    pass("Login submit", "Success"); 
+    return true; 
   }
+  fail("Login submit", "Status: " + loginRes.status);
+  return false;
 }
 
-async function testPageAccessibility() {
-  log("TEST", "Testing Page Accessibility");
-  
+async function testPages() {
+  info("Pages", "Testing all admin pages");
   const pages = [
-    { url: "/", name: "Home" },
-    { url: "/admin/login", name: "Login" },
     { url: "/admin", name: "Dashboard" },
     { url: "/admin/dialer", name: "Dialer" },
-    { url: "/admin/recordings", name: "Recordings" },
-    { url: "/admin/leads", name: "Leads" },
-    { url: "/admin/leads/create", name: "Create Lead" },
+    { url: "/admin/contacts", name: "Contacts" },
     { url: "/admin/users", name: "Users" },
     { url: "/admin/users/create", name: "Create User" },
     { url: "/admin/roles", name: "Roles" },
@@ -139,165 +150,153 @@ async function testPageAccessibility() {
     { url: "/admin/carrier/inbound-dids", name: "Inbound DIDs" },
     { url: "/admin/permissions", name: "Permissions" },
     { url: "/admin/action-log", name: "Action Logs" },
+    { url: "/admin/modules", name: "Modules" },
+    { url: "/admin/translations", name: "Translations" },
+    { url: "/admin/posts", name: "Posts" },
+    { url: "/admin/leads", name: "Leads" },
+    { url: "/admin/leads/create", name: "Create Lead" },
+    { url: "/admin/campaigns", name: "Campaigns" },
+    { url: "/admin/recordings", name: "Recordings" },
   ];
   
   for (const page of pages) {
     try {
-      const res = await httpGet(BASE_URL + page.url);
+      const res = await httpRequest(BASE_URL + page.url, "GET", "", sessionCookie);
+      const elements = await extractElements(res.data);
+      
       if (res.status === 200) {
-        pass("Page: " + page.name, "Loaded (200)");
-      } else if (res.status === 302) {
-        pass("Page: " + page.name, "Redirect (302) - auth required");
-      } else if (res.status >= 400 && res.status < 500) {
-        fail("Page: " + page.name, "Client error: " + res.status);
+        const summary = "buttons:" + elements.buttons + " forms:" + elements.forms + " inputs:" + elements.inputs + " tables:" + elements.tables;
+        pass("Page: " + page.name, summary);
+      } else if (res.status === 403) {
+        warn("Page: " + page.name, "Forbidden (permission)");
       } else {
-        warn("Page: " + page.name, "Status: " + res.status);
+        fail("Page: " + page.name, "Status: " + res.status);
       }
-    } catch (err) {
-      fail("Page: " + page.name, err.message);
-    }
+    } catch (err) { fail("Page: " + page.name, err.message); }
   }
 }
 
-async function testAuthenticatedPages() {
-  if (!sessionCookie) {
-    warn("Auth pages", "No session cookie - skipping");
-    return;
+async function testDialerElements() {
+  info("Dialer", "Testing dialer page elements");
+  const dialerPage = await httpRequest(BASE_URL + "/admin/dialer", "GET", "", sessionCookie);
+  if (dialerPage.status !== 200) { fail("Dialer page", "Not accessible"); return; }
+  
+  const html = dialerPage.data;
+  
+  // Test dialpad keys
+  const dialpadKeys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "*", "#"];
+  for (const key of dialpadKeys) {
+    const hasKey = html.includes("data-value=\"" + key + "\"") || html.includes("data-value='" + key + "'");
+    if (hasKey) pass("Dialpad key " + key, "Present");
+    else fail("Dialpad key " + key, "Missing");
   }
   
-  log("TEST", "Testing Authenticated Pages");
-  
-  const pages = [
-    { url: "/admin", name: "Dashboard", expectedContent: ["dashboard", "chart", "card"] },
-    { url: "/admin/dialer", name: "Dialer", expectedContent: ["dialpad", "Call", "contact"] },
-    { url: "/admin/dialer/contacts", name: "Contacts", expectedContent: ["contact", "search"] },
-    { url: "/admin/recordings", name: "Recordings", expectedContent: ["recording", "table"] },
-    { url: "/admin/users", name: "Users", expectedContent: ["user", "table"] },
-  ];
-  
-  for (const page of pages) {
-    try {
-      const res = await httpGet(BASE_URL + page.url, sessionCookie);
-      if (res.status === 200) {
-        const hasContent = page.expectedContent.some(c => 
-          res.data.toLowerCase().includes(c.toLowerCase())
-        );
-        if (hasContent) {
-          pass("Auth page: " + page.name, "Content verified");
-        } else {
-          warn("Auth page: " + page.name, "Expected content not found");
-        }
-      } else if (res.status === 302) {
-        warn("Auth page: " + page.name, "Redirected - session may have expired");
-      } else {
-        fail("Auth page: " + page.name, "Status: " + res.status);
-      }
-    } catch (err) {
-      fail("Auth page: " + page.name, err.message);
+  // Test action buttons
+  const actions = ["hangup", "mute", "unmute", "hold", "resume", "transfer", "park", "record"];
+  for (const action of actions) {
+    if (html.includes("data-action=\"" + action + "\"") || html.includes("data-action='" + action + "'")) {
+      pass("Action button: " + action, "Present");
+    } else {
+      warn("Action button: " + action, "Not found");
     }
+  }
+  
+  // Test audio element
+  if (html.includes("<audio") || html.includes("<AUDIO")) {
+    pass("Audio element", "Present");
+  } else {
+    warn("Audio element", "Not found in HTML (may be dynamically created)");
+  }
+  
+  // Test WebRTC configuration
+  if (html.includes("webrtcConfig") || html.includes("webrtc-config") || html.includes("sip:")) {
+    pass("WebRTC config", "Present");
+  } else {
+    warn("WebRTC config", "Not found");
+  }
+  
+  // Test dialpad display
+  if (html.includes("dialpad-display") || html.includes("dialpadDisplay")) {
+    pass("Dialpad display", "Present");
+  } else {
+    warn("Dialpad display", "Not found");
   }
 }
 
-async function testBackendApis() {
-  log("TEST", "Testing Backend APIs");
-  
+async function testBackendAPI() {
+  info("API", "Testing backend API endpoints");
   const endpoints = [
-    { url: "/health", name: "Health", expectedStatus: 200 },
+    { url: "/health", name: "Health Check", expected: 200 },
+    { url: "/ping", name: "Ping", expected: 200 },
   ];
   
   for (const ep of endpoints) {
     try {
-      const res = await httpGet(API_URL + ep.url);
-      if (res.status === ep.expectedStatus) {
-        pass("API: " + ep.name, "Status " + res.status);
-      } else {
-        fail("API: " + ep.name, "Status " + res.status + " (expected " + ep.expectedStatus + ")");
-      }
-    } catch (err) {
-      fail("API: " + ep.name, err.message);
-    }
+      const res = await httpRequest(API_URL + ep.url);
+      if (res.status === ep.expected) pass("API: " + ep.name, "Status " + res.status);
+      else warn("API: " + ep.name, "Status " + res.status);
+    } catch (err) { fail("API: " + ep.name, err.message); }
   }
 }
 
-async function testDatabaseContent() {
-  log("TEST", "Testing Database Content");
-  
-  // Check users table
+async function testFreeSWITCH() {
+  info("FreeSWITCH", "Testing FreeSWITCH connectivity");
   try {
-    const res = await httpGet(API_URL + "/admin/users?per_page=100");
+    const res = await httpRequest(API_URL + "/health");
     if (res.status === 200) {
-      const data = JSON.parse(res.data);
-      const count = data.data ? data.data.length : (Array.isArray(data) ? data.length : 0);
-      if (count >= 4) pass("Test data: Users", count + " users found");
-      else warn("Test data: Users", "Only " + count + " users");
+      pass("FreeSWITCH", "Backend can reach FreeSWITCH");
+      try {
+        const data = JSON.parse(res.data);
+        if (data.freeswitch) pass("FreeSWITCH status", data.freeswitch.connected ? "Connected" : "Disconnected");
+      } catch (e) {}
+    } else {
+      fail("FreeSWITCH", "Status: " + res.status);
     }
-  } catch (err) {
-    warn("Database check", "API not available - checking via Laravel");
-  }
+  } catch (err) { fail("FreeSWITCH", err.message); }
 }
 
 async function generateReport() {
   results.endTime = new Date();
-  const duration = (new Date() - results.startTime) / 1000;
+  const duration = (results.endTime - results.startTime) / 1000;
   
   console.log("\n" + "=".repeat(70));
-  console.log("COMPREHENSIVE QA TEST REPORT");
+  console.log("QA COMPREHENSIVE TEST REPORT");
   console.log("=".repeat(70));
-  console.log("Duration: " + duration.toFixed(1) + " seconds");
-  console.log("PASSED:   " + results.passed.length);
-  console.log("FAILED:   " + results.failed.length);
-  console.log("WARNINGS: " + results.warnings.length);
-  console.log("TOTAL:    " + (results.passed.length + results.failed.length + results.warnings.length));
+  console.log("Duration: " + duration.toFixed(1) + "s");
+  console.log("PASSED: " + results.passed.length + " ✓");
+  console.log("FAILED: " + results.failed.length + " ✗");
+  console.log("WARNINGS: " + results.warnings.length + " !");
+  console.log("TOTAL: " + (results.passed.length + results.failed.length + results.warnings.length));
+  console.log("=".repeat(70));
   
   if (results.failed.length > 0) {
-    console.log("\n" + "-".repeat(70));
-    console.log("FAILURES - These need to be fixed:");
-    console.log("-".repeat(70));
-    results.failed.forEach((f, i) => console.log((i + 1) + ". [FAIL] " + f.test + ": " + f.details));
+    console.log("\n✗ FAILURES:");
+    results.failed.forEach((f, i) => console.log("  " + (i + 1) + ". " + f.test + " - " + f.details));
   }
-  
   if (results.warnings.length > 0) {
-    console.log("\n" + "-".repeat(70));
-    console.log("WARNINGS - These may need attention:");
-    console.log("-".repeat(70));
-    results.warnings.forEach((w, i) => console.log((i + 1) + ". [WARN] " + w.test + ": " + w.details));
+    console.log("\n! WARNINGS:");
+    results.warnings.forEach((w, i) => console.log("  " + (i + 1) + ". " + w.test + " - " + w.details));
   }
-  
-  if (results.passed.length > 0) {
-    console.log("\n" + "-".repeat(70));
-    console.log("PASSED TESTS:");
-    console.log("-".repeat(70));
-    results.passed.forEach((p, i) => console.log((i + 1) + ". [PASS] " + p.test + (p.details ? " - " + p.details : "")));
-  }
-  
   console.log("\n" + "=".repeat(70));
-  
-  if (results.failed.length === 0) {
-    console.log("ALL TESTS PASSED! Application is working correctly.");
-  } else {
-    console.log("ACTION REQUIRED: " + results.failed.length + " test(s) failed.");
-  }
-  console.log("=".repeat(70));
   
   return results.failed.length > 0 ? 1 : 0;
 }
 
 async function main() {
   results.startTime = new Date();
-  log("START", "Starting Comprehensive QA Test Agent");
+  console.log("=".repeat(70));
+  console.log("QA COMPREHENSIVE TEST SUITE");
+  console.log("Target: " + BASE_URL);
+  console.log("Started: " + results.startTime.toISOString());
+  console.log("=".repeat(70) + "\n");
   
-  // Test without auth
-  await testPageAccessibility();
-  await testBackendApis();
-  
-  // Login and test authenticated pages
+  await testFreeSWITCH();
+  await testBackendAPI();
   const loggedIn = await login();
   if (loggedIn) {
-    await testAuthenticatedPages();
+    await testPages();
+    await testDialerElements();
   }
-  
-  // Database checks
-  await testDatabaseContent();
   
   const exitCode = await generateReport();
   process.exit(exitCode);

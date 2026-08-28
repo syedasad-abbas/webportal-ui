@@ -14,25 +14,521 @@
     {{ __('Dialer') }} | {{ config('app.name') }}
 @endsection
 
-@section('admin-content')
-<div class="connectpro-dialer min-h-full bg-[#06111f] p-3 text-white sm:p-6">
-    <div class="mx-auto max-w-[1220px] space-y-4">
+@push('styles')
+<style>
+@media (min-width: 768px) {
+    .connectpro-dialer { height: 100%; min-height: 0; overflow: hidden; background: #08111e !important; }
+    body:has(.connectpro-dialer) .connectpro-sidebar + div { min-width: 0; width: auto; }
+    .connectpro-dialer-toolbar { min-height: 58px; border-color: #1d2d42; background: #0b1524; padding-right: 1.25rem; padding-left: 1.25rem; }
+    .connectpro-dialer-toolbar input { height: 38px; border-radius: 8px; border-color: #263951; background: #132137; }
+    .connectpro-dialer-toolbar > button { display: none !important; }
+    .connectpro-dialer-toolbar > .relative { display: none; }
+    .connectpro-dialer-toolbar > .ml-auto > a { display: none; }
+    .connectpro-reference-nav { display: flex !important; }
+    .connectpro-agent-status { display: inline-flex !important; }
+    .connectpro-reference-nav a { display: inline-flex; align-items: center; min-height: 32px; padding: 0 .9rem; border-radius: 8px; color: #8ea0b8; font-size: .65rem; font-weight: 600; }
+    .connectpro-reference-nav a:hover, .connectpro-reference-nav .connectpro-reference-nav-active { background: #1b3154; color: #f8fafc; }
+    .connectpro-agent-status { background: #064e3b; color: #34d399; }
+    .connectpro-dialer > div:not(.connectpro-dialer-toolbar) { width: 100%; max-width: 1180px; height: calc(100dvh - 58px); min-height: 0; overflow: hidden; padding: .875rem; }
+    .connectpro-two-panel-grid { grid-template-columns: minmax(170px, 220px) minmax(0, 1fr) minmax(220px, 266px) !important; grid-template-rows: minmax(0, 1fr) auto; gap: .875rem; height: 100%; min-height: 0 !important; }
+    .connectpro-dialer .connectpro-dialer-panel:first-child { grid-column: 2; grid-row: 1; min-height: 100%; border-radius: 12px; border-color: #20344c; background: #111c2b; padding: 1.125rem; box-shadow: none; }
+    .connectpro-dialer .connectpro-dialer-panel:first-child > div:first-child { margin-bottom: 1rem; }
+    .connectpro-dialer .connectpro-dialer-panel:first-child form { min-height: 0; }
+    .connectpro-dialer #dialer-form > .relative { border-radius: 8px; border-color: #263951; background: #19283d; padding: .7rem 2.5rem; }
+    .connectpro-dialer #dialpad-display { font-size: .875rem; text-align: left; }
+    .connectpro-dialer .dialpad-grid { width: 100%; aspect-ratio: auto; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; margin-top: 1rem; padding: 0; border: 0; border-radius: 0; background: transparent; }
+    .connectpro-dialer .connectpro-dialer-panel:first-child .dialpad-key { width: auto; height: 42px; min-height: 42px; border-radius: 8px; border-color: #263951; background: #18283d; font-size: 1rem; }
+    .connectpro-dialer .connectpro-dialer-panel:first-child .dialpad-key > div:nth-child(2) { font-size: .5rem; }
+    .connectpro-dialer .connectpro-call-actions { margin-top: 1rem; }
+    .connectpro-dialer .connectpro-call-actions { grid-template-columns: 1fr !important; }
+    .connectpro-dialer .connectpro-call-actions button[type="button"] { display: none; }
+    .connectpro-dialer .connectpro-call-actions button[type="submit"] { background: #4f83f1 !important; box-shadow: none; }
+    .connectpro-dialer .connectpro-call-actions button { min-height: 38px; border-radius: 8px; padding-top: .5rem; padding-bottom: .5rem; font-size: .75rem; }
+    .connectpro-dialer .connectpro-customer-workspace-card { grid-column: 1; grid-row: 1; min-height: 100%; border-radius: 12px; border-color: #20344c; background: #111c2b; box-shadow: none; }
+    .connectpro-dialer .connectpro-customer-workspace-card > #customer-call-panel { border-bottom: 1px solid #20344c; padding: 1.125rem; }
+    .connectpro-dialer #customer-call-panel { background: #111c2b; background-image: none; }
+    .connectpro-dialer #customer-avatar { width: 58px; height: 58px; border-width: 2px; font-size: 1.25rem; }
+    .connectpro-dialer #customer-name { font-size: 1.25rem; }
+    .connectpro-dialer .connectpro-customer-workspace-card > #contact-workspace-panel { padding: 1.125rem; }
+    .connectpro-dialer .connectpro-customer-workspace-card > #contact-workspace-panel > .contact-tabs { margin-right: -1.125rem; margin-left: -1.125rem; padding-right: 1.125rem; padding-left: 1.125rem; }
+    .connectpro-dialer #contact-workspace-panel > div.rounded-xl { border-radius: 8px; border-color: #263951; background: #19283d; }
 
-        <div class="flex items-center justify-between lg:hidden">
-            <button type="button" @click.stop="sidebarToggle = true" class="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-lg dark:border-[#2a4055] dark:bg-[#091827] dark:text-slate-200" aria-label="{{ __('Open navigation') }}">
-                <i class="bi bi-list text-2xl"></i>
-            </button>
-            <div class="flex min-w-0 items-center gap-2 text-sm text-slate-300">
-                <span class="h-2 w-2 shrink-0 rounded-full bg-emerald-500"></span>
-                <span class="truncate">{{ __('ConnectPro mobile dialer') }}</span>
-            </div>
+    .connectpro-two-panel-grid { grid-template-columns: 220px minmax(0, 1fr) 266px !important; grid-template-rows: auto minmax(0, 1fr); align-items: stretch; }
+    .connectpro-dialer .connectpro-customer-workspace-card { display: contents; }
+    .connectpro-dialer .connectpro-customer-workspace-card > #customer-call-panel { grid-column: 2; grid-row: 1; min-height: 0; border: 1px solid #20344c; border-radius: 12px; }
+    .connectpro-dialer .connectpro-customer-workspace-card > #contact-workspace-panel { display: contents; }
+    .connectpro-dialer #contact-workspace-panel > .connectpro-contact-search { grid-column: 1; grid-row: 1 / span 2; align-self: stretch; margin: 0; padding: 1.125rem; border: 1px solid #20344c; border-radius: 12px; background: #111c2b; }
+    .connectpro-dialer #contact-workspace-panel > .connectpro-contact-search label { font-size: 1rem; text-transform: none; letter-spacing: 0; color: #f8fafc; }
+    .connectpro-dialer #contact-workspace-panel > .connectpro-contact-search select { display: none; }
+    .connectpro-dialer #contact-workspace-panel > .connectpro-contact-search .grid { display: block; }
+    .connectpro-dialer #contact-workspace-panel > .connectpro-contact-search .grid > div { width: 100%; }
+    .connectpro-dialer #contact-workspace-panel > .contact-tabs { grid-column: 2; grid-row: 2; align-self: start; margin: 0; padding: 0 1.125rem; border: 1px solid #20344c; border-radius: 12px 12px 0 0; }
+    .connectpro-dialer #contact-workspace-panel > [data-contact-tab-panel="notes"].pt-5 { grid-column: 2; grid-row: 2; align-self: start; margin: 4.25rem 0 0; padding: 1rem 1.125rem; }
+    .connectpro-dialer #contact-workspace-panel > [data-contact-tab-panel="notes"]:last-child { grid-column: 2; grid-row: 2; align-self: stretch; margin: 8rem 0 0; min-height: 0; }
+    .connectpro-dialer .connectpro-dialer-panel:first-child { grid-column: 3; grid-row: 1; }
+    .connectpro-dialer .connectpro-labels-card { grid-column: 3; grid-row: 2; border-color: #20344c; background: #111c2b; box-shadow: none; }
+    .connectpro-dialer .connectpro-labels-card input { border-color: #263951; background: #19283d; }
+    .connectpro-dialer .connectpro-customer-workspace-card > #contact-workspace-panel > [data-contact-tab-panel] { min-height: 0; overflow: hidden; }
+    .connectpro-dialer #contact-comments { overflow-y: auto; }
+}
+
+@media (min-width: 768px) {
+    body:has(.connectpro-dialer) .connectpro-sidebar { position: relative !important; inset: auto !important; transform: translateX(0) !important; translate: 0 0 !important; }
+}
+
+@media (min-width: 768px) and (max-width: 1100px) {
+    body:has(.connectpro-dialer) .connectpro-sidebar { width: 180px !important; }
+    .connectpro-two-panel-grid { grid-template-columns: minmax(130px, 180px) minmax(0, 1fr) minmax(190px, 220px) !important; }
+    .connectpro-dialer #contact-workspace-panel > [data-contact-tab-panel="notes"]:last-child { margin-top: 10rem; }
+}
+
+@media (min-width: 768px) and (orientation: landscape) {
+    .connectpro-dialer { height: 100dvh; overflow: hidden; }
+    .connectpro-dialer > div:not(.connectpro-dialer-toolbar) { height: calc(100dvh - 58px); max-width: none; padding: .75rem 1.25rem .75rem .875rem; }
+    .connectpro-two-panel-grid { grid-template-columns: minmax(180px, 220px) minmax(0, 1fr) minmax(232px, 266px) !important; grid-template-rows: minmax(0, 1fr); height: 100%; min-height: 0 !important; gap: .75rem; }
+    .connectpro-dialer .connectpro-dialer-panel:first-child { grid-column: 3; grid-row: 1; height: 100%; min-height: 0; overflow: hidden; padding: 1rem; }
+    .connectpro-dialer .connectpro-dialer-panel:first-child > div:first-child { margin-bottom: .75rem; }
+    .connectpro-dialer .connectpro-dialer-panel:first-child .dialpad-key { height: clamp(34px, 8vh, 48px); min-height: clamp(34px, 8vh, 48px); }
+    .connectpro-dialer .connectpro-call-actions { margin-top: .75rem; }
+    .connectpro-dialer .connectpro-customer-workspace-card { grid-column: 2; grid-row: 1; display: flex; flex-direction: column; min-height: 0; height: 100%; gap: .75rem; background: transparent; border: 0; }
+    .connectpro-dialer .connectpro-customer-workspace-card > #customer-call-panel { flex: 0 0 145px !important; height: 145px !important; min-height: 0 !important; border: 1px solid #20344c; border-radius: 12px; background: #111c2b; padding: 1rem; overflow: hidden; }
+    .connectpro-dialer #customer-call-panel > div:nth-of-type(2) { grid-template-columns: 56px minmax(0, 1fr); gap: .6rem; padding-top: .25rem; padding-bottom: .25rem; }
+    .connectpro-dialer #customer-call-panel > div:nth-of-type(2) > div:last-child { text-align: left; }
+    .connectpro-dialer #customer-avatar { width: 56px; height: 56px; }
+    .connectpro-dialer #customer-name { font-size: 1.25rem; }
+    .connectpro-dialer .connectpro-customer-workspace-card > #contact-workspace-panel { display: flex; flex: 1 1 auto; height: auto !important; min-height: 0 !important; flex-direction: column; padding: 0; overflow: hidden; background: transparent; }
+    .connectpro-dialer #contact-workspace-panel > .connectpro-contact-search { display: none; }
+    .connectpro-dialer #contact-workspace-panel > .contact-tabs { flex: 0 0 auto; margin: 0; padding: 0 .875rem; border: 1px solid #20344c; border-radius: 10px 10px 0 0; }
+    .connectpro-dialer #contact-workspace-panel > [data-contact-tab-panel="notes"].pt-5 { display: none; }
+    .connectpro-dialer #contact-workspace-panel > [data-contact-tab-panel="notes"]:last-child { display: flex; flex: 1 1 auto; min-height: 0; margin: 0; flex-direction: column; overflow: hidden; border: 1px solid #20344c; border-top: 0; border-radius: 0 0 10px 10px; background: #111c2b; }
+    .connectpro-dialer #contact-comments { flex: 1 1 auto; min-height: 0; max-height: none; overflow-y: auto; }
+    .connectpro-dialer .connectpro-labels-card { display: none; }
+}
+
+@media (min-width: 768px) and (orientation: landscape) {
+    body:has(.connectpro-dialer) .connectpro-sidebar { display: none !important; }
+    body:has(.connectpro-dialer) .connectpro-sidebar + div { width: 100% !important; margin-left: 0 !important; }
+    .connectpro-two-panel-grid { grid-template-columns: 227px minmax(0, 1fr) 266px !important; grid-template-rows: 145px minmax(0, 1fr) 70px; }
+    .connectpro-dialer .connectpro-customer-workspace-card { display: contents !important; }
+    .connectpro-dialer .connectpro-customer-workspace-card > #customer-call-panel { grid-column: 2; grid-row: 1; width: 100%; height: 145px !important; min-height: 145px !important; padding: .75rem !important; }
+    .connectpro-dialer .connectpro-customer-workspace-card > #contact-workspace-panel { display: contents !important; }
+    .connectpro-dialer #contact-workspace-panel > .connectpro-contact-search { display: block; grid-column: 1; grid-row: 1 / span 3; width: 100%; height: 100%; padding: .875rem; overflow: hidden; }
+    .connectpro-dialer #contact-workspace-panel > .contact-tabs { grid-column: 2; grid-row: 2; width: 100%; height: 42px; padding: 0 .75rem; overflow: hidden; }
+    .connectpro-dialer #contact-workspace-panel > [data-contact-tab-panel="notes"].pt-5 { display: flex; grid-column: 2; grid-row: 2; width: 100%; height: 42px; margin: 0; padding: .75rem; align-items: center; overflow: hidden; }
+    .connectpro-dialer #contact-workspace-panel > [data-contact-tab-panel="notes"]:last-child { display: flex; grid-column: 2; grid-row: 2; width: 100%; height: 100%; margin: 42px 0 0 !important; min-height: 0 !important; flex-direction: column; overflow: hidden; border: 1px solid #20344c; border-radius: 0 0 10px 10px; background: #111c2b; }
+    .connectpro-dialer #contact-workspace-panel > [data-contact-tab-panel="history"] { display: flex !important; grid-column: 2; grid-row: 3; width: 100%; height: 100%; min-height: 0; margin: 0; flex-direction: column; overflow: hidden; border: 1px solid #20344c; border-radius: 10px; background: #111c2b; }
+    .connectpro-dialer #contact-workspace-panel > [data-contact-tab-panel="info"],
+    .connectpro-dialer #contact-workspace-panel > [data-contact-tab-panel="activity"] { display: none !important; }
+    .connectpro-dialer .connectpro-labels-card { display: block; grid-column: 3; grid-row: 3; width: 100%; height: 100%; overflow: hidden; padding: .6rem 1rem; }
+    .connectpro-dialer .connectpro-labels-card h2 { font-size: .9rem; }
+    .connectpro-dialer .connectpro-labels-card > div:not(#contact-labels) { display: none; }
+    .connectpro-dialer .connectpro-labels-card #contact-labels { max-height: 5rem; overflow-y: auto; }
+    .connectpro-dialer #customer-call-panel > div:nth-of-type(2) { grid-template-columns: 56px minmax(0, 1fr); gap: .6rem; padding-top: .25rem; padding-bottom: .25rem; }
+    .connectpro-dialer #customer-call-panel > div:nth-of-type(2) > div:last-child { min-width: 0; }
+    .connectpro-dialer #customer-name, .connectpro-dialer #customer-company, .connectpro-dialer #customer-phone { overflow: visible; white-space: normal; }
+    .connectpro-dialer #customer-name { font-size: 1.15rem; line-height: 1.25; }
+    .connectpro-dialer #customer-company { font-size: .75rem; }
+    .connectpro-dialer #customer-phone { font-size: .75rem; }
+    .connectpro-dialer .connectpro-dialer-panel:first-child { grid-row: 1 / span 2; }
+    .connectpro-dialer .connectpro-dialer-panel:first-child .dialpad-key { height: 32px; min-height: 32px; border-radius: 7px; padding: 0; font-size: .9rem; box-shadow: none; }
+    .connectpro-dialer .connectpro-dialer-panel:first-child .dialpad-key > div:nth-child(2) { margin-top: .1rem; font-size: .45rem; letter-spacing: .05em; }
+    .connectpro-dialer .connectpro-dialer-panel:first-child .dialpad-grid { gap: .4rem; margin-top: .75rem; }
+    .connectpro-dialer #contact-workspace-panel > .contact-tabs { display: none; }
+    .connectpro-dialer #contact-workspace-panel > [data-contact-tab-panel="notes"].pt-5 { display: none; }
+    .connectpro-dialer #contact-workspace-panel > [data-contact-tab-panel="notes"]:last-child { grid-row: 2; margin: 0 !important; border-top: 1px solid #20344c; border-radius: 10px; }
+    body:has(.connectpro-dialer) .connectpro-sidebar { display: flex !important; position: relative !important; inset: auto !important; width: 248px !important; transform: none !important; translate: 0 0 !important; }
+    body:has(.connectpro-dialer) .connectpro-sidebar + div { width: auto !important; margin-left: 0 !important; }
+}
+
+@media (min-width: 768px) and (max-width: 1100px) and (orientation: landscape) {
+    .connectpro-two-panel-grid { grid-template-columns: 168px minmax(0, 1fr) 197px !important; }
+}
+
+@media (min-width: 1101px) and (max-width: 1599px) and (orientation: landscape) {
+    .connectpro-two-panel-grid { grid-template-columns: 220px minmax(0, 1fr) 280px !important; }
+    .connectpro-dialer #contact-workspace-panel > .connectpro-contact-search,
+    .connectpro-dialer .connectpro-dialer-panel:first-child,
+    .connectpro-dialer .connectpro-labels-card { width: 100%; }
+    .connectpro-dialer .connectpro-customer-workspace-card > #customer-call-panel,
+    .connectpro-dialer #contact-workspace-panel > [data-contact-tab-panel="notes"]:last-child,
+    .connectpro-dialer #contact-workspace-panel > [data-contact-tab-panel="history"] { width: 100%; }
+}
+
+@media (min-width: 1101px) and (orientation: landscape) {
+    .connectpro-dialer > div:not(.connectpro-dialer-toolbar) { padding-top: 36px; padding-right: 18px; padding-left: 94px; }
+    .connectpro-two-panel-grid { grid-template-columns: 224px 716px 352px !important; grid-template-rows: 190px minmax(0, 1fr); gap: 18px; }
+    .connectpro-dialer .connectpro-customer-workspace-card > #customer-call-panel { width: 716px; height: 190px !important; min-height: 190px !important; border-radius: 16px; border-width: 1px; }
+    .connectpro-dialer .connectpro-dialer-panel:first-child { width: 352px; height: 488px; min-height: 488px; border-radius: 16px; border-width: 1px; }
+    .connectpro-dialer .connectpro-labels-card { grid-column: 3; grid-row: 2; width: 352px; }
+}
+
+@media (min-width: 1101px) and (orientation: landscape) {
+    .connectpro-dialer > div:not(.connectpro-dialer-toolbar) { padding-top: 36px; padding-right: 18px; padding-left: 18px; }
+    .connectpro-two-panel-grid { grid-template-columns: 300px 716px 352px !important; grid-template-rows: 190px 278px 284px; gap: 18px; height: 788px; min-height: 788px !important; }
+    .connectpro-dialer #contact-workspace-panel > .connectpro-contact-search { grid-column: 1; grid-row: 1 / span 3; width: 300px; height: 788px; border-radius: 16px; border-width: 1px; }
+    .connectpro-dialer .connectpro-customer-workspace-card > #customer-call-panel { grid-column: 2; grid-row: 1; width: 716px; height: 190px !important; min-height: 190px !important; border-radius: 16px; border-width: 1px; }
+    .connectpro-dialer #contact-workspace-panel > [data-contact-tab-panel="notes"]:last-child { grid-column: 2; grid-row: 2; width: 716px; height: 278px; min-height: 278px !important; margin: 0 !important; border-radius: 16px; border-width: 1px; }
+    .connectpro-dialer #contact-workspace-panel > [data-contact-tab-panel="history"] { grid-column: 2; grid-row: 3; width: 716px; height: 284px; min-height: 284px !important; margin: 0 !important; border-radius: 16px !important; border-width: 1px; }
+    .connectpro-dialer .connectpro-dialer-panel:first-child { grid-column: 3; grid-row: 1; width: 352px; height: 488px; min-height: 488px; border-radius: 16px; border-width: 1px; }
+    .connectpro-dialer .connectpro-labels-card { grid-column: 3; grid-row: 3; width: 352px; height: 282px; min-height: 282px; transform: translateY(2px); border-radius: 16px; border-width: 1px; }
+    .connectpro-dialer .connectpro-call-actions button[type="submit"] { display: flex !important; }
+}
+
+.connectpro-activity-history-card { display: contents; }
+
+/* NightWave desktop balance: every rail occupies a deliberate grid area. */
+@media (min-width: 1101px) and (orientation: landscape) {
+    .connectpro-dialer > div:not(.connectpro-dialer-toolbar) {
+        width: 100%;
+        max-width: none;
+        height: calc(100dvh - 58px);
+        padding: 18px;
+    }
+    .connectpro-two-panel-grid {
+        grid-template-columns: clamp(230px, 20vw, 300px) minmax(0, 1fr) minmax(0, 1fr) clamp(280px, 23vw, 352px) !important;
+        grid-template-rows: 180px minmax(210px, .95fr) minmax(210px, 1fr);
+        width: 100%;
+        height: 100%;
+        min-height: 0 !important;
+        gap: 18px;
+    }
+    .connectpro-dialer #contact-workspace-panel > .connectpro-contact-search {
+        grid-column: 1;
+        grid-row: 1 / span 3;
+        width: auto;
+        height: auto;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    .connectpro-dialer #contact-workspace-panel > .connectpro-contact-search #contact-search-results {
+        position: static;
+        inset: auto;
+        z-index: auto;
+        display: block !important;
+        flex: 1 1 auto;
+        min-height: 0;
+        max-height: none;
+        margin-top: 14px;
+        overflow-y: auto;
+        border: 0;
+        background: transparent;
+        padding: 0;
+        box-shadow: none;
+    }
+    .connectpro-dialer .connectpro-customer-workspace-card > #customer-call-panel {
+        grid-column: 2 / span 2;
+        grid-row: 1;
+        width: auto;
+        height: auto !important;
+        min-height: 0 !important;
+    }
+    .connectpro-dialer #contact-workspace-panel > .connectpro-notes-card {
+        grid-column: 2 / span 2 !important;
+        grid-row: 2;
+        width: auto !important;
+        height: auto !important;
+        min-height: 0 !important;
+        margin: 0 !important;
+        display: flex !important;
+        flex-direction: column;
+        overflow: hidden;
+        border: 1px solid #20344c;
+        border-radius: 16px;
+        background: #111c2b;
+    }
+    .connectpro-dialer .connectpro-notes-card #contact-comments {
+        flex: 1 1 auto;
+        min-height: 0;
+        max-height: none;
+    }
+    .connectpro-dialer #contact-workspace-panel > .connectpro-activity-history-card {
+        grid-column: 2 / span 2;
+        grid-row: 3;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        min-width: 0;
+        min-height: 0;
+        overflow: hidden;
+        border: 1px solid #20344c;
+        border-radius: 16px;
+        background: #111c2b;
+    }
+    .connectpro-dialer .connectpro-activity-history-card > [data-contact-tab-panel="activity"],
+    .connectpro-dialer .connectpro-activity-history-card > [data-contact-tab-panel="history"] {
+        display: flex !important;
+        width: auto;
+        height: auto;
+        min-width: 0;
+        min-height: 0;
+        margin: 0;
+        flex-direction: column;
+        overflow: hidden;
+        border: 0;
+        border-radius: 0 !important;
+        background: transparent;
+    }
+    .connectpro-dialer .connectpro-activity-history-card > [data-contact-tab-panel="history"] {
+        border-left: 1px solid #20344c;
+    }
+    .connectpro-dialer .connectpro-activity-history-card > [data-contact-tab-panel="activity"] > div:last-child,
+    .connectpro-dialer .connectpro-activity-history-card > [data-contact-tab-panel="history"] > div:last-child {
+        flex: 1 1 auto;
+        min-height: 0;
+        max-height: none;
+        overflow-y: auto;
+    }
+    .connectpro-dialer .connectpro-dialer-panel:first-child {
+        grid-column: 4;
+        grid-row: 1 / span 2;
+        width: auto;
+        height: auto;
+        min-height: 0;
+    }
+    .connectpro-dialer .connectpro-dialer-panel:first-child form {
+        display: flex;
+        height: auto;
+        min-height: 0;
+        flex-direction: column;
+    }
+    .connectpro-dialer .connectpro-dialer-panel:first-child .dialpad-grid {
+        width: 100%;
+        min-height: 0;
+        aspect-ratio: auto;
+        margin-top: 16px;
+        padding: 0;
+        gap: 8px;
+        justify-items: stretch;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+    }
+    .connectpro-dialer .connectpro-dialer-panel:first-child .dialpad-key {
+        width: 100% !important;
+        height: 42px;
+        min-height: 42px;
+        padding: 0;
+        border-radius: 8px;
+        font-size: 1rem;
+    }
+    .connectpro-dialer .connectpro-labels-card {
+        grid-column: 4;
+        grid-row: 3;
+        width: auto;
+        height: auto;
+        min-height: 0;
+        transform: none;
+    }
+    .connectpro-dialer .connectpro-labels-card > div:not(#contact-labels) {
+        display: block;
+    }
+    .connectpro-dialer .connectpro-labels-card > div:last-child {
+        display: flex;
+    }
+    .connectpro-dialer .connectpro-labels-card #contact-labels:empty::before {
+        content: "{{ __('No labels added') }}";
+        color: #64748b;
+        font-size: .75rem;
+    }
+    .connectpro-dialer .connectpro-call-actions {
+        margin-top: 16px !important;
+        grid-template-columns: 1fr !important;
+    }
+    .connectpro-dialer .connectpro-call-actions button {
+        min-height: 40px !important;
+        padding-top: 8px;
+        padding-bottom: 8px;
+        font-size: .8rem;
+    }
+    .connectpro-dialer .connectpro-call-actions button[type="button"] {
+        display: none;
+    }
+    .connectpro-dialer .connectpro-call-actions .connectpro-call-button {
+        display: flex !important;
+        width: 100%;
+        background: #2563eb !important;
+        color: #fff !important;
+        box-shadow: 0 12px 28px -18px rgba(79, 131, 241, .95);
+    }
+    .connectpro-dialer .connectpro-call-actions button.connectpro-call-button[type="submit"] {
+        background: #2563eb !important;
+    }
+    .connectpro-dialer .connectpro-call-actions .connectpro-call-button:hover {
+        background: #1d4ed8 !important;
+    }
+    html:not(.dark) .connectpro-dialer #contact-workspace-panel > .connectpro-contact-search,
+    html:not(.dark) .connectpro-dialer #contact-workspace-panel > .connectpro-activity-history-card {
+        border-color: #d6e0eb;
+        background: #fff;
+    }
+    html:not(.dark) .connectpro-dialer #contact-workspace-panel > .connectpro-contact-search label,
+    html:not(.dark) .connectpro-dialer #contact-search-results strong,
+    html:not(.dark) .connectpro-dialer .connectpro-activity-history-card h3 {
+        color: #0f172a !important;
+    }
+    html:not(.dark) .connectpro-dialer .connectpro-activity-history-card > [data-contact-tab-panel="history"] {
+        border-left-color: #d6e0eb;
+    }
+    html:not(.dark) .connectpro-dialer .connectpro-dialer-panel:first-child .dialpad-key {
+        border-color: #d6e0eb;
+        background: #f1f5f9;
+        color: #0f172a;
+    }
+    /* Light mode for full call history panel */
+    html:not(.dark) #dialer-full-history section {
+        border-color: #d6e0eb !important;
+        background: #fff !important;
+    }
+    html:not(.dark) #dialer-full-history h2,
+    html:not(.dark) #dialer-full-history .font-semibold {
+        color: #0f172a !important;
+    }
+    html:not(.dark) #dialer-full-history .text-slate-400 {
+        color: #64748b !important;
+    }
+    html:not(.dark) #dialer-full-history .text-slate-300 {
+        color: #334155 !important;
+    }
+    html:not(.dark) #dialer-full-history .text-slate-500 {
+        color: #64748b !important;
+    }
+    html:not(.dark) #dialer-full-history article {
+        border-color: #e2e8f0 !important;
+    }
+    html:not(.dark) #dialer-full-history article:hover {
+        background: #f8fafc !important;
+    }
+    html:not(.dark) #dialer-full-history .bg-\[#0a1a2e\] {
+        background: #f1f5f9 !important;
+    }
+    /* Light mode for full activity panel */
+    html:not(.dark) #dialer-full-activity section {
+        border-color: #d6e0eb !important;
+        background: #fff !important;
+    }
+    html:not(.dark) #dialer-full-activity h2,
+    html:not(.dark) #dialer-full-activity .font-semibold {
+        color: #0f172a !important;
+    }
+    html:not(.dark) #dialer-full-activity .text-slate-400 {
+        color: #64748b !important;
+    }
+    html:not(.dark) #dialer-full-activity .text-slate-300 {
+        color: #334155 !important;
+    }
+    html:not(.dark) #dialer-full-activity .text-slate-500 {
+        color: #64748b !important;
+    }
+    html:not(.dark) #dialer-full-activity .text-white {
+        color: #0f172a !important;
+    }
+    html:not(.dark) #dialer-full-activity .text-blue-400 {
+        color: #2563eb !important;
+    }
+    html:not(.dark) #dialer-full-activity .text-purple-300 {
+        color: #9333ea !important;
+    }
+    html:not(.dark) #dialer-full-activity article {
+        border-color: #e2e8f0 !important;
+    }
+    html:not(.dark) #dialer-full-activity article:hover {
+        background: #f8fafc !important;
+    }
+    html:not(.dark) #dialer-full-activity .bg-slate-800\/50 {
+        background: #f1f5f9 !important;
+    }
+    html:not(.dark) #dialer-full-activity .border-slate-700\/50 {
+        border-color: #e2e8f0 !important;
+    }
+    /* Light mode icon backgrounds */
+    html:not(.dark) #dialer-full-activity .bg-emerald-500\/15 {
+        background: #d1fae5 !important;
+    }
+    html:not(.dark) #dialer-full-activity .bg-blue-500\/15 {
+        background: #dbeafe !important;
+    }
+    html:not(.dark) #dialer-full-activity .bg-cyan-500\/15 {
+        background: #cffafe !important;
+    }
+    html:not(.dark) #dialer-full-activity .bg-purple-500\/15 {
+        background: #f3e8ff !important;
+    }
+    html:not(.dark) #dialer-full-activity .bg-amber-500\/15 {
+        background: #fef3c7 !important;
+    }
+    html:not(.dark) #dialer-full-activity .bg-slate-500\/15 {
+        background: #f1f5f9 !important;
+    }
+    html:not(.dark) #dialer-full-activity .text-emerald-400 {
+        color: #059669 !important;
+    }
+    html:not(.dark) #dialer-full-activity .text-blue-400 {
+        color: #2563eb !important;
+    }
+    html:not(.dark) #dialer-full-activity .text-cyan-400 {
+        color: #0891b2 !important;
+    }
+    html:not(.dark) #dialer-full-activity .text-purple-400 {
+        color: #9333ea !important;
+    }
+    html:not(.dark) #dialer-full-activity .text-amber-400 {
+        color: #d97706 !important;
+    }
+    html:not(.dark) #dialer-full-activity .text-slate-400 {
+        color: #64748b !important;
+    }
+    html:not(.dark) #dialer-full-activity .ring-emerald-500\/20 {
+        --tw-ring-color: rgba(16, 185, 129, 0.2) !important;
+    }
+    html:not(.dark) #dialer-full-activity .ring-blue-500\/20 {
+        --tw-ring-color: rgba(59, 130, 246, 0.2) !important;
+    }
+    html:not(.dark) #dialer-full-activity .ring-cyan-500\/20 {
+        --tw-ring-color: rgba(6, 182, 212, 0.2) !important;
+    }
+    html:not(.dark) #dialer-full-activity .ring-purple-500\/20 {
+        --tw-ring-color: rgba(168, 85, 247, 0.2) !important;
+    }
+    html:not(.dark) #dialer-full-activity .ring-amber-500\/20 {
+        --tw-ring-color: rgba(245, 158, 11, 0.2) !important;
+    }
+}
+</style>
+@endpush
+
+@section('admin-content')
+<div class="connectpro-dialer min-h-full bg-[#06111f] text-white">
+    <div class="connectpro-dialer-toolbar flex min-h-[82px] items-center gap-4 border-b border-[#20364c] bg-[#071526]/95 px-3 backdrop-blur-xl sm:px-6">
+        <button type="button" @click.stop="sidebarToggle = true" class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#2a4055] bg-[#091827] text-slate-200 lg:hidden" aria-label="{{ __('Open navigation') }}"><i class="bi bi-list text-2xl"></i></button>
+        <div class="hidden shrink-0 items-center gap-3 sm:flex">
+            <div><p class="text-lg font-bold text-slate-300">NightWave</p></div>
         </div>
+        <nav class="connectpro-reference-nav hidden items-center gap-2 lg:flex" aria-label="{{ __('Dialer navigation') }}">
+            <a href="{{ route('admin.contacts.index') }}">{{ __('Contacts') }}</a>
+            <a class="connectpro-reference-nav-active" href="#">{{ __('Dialpad') }}</a>
+            <a href="{{ route('admin.contacts.call-history') }}">{{ __('History') }}</a>
+            <a href="{{ route('admin.contacts.activity') }}">{{ __('Activity') }}</a>
+            <a href="#">{{ __('Queues') }}</a>
+            <a href="#">{{ __('Reports') }}</a>
+        </nav>
+        <div class="relative mx-auto hidden w-full max-w-xl md:block">
+            <i class="bi bi-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+            <input type="search" data-dialer-toolbar-search placeholder="{{ __('Search contacts or numbers…') }}" class="h-12 w-full rounded-2xl border border-[#2a4055] bg-[#0b1b2c] pl-11 pr-4 text-sm text-white outline-none placeholder:text-slate-500 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10">
+        </div>
+        <div class="ml-auto flex items-center gap-2">
+            <span class="connectpro-agent-status hidden items-center rounded-full px-3 py-1 text-[10px] font-semibold lg:inline-flex">{{ __('Agent online') }}</span>
+            <a href="{{ route('admin.contacts.index') }}" class="flex h-11 w-11 items-center justify-center rounded-xl border border-[#2a4055] bg-[#0b1b2c] text-blue-400 hover:border-blue-500" title="{{ __('Contacts') }}"><i class="bi bi-people-fill text-lg"></i></a>
+            <a href="{{ route('admin.settings.index') }}" class="flex h-11 w-11 items-center justify-center rounded-xl border border-[#2a4055] bg-[#0b1b2c] text-slate-300 hover:border-blue-500 hover:text-blue-400" title="{{ __('Settings') }}"><i class="bi bi-gear-fill text-lg"></i></a>
+        </div>
+    </div>
+    <div class="mx-auto max-w-[1580px] space-y-4 p-3 sm:p-6">
 
         @if (!empty($webrtcError))
-            <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">{{ $webrtcError }}</div>
+            <div class="sr-only" role="status">{{ $webrtcError }}</div>
         @endif
 
-        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+        <div class="hidden">
             <div>
                 <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">{{ __('Keypad') }}</h1>
                 <p class="mt-1 flex items-center gap-2 text-sm text-slate-300"><span class="h-2.5 w-2.5 rounded-full bg-emerald-500"></span>{{ __('Ready') }}</p>
@@ -53,11 +549,12 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-1 gap-4 xl:grid-cols-[380px_minmax(0,1fr)]">
-            <section class="rounded-2xl border border-[#2a4055] bg-[#091827] p-3 shadow-2xl sm:p-5">
+        <div class="connectpro-two-panel-grid grid min-h-[calc(100vh-150px)] grid-cols-1 gap-4 lg:grid-cols-[minmax(360px,1fr)_minmax(480px,1fr)]">
+            <section class="connectpro-dialer-panel flex min-h-full flex-col rounded-2xl border border-[#2a4055] bg-[#091827] p-3 shadow-2xl sm:p-5">
                 <div class="mb-5 flex items-start justify-between gap-3">
                     <div>
                         <h2 class="text-xl font-semibold text-white">{{ __('Keypad') }}</h2>
+                        <p class="mt-1 flex items-center gap-2 text-xs text-slate-400"><span class="h-2 w-2 rounded-full bg-emerald-500"></span>{{ __('Ready') }}<span class="text-slate-600">•</span>{{ __('SIP') }}: {{ $webrtcConfig['username'] ?? '—' }}@<span>{{ $webrtcConfig['domain'] ?? '—' }}</span></p>
                     </div>
                     <div id="call-status" class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#365068] text-slate-300"><i class="bi bi-arrow-clockwise"></i></div>
                 </div>
@@ -82,34 +579,36 @@
                     </div>
 
                     <div class="connectpro-call-actions mt-5 grid grid-cols-2 gap-3">
-                        <button type="submit" class="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3.5 font-semibold text-white shadow-lg shadow-emerald-600/20 transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"><i class="bi bi-telephone-fill text-xl"></i><span>{{ __('Call') }}</span></button>
+                        <button type="submit" class="connectpro-call-button flex items-center justify-center gap-2 rounded-xl bg-blue-600 py-3.5 font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"><i class="bi bi-telephone-fill text-xl"></i><span>{{ __('Call') }}</span></button>
                         <button type="button" class="flex items-center justify-center gap-2 rounded-xl bg-red-500 py-3.5 font-semibold text-white shadow-lg shadow-red-600/20 transition hover:bg-red-400 disabled:cursor-not-allowed disabled:opacity-50" data-action="hangup" disabled><i class="bi bi-telephone-x-fill text-xl"></i><span>{{ __('Hangup') }}</span></button>
                     </div>
                 </form>
 
                 <div id="dialer-alert" class="mt-4 hidden rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300"></div>
 
-                <div id="live-call-session" class="mt-4 border-t border-[#2a4055] pt-4">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">{{ __('Call controls') }}</p>
-                            <div class="hidden mt-1 font-mono text-lg text-white" id="call-timer-badge"><span id="call-timer">00:00</span></div>
-                        </div>
-                        <div class="hidden text-[10px] text-gray-400" id="call-id-badge"></div>
-                    </div>
-                    <div class="mt-3 grid grid-cols-3 gap-2">
-                        <button type="button" class="connectpro-control" data-action="mute" disabled><i class="bi bi-mic-mute text-lg"></i><span>{{ __('Mute') }}</span></button>
-                        <button type="button" class="connectpro-control" data-action="unmute" disabled><i class="bi bi-mic text-lg"></i><span>{{ __('Unmute') }}</span></button>
-                        <button type="button" class="connectpro-control" disabled><i class="bi bi-grid-3x3-gap text-lg"></i><span>{{ __('Keypad') }}</span></button>
-                    </div>
-                    <div id="call-alert" class="mt-3 hidden rounded-xl bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-500/10 dark:text-red-300"></div>
-                    <div class="mt-3 hidden text-xs text-gray-400" id="browser-audio-status"></div>
-                    <audio id="dialer-audio" class="hidden" autoplay playsinline></audio>
-                </div>
             </section>
 
-            <aside id="contact-workspace-panel" class="min-w-0 rounded-2xl border border-[#2a4055] bg-[#091827] p-3 shadow-2xl sm:p-5">
-                <div class="relative mb-5">
+            <section id="customer-workspace-card" class="connectpro-customer-workspace-card min-w-0 rounded-2xl border border-[#2a4055] bg-[#091827] shadow-2xl">
+            <section id="customer-call-panel" class="connectpro-dialer-panel min-w-0 border-0 bg-transparent p-3 shadow-none sm:p-5">
+                <div class="flex items-center justify-between gap-3">
+                    <h2 class="flex items-center gap-2 text-xl font-semibold text-white"><i class="bi bi-person-fill text-blue-500"></i>{{ __('Customer') }}</h2>
+                    <button id="contact-flag-toggle" type="button" disabled class="flex h-9 w-9 items-center justify-center rounded-full border border-[#365068] text-slate-400 transition hover:border-amber-400 hover:text-amber-400 disabled:cursor-not-allowed disabled:opacity-40" title="{{ __('Flag contact') }}" aria-label="{{ __('Flag contact') }}"><i class="bi bi-flag"></i></button>
+                </div>
+
+                <div class="grid items-center gap-4 py-4 sm:grid-cols-[96px_minmax(0,1fr)] sm:text-left">
+                    <div id="customer-avatar" class="mx-auto flex h-24 w-24 items-center justify-center rounded-full border-4 border-[#20384f] bg-blue-600 text-3xl font-bold text-white shadow-xl">?</div>
+                    <div class="min-w-0 text-center sm:text-left">
+                    <p id="customer-name" class="max-w-full truncate text-2xl font-bold text-white">{{ __('No customer selected') }}</p>
+                    <p id="customer-company" class="mt-1 max-w-full truncate text-base font-medium text-blue-400">{{ __('Call workspace') }}</p>
+                    <p id="customer-phone" class="mt-2 max-w-full break-all text-sm text-slate-200"><i class="bi bi-telephone mr-2"></i>—</p>
+                    </div>
+                </div>
+
+                <audio id="dialer-audio" class="hidden" autoplay playsinline></audio>
+            </section>
+
+            <aside id="contact-workspace-panel" class="connectpro-contact-workspace min-w-0 border-0 bg-transparent p-3 shadow-none sm:p-5">
+                <div class="relative mb-5 connectpro-contact-search">
                     <label for="contact-search" class="mb-2 block text-xs font-semibold uppercase tracking-wider text-slate-400">{{ __('Contacts') }}</label>
                     @if (! $contactPermissions['view'])
                         <p class="mb-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">{{ __('Your role does not have permission to view the global contact book.') }}</p>
@@ -124,26 +623,6 @@
                       </select>
                     </div>
                     <div id="contact-search-results" class="absolute inset-x-0 top-full z-20 mt-2 hidden max-h-64 overflow-y-auto rounded-xl border border-[#365068] bg-[#0b1b2c] p-2 shadow-2xl"></div>
-                </div>
-
-                <div class="border-b border-[#2a4055] pb-5">
-                    <div class="flex items-center justify-between gap-3">
-                        <h2 class="flex items-center gap-2 text-xl font-semibold text-white"><i class="bi bi-people-fill text-blue-500"></i>{{ __('Customer') }}</h2>
-                        <button id="contact-flag-toggle" type="button" disabled class="flex h-9 w-9 items-center justify-center rounded-full border border-[#365068] text-slate-400 transition hover:border-amber-400 hover:text-amber-400 disabled:cursor-not-allowed disabled:opacity-40" title="{{ __('Flag contact') }}" aria-label="{{ __('Flag contact') }}"><i class="bi bi-flag"></i></button>
-                    </div>
-                    <div class="mt-4 flex flex-wrap items-center gap-3 sm:flex-nowrap sm:gap-4">
-                        <div id="customer-avatar" class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-blue-600 text-lg font-bold text-white">?</div>
-                        <div class="min-w-0 flex-1">
-                            <p id="customer-name" class="truncate text-lg font-semibold text-white">{{ __('No customer selected') }}</p>
-                            <p id="customer-company" class="truncate text-sm text-blue-400">{{ __('Call workspace') }}</p>
-                        </div>
-                        <p id="customer-phone" class="w-full break-all pl-[68px] text-sm text-slate-200 sm:w-auto sm:shrink-0 sm:pl-0"><i class="bi bi-telephone mr-2"></i>—</p>
-                    </div>
-                    <div id="contact-labels" class="mt-4 flex flex-wrap gap-2"></div>
-                    <div class="mt-3 flex gap-2">
-                        <input id="contact-label-input" type="text" maxlength="30" disabled placeholder="{{ __('Add label') }}" class="min-w-0 flex-1 rounded-lg border border-[#365068] bg-[#0b1b2c] px-3 py-2 text-xs text-white outline-none placeholder:text-slate-400 focus:border-blue-500 disabled:opacity-50">
-                        <button id="contact-label-add" type="button" disabled class="rounded-lg border border-blue-500/50 px-3 py-2 text-xs font-semibold text-blue-400 hover:bg-blue-500/10 disabled:opacity-40">{{ __('Add') }}</button>
-                    </div>
                 </div>
 
                 <div class="contact-tabs -mx-3 flex overflow-x-auto border-b border-[#2a4055] px-3 sm:-mx-5 sm:px-5" role="tablist" aria-label="{{ __('Contact workspace') }}">
@@ -163,6 +642,7 @@
                         <input id="contact-company-input" type="text" maxlength="255" placeholder="{{ __('Company') }}" class="rounded-lg border border-[#365068] bg-[#091827] px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-400 focus:border-blue-500">
                         <input id="contact-phone-input" type="tel" maxlength="40" placeholder="{{ __('Phone number') }}" class="rounded-lg border border-[#365068] bg-[#091827] px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-400 focus:border-blue-500">
                         <input id="contact-email-input" type="email" maxlength="255" placeholder="{{ __('Email') }}" class="rounded-lg border border-[#365068] bg-[#091827] px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-400 focus:border-blue-500">
+                        <input id="contact-avatar-input" type="url" maxlength="2048" placeholder="{{ __('Profile image URL') }}" class="rounded-lg border border-[#365068] bg-[#091827] px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-400 focus:border-blue-500 sm:col-span-2">
                     </div>
                     <div class="mt-3 flex items-center justify-between gap-3">
                         <span id="contact-feedback" class="text-xs text-slate-400"></span>
@@ -170,6 +650,7 @@
                     </div>
                 </div>
 
+                <div class="connectpro-activity-history-card">
                 <div data-contact-tab-panel="activity" class="mt-4 hidden rounded-xl border border-[#263b50] bg-[#102338]">
                     <div class="flex items-center justify-between border-b border-[#263b50] px-4 py-3">
                         <div>
@@ -191,8 +672,9 @@
                     </div>
                     <div id="contact-call-history" class="max-h-[32rem] space-y-3 overflow-y-auto p-4"><p class="text-sm text-slate-400">{{ __('Select a saved contact to view call history.') }}</p></div>
                 </div>
+                </div>
 
-                <div data-contact-tab-panel="notes" class="mt-4 rounded-xl border border-[#263b50] bg-[#102338]">
+                <div data-contact-tab-panel="notes" class="connectpro-notes-card mt-4 rounded-xl border border-[#263b50] bg-[#102338]">
                     <div class="border-b border-[#263b50] px-4 py-3">
                         <h3 class="font-semibold text-white">{{ __('Contact comments') }}</h3>
                         <p class="mt-1 text-xs text-gray-400">{{ __('Shared history for this contact across calls') }}</p>
@@ -207,28 +689,106 @@
                 </div>
 
             </aside>
+            </section>
+
+            <section class="connectpro-labels-card min-w-0 rounded-2xl border border-[#2a4055] bg-[#091827] p-3 shadow-2xl sm:p-5">
+                <h2 class="text-lg font-semibold text-white">{{ __('Labels & Flags') }}</h2>
+                <div id="contact-labels" class="mt-4 flex max-w-full flex-wrap gap-2"></div>
+                <div class="mt-5">
+                    <p class="text-xs font-semibold text-slate-300">{{ __('Follow-up flag') }}</p>
+                    <p class="mt-2 text-xs leading-5 text-slate-400">{{ __('Flag contacts for follow-up after a call.') }}</p>
+                </div>
+                <div class="mt-5 flex w-full gap-2">
+                    <input id="contact-label-input" type="text" maxlength="30" disabled placeholder="{{ __('Add label') }}" class="min-w-0 flex-1 rounded-lg border border-[#365068] bg-[#0b1b2c] px-3 py-2 text-xs text-white outline-none placeholder:text-slate-400 focus:border-blue-500 disabled:opacity-50">
+                    <button id="contact-label-add" type="button" disabled class="rounded-lg border border-blue-500/50 px-3 py-2 text-xs font-semibold text-blue-400 hover:bg-blue-500/10 disabled:opacity-40">{{ __('Add') }}</button>
+                </div>
+            </section>
         </div>
 
-        <div id="incoming-call-banner" class="fixed inset-0 z-[100] hidden bg-black/60 p-4 backdrop-blur-sm">
+        <div id="incoming-call-banner" class="connectpro-incoming fixed inset-0 z-[100] hidden overflow-y-auto p-4 sm:p-8">
             <div class="flex min-h-full items-center justify-center">
-                <div class="w-full max-w-md rounded-3xl border border-gray-200 bg-white p-8 text-center shadow-2xl dark:border-gray-700 dark:bg-[#111827]">
-                    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-blue-600 dark:text-blue-400">{{ __('Incoming call') }}</p>
-                    <div class="relative mx-auto mt-6 flex h-24 w-24 items-center justify-center rounded-full bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
-                        <span class="absolute inset-0 animate-ping rounded-full bg-blue-500/15"></span><i class="bi bi-telephone-inbound relative text-4xl"></i>
+                <div class="connectpro-incoming-shell w-full max-w-[480px] text-center text-white">
+                    <div class="connectpro-incoming-card relative mx-auto aspect-square w-full max-w-[480px] rounded-[24px] border border-[#344b63] bg-[#081522]/85 px-6 pb-6 pt-5 shadow-[0_30px_100px_rgba(0,0,0,.65)] sm:px-12 sm:pb-7">
+                    <p class="text-base font-semibold uppercase tracking-[0.12em] text-blue-400">{{ __('Incoming call') }}</p>
+                    <p class="mt-1 text-sm text-slate-300"><span class="mr-2 inline-block h-2 w-2 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,.8)]"></span>{{ __('Ringing...') }}</p>
+                    <div class="connectpro-incoming-avatar relative mx-auto mt-5 flex h-36 w-36 items-center justify-center rounded-full border-4 border-[#526c86] bg-[#64748b] text-4xl font-bold text-white shadow-[0_0_0_8px_rgba(59,130,246,.12),0_0_0_18px_rgba(59,130,246,.08),0_0_48px_rgba(37,99,235,.45)]">
+                        <span class="absolute inset-[-12px] animate-ping rounded-full border border-blue-500/25"></span><img id="incoming-avatar" src="{{ asset('images/user/user-01.jpg') }}" alt="" class="relative h-full w-full rounded-full object-cover">
                     </div>
-                    <h3 id="incoming-caller" class="mt-5 text-2xl font-bold text-gray-900 dark:text-white">—</h3>
-                    <p id="incoming-did" class="mt-1 text-sm text-gray-400"></p>
-                    <div class="mt-7 grid grid-cols-2 gap-3">
-                        <button type="button" id="incoming-accept" class="rounded-2xl bg-emerald-600 py-3.5 font-semibold text-white shadow-lg shadow-emerald-600/20 hover:bg-emerald-500"><i class="bi bi-telephone-fill mr-2"></i>{{ __('Accept') }}</button>
-                        <button type="button" id="incoming-decline" class="rounded-2xl bg-red-600 py-3.5 font-semibold text-white shadow-lg shadow-red-600/20 hover:bg-red-500"><i class="bi bi-telephone-x-fill mr-2"></i>{{ __('Decline') }}</button>
+                    <h3 id="incoming-caller" class="mt-5 text-3xl font-bold text-white">{{ __('Unknown caller') }}</h3>
+                    <p id="incoming-company" class="mt-1 flex items-center justify-center gap-2 text-lg text-blue-400"><i class="bi bi-buildings"></i><span>{{ __('Contact') }}</span></p>
+                    <p id="incoming-did" class="mt-1 flex items-center justify-center gap-2 text-base text-slate-300"><i class="bi bi-telephone-fill text-blue-400"></i><span>—</span></p>
+                    <div class="mt-8 grid grid-cols-2 gap-4">
+                        <button type="button" id="incoming-accept" class="flex items-center justify-center gap-2 rounded-xl bg-emerald-500 py-3.5 text-lg font-semibold text-white shadow-lg shadow-emerald-600/20 hover:bg-emerald-400"><i class="bi bi-telephone-fill text-xl"></i>{{ __('Answer') }}</button>
+                        <button type="button" id="incoming-decline" class="flex items-center justify-center gap-2 rounded-xl bg-red-500 py-3.5 text-lg font-semibold text-white shadow-lg shadow-red-600/20 hover:bg-red-400"><i class="bi bi-telephone-x-fill text-xl"></i>{{ __('Decline') }}</button>
+                    </div>
+                    </div>
+                    <div class="connectpro-incoming-context mt-3 grid gap-3 rounded-[20px] border border-[#263d54] bg-[#091827]/85 p-4 text-left sm:px-5">
+                        <div class="rounded-xl border border-[#294158] bg-[#071625] p-4"><p class="flex items-center gap-3 text-sm font-semibold text-slate-200"><i class="bi bi-calendar3 text-2xl text-blue-400"></i>{{ __('Last contact') }}</p><p class="mt-2 pl-9 text-sm text-slate-300">{{ __('No recent conversation') }}</p></div>
+                        <div class="rounded-xl border border-[#294158] bg-[#071625] p-4"><p class="flex items-center gap-3 text-sm font-semibold text-slate-200"><i class="bi bi-file-earmark-text text-2xl text-blue-400"></i>{{ __('Last note') }}</p><p class="mt-2 pl-9 text-sm leading-5 text-slate-300">{{ __('Call notes and contact context remain available in the workspace.') }}</p></div>
+                        <p class="flex items-center justify-center gap-3 text-sm text-slate-300 sm:col-span-2"><i class="bi bi-shield-check text-xl"></i>{{ __('Secure encrypted call') }}</p>
                     </div>
                 </div>
             </div>
         </div>
 
+        <div id="active-call-window" class="fixed inset-0 z-[90] hidden overflow-y-auto bg-[#020914]/80 p-4 backdrop-blur-md sm:p-8">
+            <div class="mx-auto w-full max-w-[520px] rounded-[30px] border border-[#486078] bg-[#0b1725] p-5 text-white shadow-[0_30px_100px_rgba(0,0,0,.65)] sm:p-7">
+                <div class="flex items-center gap-3 border-b border-[#33485d] pb-4"><i class="bi bi-telephone-fill text-xl text-blue-400"></i><span class="text-lg font-medium">{{ __('VoIP Softphone') }}</span><button type="button" data-compact-minimize class="ml-auto text-2xl text-slate-300">−</button><button type="button" data-compact-close class="text-2xl text-slate-300">×</button></div>
+                <div class="mt-6 grid items-center gap-4 sm:grid-cols-[104px_minmax(0,1fr)_auto]">
+                    <div class="flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-900 text-3xl font-bold shadow-[0_0_0_8px_rgba(59,130,246,.08)]" data-compact-avatar>?</div>
+                    <div class="min-w-0"><h2 class="truncate text-2xl font-bold" data-compact-name>{{ __('Unknown caller') }}</h2><p class="mt-1 truncate text-lg text-slate-300" data-compact-phone>—</p><p class="mt-1 flex items-center gap-2 text-sm text-blue-400"><span class="h-2 w-2 rounded-full bg-blue-500"></span>{{ __('Connected') }}</p></div>
+                    <span class="rounded-full border border-blue-500 bg-blue-500/10 px-3 py-2 text-sm font-semibold text-blue-400"><i class="bi bi-soundwave mr-1"></i>HD</span>
+                </div>
+                <div class="py-7 text-center"><p class="font-mono text-5xl tracking-wide" data-compact-timer>00:00</p><p class="mt-2 text-lg text-slate-400">{{ __('Talking time') }}</p></div>
+                <div class="grid grid-cols-2 gap-8 border-y border-[#33485d] py-6">
+                    <button type="button" data-call-proxy="mute" class="flex flex-col items-center gap-3 text-blue-400"><span class="flex h-20 w-20 items-center justify-center rounded-full border-2 border-blue-500 text-3xl shadow-[0_0_25px_rgba(59,130,246,.2)]"><i data-compact-mute-icon class="bi bi-mic-fill"></i></span><span data-compact-mute-label class="text-lg">{{ __('Mute') }}</span></button>
+                    <button type="button" data-call-proxy="hangup" class="flex flex-col items-center gap-3 text-red-400"><span class="flex h-20 w-20 items-center justify-center rounded-full bg-red-600 text-3xl text-white shadow-[0_12px_30px_rgba(220,38,38,.3)]"><i class="bi bi-telephone-x-fill"></i></span><span class="text-lg">{{ __('End Call') }}</span></button>
+                </div>
+                <button type="button" data-compact-keypad-toggle class="mt-5 flex w-full items-center gap-4 rounded-2xl border border-[#33485d] px-5 py-4 text-left"><i class="bi bi-grid-3x3-gap text-2xl text-blue-400"></i><span><strong class="block text-lg">{{ __('Keypad') }}</strong><span class="text-sm text-slate-400">{{ __('Show dialpad') }}</span></span><i class="bi bi-chevron-down ml-auto text-xl text-slate-400"></i></button>
+                <div data-compact-keypad class="mt-3 hidden grid grid-cols-3 gap-2 rounded-2xl border border-[#33485d] bg-[#071625] p-3">@foreach(['1','2','3','4','5','6','7','8','9','*','0','#'] as $compactKey)<button type="button" data-compact-key="{{ $compactKey }}" class="rounded-xl border border-[#33485d] py-2 text-lg hover:border-blue-500 hover:text-blue-400">{{ $compactKey }}</button>@endforeach</div>
+                <div class="mt-5 rounded-2xl border border-[#33485d] p-4"><div class="flex items-center gap-3"><i class="bi bi-journal-text text-xl text-blue-400"></i><strong>{{ __('Notes') }}</strong><span class="text-slate-500">• {{ __('Latest') }}</span><a href="{{ route('admin.contacts.index') }}" class="ml-auto text-blue-400"><i class="bi bi-pencil"></i></a></div><p class="mt-3 text-sm italic leading-6 text-slate-300" data-compact-note>{{ __('Call notes and contact context remain available in the workspace.') }}</p><div class="mt-3 flex items-end gap-2"><textarea data-compact-comment-input rows="2" maxlength="2000" disabled placeholder="{{ __('Write a note or comment...') }}" class="min-w-0 flex-1 resize-none rounded-xl border border-[#33485d] bg-[#071625] px-3 py-2 text-sm text-white outline-none placeholder:text-slate-500 focus:border-blue-500 disabled:opacity-50"></textarea><button type="button" data-compact-comment-add disabled class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-40" title="{{ __('Add comment') }}"><i class="bi bi-send-fill"></i></button></div></div>
+                <p class="mt-5 border-t border-[#33485d] pt-4 text-center text-sm text-slate-400">{{ __('Secure') }} <span class="mx-2">•</span> {{ __('Encrypted') }} <i class="bi bi-lock-fill ml-1 text-blue-400"></i></p>
+            </div>
+        </div>
+
         <div id="dialer-webrtc-config" data-config='@json($webrtcConfig)' class="hidden" aria-hidden="true"></div>
         <div id="dialer-inbound-socket" data-config='@json($inboundSocket ?? [])' class="hidden" aria-hidden="true"></div>
-    </div>
+
+        <!-- Full Call History Panel (shown when History tab is clicked) -->
+        <div id="dialer-full-history" class="hidden">
+            <section class="overflow-hidden rounded-2xl border border-[#294158] bg-[#091827] shadow-2xl shadow-black/20">
+                <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#294158] p-4 sm:px-5">
+                    <div><h2 class="text-lg font-semibold">{{ __('Call History') }}</h2><p class="mt-1 text-xs text-slate-400">{{ __('All inbound and outbound calls') }}</p></div>
+                    <button id="dialer-history-refresh" type="button" class="flex h-9 w-9 items-center justify-center rounded-full border border-[#365068] text-slate-400 hover:border-blue-500 hover:text-blue-400" title="{{ __('Refresh') }}"><i class="bi bi-arrow-clockwise"></i></button>
+                </div>
+                <!-- Column Headers -->
+                <div class="hidden grid-cols-[48px_minmax(160px,1fr)_140px_110px_120px_auto] gap-3 border-b border-[#294158] bg-[#0a1a2e] px-4 py-2 text-xs font-semibold uppercase tracking-wider text-slate-400 sm:grid sm:px-5">
+                    <span></span>
+                    <span>{{ __('Number') }}</span>
+                    <span>{{ __('Direction') }}</span>
+                    <span>{{ __('Status') }}</span>
+                    <span>{{ __('Duration') }}</span>
+                    <span class="text-right">{{ __('Date') }}</span>
+                </div>
+                 <div id="dialer-history-list" class="divide-y divide-[#1e3347] max-h-[calc(100vh-280px)] overflow-y-auto">
+                     <div class="px-6 py-16 text-center text-sm text-slate-400">{{ __('Loading call history...') }}</div>
+                 </div>
+             </section>
+         </div>
+
+         <!-- Full Activity Panel (shown when Activity tab is clicked) -->
+         <div id="dialer-full-activity" class="hidden">
+             <section class="overflow-hidden rounded-2xl border border-[#294158] bg-[#091827] shadow-2xl shadow-black/20">
+                 <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#294158] p-4 sm:px-5">
+                     <div><h2 class="text-lg font-semibold">{{ __('Activity Log') }}</h2><p class="mt-1 text-xs text-slate-400">{{ __('Contact and system activity') }}</p></div>
+                     <button id="dialer-activity-refresh" type="button" class="flex h-9 w-9 items-center justify-center rounded-full border border-[#365068] text-slate-400 hover:border-blue-500 hover:text-blue-400" title="{{ __('Refresh') }}"><i class="bi bi-arrow-clockwise"></i></button>
+                 </div>
+                 <div id="dialer-activity-list" class="divide-y divide-[#1e3347] max-h-[calc(100vh-280px)] overflow-y-auto">
+                     <div class="px-6 py-16 text-center text-sm text-slate-400">{{ __('Loading activity...') }}</div>
+                 </div>
+             </section>
+         </div>
+     </div>
 </div>
 @endsection
 
@@ -261,6 +821,21 @@ document.addEventListener('DOMContentLoaded', function () {
     const customerNameEl = document.getElementById('customer-name');
     const customerCompanyEl = document.getElementById('customer-company');
     const customerAvatarEl = document.getElementById('customer-avatar');
+    const incomingAvatarEl = document.getElementById('incoming-avatar');
+    const incomingCompanyEl = document.getElementById('incoming-company');
+    const incomingPhoneEl = document.querySelector('#incoming-did span');
+    const compactCallWindow = document.getElementById('active-call-window');
+    const compactNameEl = compactCallWindow?.querySelector('[data-compact-name]');
+    const compactPhoneEl = compactCallWindow?.querySelector('[data-compact-phone]');
+    const compactAvatarEl = compactCallWindow?.querySelector('[data-compact-avatar]');
+    const compactTimerEl = compactCallWindow?.querySelector('[data-compact-timer]');
+    const compactMuteButton = compactCallWindow?.querySelector('[data-call-proxy="mute"]');
+    const compactMuteIcon = compactCallWindow?.querySelector('[data-compact-mute-icon]');
+    const compactMuteLabel = compactCallWindow?.querySelector('[data-compact-mute-label]');
+    const compactNoteEl = compactCallWindow?.querySelector('[data-compact-note]');
+    const compactCommentInput = compactCallWindow?.querySelector('[data-compact-comment-input]');
+    const compactCommentAddBtn = compactCallWindow?.querySelector('[data-compact-comment-add]');
+    const toolbarSearchEl = document.querySelector('[data-dialer-toolbar-search]');
     const contactSearchEl = document.getElementById('contact-search');
     const contactSearchResultsEl = document.getElementById('contact-search-results');
     const contactLabelFilterEl = document.getElementById('contact-label-filter');
@@ -272,6 +847,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const contactCompanyInput = document.getElementById('contact-company-input');
     const contactPhoneInput = document.getElementById('contact-phone-input');
     const contactEmailInput = document.getElementById('contact-email-input');
+    const contactAvatarInput = document.getElementById('contact-avatar-input');
     const contactSaveBtn = document.getElementById('contact-save');
     const contactFeedbackEl = document.getElementById('contact-feedback');
     const contactCommentsEl = document.getElementById('contact-comments');
@@ -292,6 +868,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const contactPermissions = @json($contactPermissions);
 
     let activeContact = null;
+    let inboundCall = null;
     let contactSearchTimer = null;
     let dialContactLookupTimer = null;
     let lastContactLookupPhone = '';
@@ -311,6 +888,20 @@ document.addEventListener('DOMContentLoaded', function () {
         return (parts.slice(0, 2).map((part) => part[0]).join('') || '?').toUpperCase();
     };
 
+    const updateIncomingContact = (contact, fallbackPhone = '') => {
+        if (typeof inboundCall === 'undefined' || !inboundCall) return;
+        const phone = contact?.phone || fallbackPhone || inboundCall.callerIdNumber || inboundCall.did || '—';
+        if (incomingCallerEl) incomingCallerEl.textContent = contact?.name || inboundCall.callerIdNumber || '{{ __('Unknown caller') }}';
+        if (incomingCompanyEl) {
+            incomingCompanyEl.querySelector('span').textContent = contact?.company || '{{ __('Contact') }}';
+        }
+        if (incomingPhoneEl) incomingPhoneEl.textContent = phone;
+        if (incomingAvatarEl) {
+            incomingAvatarEl.src = contact?.avatar_url || '{{ asset('images/user/user-01.jpg') }}';
+            incomingAvatarEl.alt = contact?.name || inboundCall.callerIdNumber || '{{ __('Caller') }}';
+        }
+    };
+
     const setContactFeedback = (message = '', error = false) => {
         if (!contactFeedbackEl) return;
         contactFeedbackEl.textContent = message;
@@ -320,6 +911,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const renderContactComments = (comments = []) => {
         if (!contactCommentsEl) return;
+        if (compactNoteEl) compactNoteEl.textContent = comments[0]?.body || '{{ __('No notes yet.') }}';
         if (!comments.length) {
             contactCommentsEl.innerHTML = `<p class="text-sm text-slate-400">${activeContact ? '{{ __('No comments yet.') }}' : '{{ __('Save or select a contact to view comments.') }}'}</p>`;
             return;
@@ -335,6 +927,35 @@ document.addEventListener('DOMContentLoaded', function () {
                 <p class="mt-1 whitespace-pre-wrap break-words text-sm leading-5 text-slate-300">${escapeContactText(comment.body)}</p>
             </article>`;
         }).join('');
+    };
+
+    const syncCommentInputs = () => {
+        const enabled = Boolean(activeContact && contactPermissions.comment);
+        if (contactCommentInput) contactCommentInput.disabled = !enabled;
+        if (contactCommentAddBtn) contactCommentAddBtn.disabled = !enabled;
+        if (compactCommentInput) compactCommentInput.disabled = !enabled;
+        if (compactCommentAddBtn) compactCommentAddBtn.disabled = !enabled;
+    };
+
+    const addContactComment = async (input, button) => {
+        const body = input?.value.trim();
+        if (!activeContact || !body || !contactPermissions.comment) return;
+        try {
+            if (button) button.disabled = true;
+            const data = await contactRequest(`${contactsUrl}/${activeContact.id}/comments`, {
+                method: 'POST',
+                body: JSON.stringify({ body })
+            });
+            if (contactCommentInput) contactCommentInput.value = '';
+            if (compactCommentInput) compactCommentInput.value = '';
+            activeContact.comments = [data.comment, ...(activeContact.comments || [])];
+            renderContactComments(activeContact.comments);
+            setContactFeedback('{{ __('Comment added') }}');
+        } catch (error) {
+            setContactFeedback(error.message || '{{ __('Unable to add comment') }}', true);
+        } finally {
+            syncCommentInputs();
+        }
     };
 
     const renderContactLabels = () => {
@@ -355,10 +976,12 @@ document.addEventListener('DOMContentLoaded', function () {
         if (customerCompanyEl) customerCompanyEl.textContent = contact?.company || (contact ? '{{ __('Contact') }}' : '{{ __('Not saved as contact') }}');
         if (customerPhoneEl) customerPhoneEl.innerHTML = `<i class="bi bi-telephone mr-2"></i>${escapeContactText(phone || '—')}`;
         if (customerAvatarEl) customerAvatarEl.textContent = contactInitials(contact?.name || '');
+        updateIncomingContact(contact, phone);
         if (contactNameInput) contactNameInput.value = contact?.name || '';
         if (contactCompanyInput) contactCompanyInput.value = contact?.company || '';
         if (contactPhoneInput) contactPhoneInput.value = phone;
         if (contactEmailInput) contactEmailInput.value = contact?.email || '';
+        if (contactAvatarInput) contactAvatarInput.value = contact?.avatar_url || '';
         if (contactFlagBtn) {
             contactFlagBtn.disabled = !contact || !contactPermissions.edit;
             contactFlagBtn.classList.toggle('border-amber-400', Boolean(contact?.is_flagged));
@@ -369,8 +992,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         if (contactLabelInput) contactLabelInput.disabled = !contact || !contactPermissions.labels;
         if (contactLabelAddBtn) contactLabelAddBtn.disabled = !contact || !contactPermissions.labels;
-        if (contactCommentInput) contactCommentInput.disabled = !contact || !contactPermissions.comment;
-        if (contactCommentAddBtn) contactCommentAddBtn.disabled = !contact || !contactPermissions.comment;
+        syncCommentInputs();
         if (contactActivityRefreshBtn) contactActivityRefreshBtn.disabled = !contact || !contactPermissions.view;
         if (contactCallHistoryRefreshBtn) contactCallHistoryRefreshBtn.disabled = !contact || !contactPermissions.view;
         if (contactSaveBtn) contactSaveBtn.disabled = contact ? !contactPermissions.edit : !contactPermissions.create;
@@ -537,6 +1159,177 @@ document.addEventListener('DOMContentLoaded', function () {
     contactActivityRefreshBtn?.addEventListener('click', loadContactActivity);
     contactCallHistoryRefreshBtn?.addEventListener('click', loadContactCallHistory);
 
+    // Top bar History tab - show full call history within dialer page
+    const dialerMainContent = document.querySelector('.connectpro-two-panel-grid');
+    const dialerHistoryPanel = document.getElementById('dialer-full-history');
+    const dialerHistoryList = document.getElementById('dialer-history-list');
+    const dialerHistoryRefreshBtn = document.getElementById('dialer-history-refresh');
+    const dialerActivityPanel = document.getElementById('dialer-full-activity');
+    const dialerActivityList = document.getElementById('dialer-activity-list');
+    const dialerActivityRefreshBtn = document.getElementById('dialer-activity-refresh');
+    const topBarLinks = document.querySelectorAll('.connectpro-reference-nav a');
+
+    const loadFullCallHistory = async () => {
+        if (!dialerHistoryList) return;
+        dialerHistoryList.innerHTML = '<div class="px-6 py-16 text-center text-sm text-slate-400">{{ __('Loading call history...') }}</div>';
+        try {
+            const response = await fetch('/admin/contacts/call-history?format=json', {
+                headers: { 'Accept': 'application/json' }
+            });
+            const data = await response.json();
+            if (data.calls && data.calls.data && data.calls.data.length > 0) {
+                dialerHistoryList.innerHTML = data.calls.data.map((call) => {
+                    const isMissed = ['failed', 'missed', 'declined', 'busy', 'no_answer'].includes((call.status || '').toLowerCase());
+                    const directionIcon = call.direction === 'inbound' ? 'bi-telephone-inbound' : 'bi-telephone-outbound';
+                    const statusColor = isMissed ? 'text-red-400' : 'text-emerald-400';
+                    const iconBg = isMissed ? 'bg-red-500/10 text-red-400' : 'bg-blue-500/10 text-blue-400';
+                    const duration = call.duration_seconds ? String(Math.floor(call.duration_seconds / 60)).padStart(2, '0') + ':' + String(call.duration_seconds % 60).padStart(2, '0') : '00:00';
+                    const number = call.direction === 'inbound' ? call.caller_id : call.destination;
+                    const date = call.created_at ? new Date(call.created_at).toLocaleString() : '';
+                    return `<article class="grid items-center gap-3 px-4 py-4 transition hover:bg-white/[.025] sm:grid-cols-[48px_minmax(160px,1fr)_140px_110px_120px_auto] sm:px-5">
+                        <span class="flex h-11 w-11 items-center justify-center rounded-full ${iconBg}"><i class="bi ${directionIcon} text-lg"></i></span>
+                        <div class="min-w-0"><p class="truncate font-semibold">${number || '{{ __('Unknown') }}'}</p><p class="truncate text-xs text-slate-400">${call.user?.external_name || call.user?.email || ''}</p></div>
+                        <span class="text-sm capitalize text-slate-300">${(call.direction || 'outbound').replace('_', ' ')}</span>
+                        <span class="text-sm ${statusColor}">${(call.status || 'unknown').replace('_', ' ')}</span>
+                        <span class="text-sm text-slate-400">${duration}</span>
+                        <div class="flex items-center justify-end gap-2"><span class="hidden text-xs text-slate-500 xl:inline">${date}</span><a href="{{ route('admin.dialer.index') }}?destination=${number}" class="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-600 text-white hover:bg-emerald-500"><i class="bi bi-telephone-fill"></i></a></div>
+                    </article>`;
+                }).join('');
+            } else {
+                dialerHistoryList.innerHTML = '<div class="px-6 py-16 text-center text-sm text-slate-400">{{ __('No calls have been recorded yet.') }}</div>';
+            }
+        } catch (err) {
+            dialerHistoryList.innerHTML = '<div class="px-6 py-16 text-center text-sm text-red-400">{{ __('Failed to load call history') }}</div>';
+        }
+    };
+
+    const loadFullActivity = async () => {
+        if (!dialerActivityList) return;
+        dialerActivityList.innerHTML = '<div class="px-6 py-16 text-center text-sm text-slate-400">{{ __('Loading activity...') }}</div>';
+        try {
+            const response = await fetch('/admin/contacts/activity?format=json', {
+                headers: { 'Accept': 'application/json' }
+            });
+            const data = await response.json();
+            if (data.activities && data.activities.data && data.activities.data.length > 0) {
+                dialerActivityList.innerHTML = data.activities.data.map((activity) => {
+                    const contact = activity.contact;
+                    const user = activity.user;
+                    const date = activity.created_at ? new Date(activity.created_at).toLocaleString() : '';
+                    const iconMap = {
+                        'contact_created': { icon: 'bi-person-plus', color: 'emerald' },
+                        'contact_updated': { icon: 'bi-pencil', color: 'blue' },
+                        'comment_added': { icon: 'bi-chat-left-text', color: 'cyan' },
+                        'label_added': { icon: 'bi-tag', color: 'purple' },
+                        'flag_toggled': { icon: 'bi-flag', color: 'amber' }
+                    };
+                    const style = iconMap[activity.action] || { icon: 'bi-activity', color: 'slate' };
+                    const colorClasses = {
+                        emerald: 'bg-emerald-500/15 text-emerald-400 ring-emerald-500/20',
+                        blue: 'bg-blue-500/15 text-blue-400 ring-blue-500/20',
+                        cyan: 'bg-cyan-500/15 text-cyan-400 ring-cyan-500/20',
+                        purple: 'bg-purple-500/15 text-purple-400 ring-purple-500/20',
+                        amber: 'bg-amber-500/15 text-amber-400 ring-amber-500/20',
+                        slate: 'bg-slate-500/15 text-slate-400 ring-slate-500/20'
+                    };
+                    const iconColor = colorClasses[style.color] || colorClasses.slate;
+
+                    // Build detailed description from changes
+                    let detailHtml = '';
+                    if (activity.changes) {
+                        if (activity.changes.comment) {
+                            detailHtml = `<p class="mt-2 text-xs text-slate-300 bg-slate-800/50 rounded-lg px-3 py-2 border border-slate-700/50">"${activity.changes.comment.new}"</p>`;
+                        } else if (activity.changes.contact) {
+                            const changes = activity.changes.contact;
+                            if (changes.new) {
+                                const newVals = changes.new;
+                                const details = [];
+                                if (newVals.name) details.push(`<span class="text-slate-400">Name:</span> <span class="text-white">${newVals.name}</span>`);
+                                if (newVals.company) details.push(`<span class="text-slate-400">Company:</span> <span class="text-white">${newVals.company}</span>`);
+                                if (newVals.phone) details.push(`<span class="text-slate-400">Phone:</span> <span class="text-white">${newVals.phone}</span>`);
+                                if (newVals.email) details.push(`<span class="text-slate-400">Email:</span> <span class="text-white">${newVals.email}</span>`);
+                                if (newVals.labels) details.push(`<span class="text-slate-400">Labels:</span> <span class="text-purple-300">${Array.isArray(newVals.labels) ? newVals.labels.join(', ') : newVals.labels}</span>`);
+                                if (details.length > 0) {
+                                    detailHtml = `<div class="mt-2 text-xs space-y-1 bg-slate-800/50 rounded-lg px-3 py-2 border border-slate-700/50">${details.join('<br>')}</div>`;
+                                }
+                            }
+                        }
+                    }
+
+                    return `<article class="flex items-start gap-3 px-4 py-4 transition hover:bg-white/[.025] sm:px-5">
+                        <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full ring-1 ${iconColor}"><i class="bi ${style.icon} text-lg"></i></span>
+                        <div class="min-w-0 flex-1">
+                            <p class="text-sm font-semibold text-white">${activity.description || activity.action.replace(/_/g, ' ')}</p>
+                            ${detailHtml}
+                            <p class="mt-1.5 text-xs text-slate-400">
+                                ${contact ? `<span class="font-medium text-blue-400">${contact.name || contact.company || '{{ __('Unknown') }}'}</span>` : ''}
+                                ${user ? ` <span class="text-slate-500">by</span> <span class="text-slate-300">${user.external_name || user.email || ''}</span>` : ''}
+                            </p>
+                        </div>
+                        <span class="shrink-0 text-xs text-slate-500">${date}</span>
+                    </article>`;
+                }).join('');
+            } else {
+                dialerActivityList.innerHTML = '<div class="px-6 py-16 text-center text-sm text-slate-400">{{ __('No activity recorded yet.') }}</div>';
+            }
+        } catch (err) {
+            dialerActivityList.innerHTML = '<div class="px-6 py-16 text-center text-sm text-red-400">{{ __('Failed to load activity') }}</div>';
+        }
+    };
+
+    topBarLinks.forEach((link) => {
+        const tabText = link.textContent.trim();
+        if (tabText === '{{ __('History') }}') {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (dialerMainContent && dialerHistoryPanel && dialerActivityPanel) {
+                    dialerMainContent.classList.add('hidden');
+                    dialerHistoryPanel.classList.remove('hidden');
+                    dialerActivityPanel.classList.add('hidden');
+                    // Update active tab highlighting
+                    topBarLinks.forEach(l => l.classList.remove('connectpro-reference-nav-active'));
+                    link.classList.add('connectpro-reference-nav-active');
+                    loadFullCallHistory();
+                }
+            });
+        } else if (tabText === '{{ __('Activity') }}') {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (dialerMainContent && dialerHistoryPanel && dialerActivityPanel) {
+                    dialerMainContent.classList.add('hidden');
+                    dialerActivityPanel.classList.remove('hidden');
+                    dialerHistoryPanel.classList.add('hidden');
+                    // Update active tab highlighting
+                    topBarLinks.forEach(l => l.classList.remove('connectpro-reference-nav-active'));
+                    link.classList.add('connectpro-reference-nav-active');
+                    loadFullActivity();
+                }
+            });
+        } else {
+            // Other tabs (Contacts, Live calls, etc.) go back to main dialer view
+            link.addEventListener('click', (e) => {
+                if (dialerMainContent && dialerHistoryPanel && dialerActivityPanel) {
+                    const isOnHistory = dialerHistoryPanel.classList.contains('hidden') === false;
+                    const isOnActivity = dialerActivityPanel.classList.contains('hidden') === false;
+                    if (isOnHistory || isOnActivity) {
+                        if (link.getAttribute('href') === '#' || link.getAttribute('href') === window.location.href.split('#')[0] + '#') {
+                            e.preventDefault();
+                        }
+                        dialerMainContent.classList.remove('hidden');
+                        dialerHistoryPanel.classList.add('hidden');
+                        dialerActivityPanel.classList.add('hidden');
+                        // Update active tab highlighting
+                        topBarLinks.forEach(l => l.classList.remove('connectpro-reference-nav-active'));
+                        link.classList.add('connectpro-reference-nav-active');
+                    }
+                }
+            });
+        }
+    });
+
+    dialerHistoryRefreshBtn?.addEventListener('click', loadFullCallHistory);
+    dialerActivityRefreshBtn?.addEventListener('click', loadFullActivity);
+
     const updateActiveContact = async (changes) => {
         if (!activeContact) return;
         try {
@@ -633,6 +1426,12 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         contactSearchTimer = window.setTimeout(runContactSearch, 250);
     });
+    toolbarSearchEl?.addEventListener('input', () => {
+        if (!contactSearchEl) return;
+        contactSearchEl.value = toolbarSearchEl.value;
+        window.clearTimeout(contactSearchTimer);
+        contactSearchTimer = window.setTimeout(runContactSearch, 250);
+    });
     contactLabelFilterEl?.addEventListener('change', runContactSearch);
 
     document.addEventListener('click', (event) => {
@@ -649,6 +1448,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 company: contactCompanyInput?.value.trim() || null,
                 phone: contactPhoneInput?.value.trim() || displayInput?.value.trim() || '',
                 email: contactEmailInput?.value.trim() || null,
+                avatar_url: contactAvatarInput?.value.trim() || null,
                 is_flagged: Boolean(activeContact?.is_flagged)
             };
             if (contactPermissions.labels) payload.labels = activeContact?.labels || [];
@@ -679,25 +1479,14 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    contactCommentAddBtn?.addEventListener('click', async () => {
-        const body = contactCommentInput?.value.trim();
-        if (!activeContact || !body) return;
-        try {
-            contactCommentAddBtn.disabled = true;
-            const data = await contactRequest(`${contactsUrl}/${activeContact.id}/comments`, {
-                method: 'POST',
-                body: JSON.stringify({ body })
-            });
-            contactCommentInput.value = '';
-            activeContact.comments = [data.comment, ...(activeContact.comments || [])];
-            renderContactComments(activeContact.comments);
-            setContactFeedback('{{ __('Comment added') }}');
-        } catch (error) {
-            setContactFeedback(error.message || '{{ __('Unable to add comment') }}', true);
-        } finally {
-            contactCommentAddBtn.disabled = !activeContact || !contactPermissions.comment;
+    contactCommentAddBtn?.addEventListener('click', () => addContactComment(contactCommentInput, contactCommentAddBtn));
+    compactCommentAddBtn?.addEventListener('click', () => addContactComment(compactCommentInput, compactCommentAddBtn));
+    [contactCommentInput, compactCommentInput].forEach((input) => input?.addEventListener('keydown', (event) => {
+        if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+            event.preventDefault();
+            addContactComment(input, input === compactCommentInput ? compactCommentAddBtn : contactCommentAddBtn);
         }
-    });
+    }));
 
     displayInput?.addEventListener('input', () => {
         window.clearTimeout(dialContactLookupTimer);
@@ -707,9 +1496,16 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     renderContact(null);
+    if (new URLSearchParams(window.location.search).get('new_contact') === '1' && contactPermissions.create) {
+        activateContactTab('info');
+        contactNameInput?.focus();
+    }
     if (contactPermissions.view) {
         contactRequest(contactsUrl)
-            .then((data) => updateContactLabelOptions(data.labels || []))
+            .then((data) => {
+                updateContactLabelOptions(data.labels || []);
+                renderContactSearchResults(data.contacts || []);
+            })
             .catch(() => {});
     }
 
@@ -895,6 +1691,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!callConnectedAt) return;
         const seconds = Math.floor((Date.now() - callConnectedAt) / 1000);
         if (callTimerEl) callTimerEl.textContent = formatDuration(seconds);
+        if (compactTimerEl) compactTimerEl.textContent = formatDuration(seconds);
     };
 
     const getCallDurationSeconds = () => {
@@ -923,6 +1720,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         callConnectedAt = null;
         if (callTimerEl) callTimerEl.textContent = '00:00';
+        if (compactTimerEl) compactTimerEl.textContent = '00:00';
         if (callTimerBadge) callTimerBadge.classList.add('hidden');
     };
 
@@ -1012,6 +1810,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         if (isConnectedStatus(normalized)) {
+            compactCallWindow?.classList.remove('hidden');
             startTimer(durationSeconds);
             if (conferenceName && webRtcClient && !browserAudioActive && !browserAudioConnecting && !hangupInProgress) {
                 connectBrowserAudio();
@@ -1019,6 +1818,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         if (isTerminalStatus(normalized)) {
+            compactCallWindow?.classList.add('hidden');
             stopTimer();
             disconnectBrowserAudio();
             applyMuteState(false);
@@ -1143,6 +1943,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const applyMuteState = async (muted) => {
         isMuted = muted;
         updateActionButtons();
+        if (compactMuteButton) compactMuteButton.setAttribute('aria-pressed', muted ? 'true' : 'false');
+        if (compactMuteIcon) compactMuteIcon.className = muted ? 'bi bi-mic-mute-fill' : 'bi bi-mic-fill';
+        if (compactMuteLabel) compactMuteLabel.textContent = muted ? '{{ __('Unmute') }}' : '{{ __('Mute') }}';
         if (webRtcClient && typeof webRtcClient.setMuted === 'function') {
             try {
                 await webRtcClient.setMuted(muted);
@@ -1844,11 +2647,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const inboundSocketEl = document.getElementById('dialer-inbound-socket');
     const incomingBanner = document.getElementById('incoming-call-banner');
     const incomingCallerEl = document.getElementById('incoming-caller');
-    const incomingDidEl = document.getElementById('incoming-did');
     const incomingAcceptBtn = document.getElementById('incoming-accept');
     const incomingDeclineBtn = document.getElementById('incoming-decline');
-
-    let inboundCall = null; // { callUuid, conference, callerIdNumber, did }
 
     const showIncomingBanner = (show) => {
         if (!incomingBanner) return;
@@ -1943,7 +2743,8 @@ document.addEventListener('DOMContentLoaded', function () {
             did: null
         };
         if (incomingCallerEl) incomingCallerEl.textContent = inboundCall.callerIdNumber;
-        if (incomingDidEl) incomingDidEl.textContent = '· SIP';
+        if (incomingPhoneEl) incomingPhoneEl.textContent = inboundCall.callerIdNumber;
+        updateIncomingContact(null, inboundCall.callerIdNumber);
         lookupContactByPhone(inboundCall.callerIdNumber);
         showIncomingBanner(true);
     });
@@ -1989,8 +2790,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 callerIdNumber: payload.callerIdNumber || null,
                 did: payload.did || null
             };
-            if (incomingCallerEl) incomingCallerEl.textContent = payload.callerIdNumber || 'Unknown';
-            if (incomingDidEl) incomingDidEl.textContent = payload.did ? `· DID ${payload.did}` : '';
+            if (incomingCallerEl) incomingCallerEl.textContent = payload.callerIdNumber || '{{ __('Unknown caller') }}';
+            if (incomingPhoneEl) incomingPhoneEl.textContent = payload.callerIdNumber || payload.did || '—';
+            updateIncomingContact(null, payload.callerIdNumber || payload.did || '');
             lookupContactByPhone(payload.callerIdNumber || payload.did || '');
             showIncomingBanner(true);
         });
@@ -2000,12 +2802,32 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     };
     initInboundSocket();
-    // initial
-    setControls(false);
-    if (!webRtcClient) {
-        updateBrowserAudioStatus('');
-    }
-});
+    const syncCompactCall = () => {
+        if (compactNameEl) compactNameEl.textContent = customerNameEl?.textContent?.trim() || '{{ __('Unknown caller') }}';
+        if (compactPhoneEl) compactPhoneEl.textContent = customerPhoneEl?.textContent?.trim() || '—';
+        if (compactAvatarEl) compactAvatarEl.textContent = customerAvatarEl?.textContent?.trim() || '?';
+        if (compactTimerEl) compactTimerEl.textContent = callTimerEl?.textContent?.trim() || '00:00';
+    };
+    [customerNameEl, customerPhoneEl, customerAvatarEl, callTimerEl].filter(Boolean).forEach((element) => new MutationObserver(syncCompactCall).observe(element, {childList: true, subtree: true, characterData: true}));
+    syncCompactCall();
+    compactCallWindow?.querySelector('[data-compact-close]')?.addEventListener('click', () => compactCallWindow.classList.add('hidden'));
+    compactCallWindow?.querySelector('[data-compact-minimize]')?.addEventListener('click', () => compactCallWindow.classList.add('hidden'));
+    compactCallWindow?.querySelector('[data-compact-keypad-toggle]')?.addEventListener('click', () => compactCallWindow.querySelector('[data-compact-keypad]')?.classList.toggle('hidden'));
+    compactCallWindow?.querySelectorAll('[data-call-proxy]').forEach((button) => button.addEventListener('click', () => document.querySelector(`[data-action="${button.dataset.callProxy}"]`)?.click()));
+    compactMuteButton?.addEventListener('click', () => applyMuteState(!isMuted));
+    compactCallWindow?.querySelectorAll('[data-compact-key]').forEach((button) => button.addEventListener('click', () => document.querySelector(`.dialpad-key[data-value="${button.dataset.compactKey}"]`)?.click()));
+     const initialDestination = new URLSearchParams(window.location.search).get('destination');
+     if (initialDestination) {
+         displayInput.value = initialDestination;
+         hiddenInput.value = initialDestination;
+         lookupContactByPhone(initialDestination);
+     }
+     // initial
+     setControls(false);
+     if (!webRtcClient) {
+         updateBrowserAudioStatus('');
+     }
+ });
 
 </script>
 @endpush

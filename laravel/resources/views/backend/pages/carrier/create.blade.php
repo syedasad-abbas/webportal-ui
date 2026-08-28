@@ -4,24 +4,28 @@
     {{ $breadcrumbs['title'] }} | {{ config('app.name') }}
 @endsection
 
+@push('styles')
+    @include('backend.pages.dialer.nightwave-form-styles')
+@endpush
+
 @section('admin-content')
 @php
     abort_unless(auth()->check() && auth()->user()->can('carrier.create'), 403);
 @endphp
-<div class="connectpro-admin-page p-4 mx-auto max-w-7xl md:p-6">
+<div class="connectpro-admin-page connectpro-record-form-page p-4 md:p-6">
     <x-breadcrumbs :breadcrumbs="$breadcrumbs" />
 
     {!! ld_apply_filters('carriers_create_after_breadcrumbs', '') !!}
 
-    <div class="space-y-6">
-        <div class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
-            <div class="p-5 space-y-6 border-t border-gray-100 dark:border-gray-800 sm:p-6"
+    <div class="connectpro-record-form-layout">
+        <div class="connectpro-record-form-card rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+            <div class="connectpro-record-form-body p-5 space-y-6 border-t border-gray-100 dark:border-gray-800 sm:p-6"
                  x-data="{ registrationRequired: {{ old('registrationRequired') ? 'true' : 'false' }} }">
-
+                <h2 class="connectpro-record-form-heading">{{ __('Details') }}</h2>
                 <form method="POST" action="{{ route('admin.carrier.store') }}" class="space-y-6">
                     @csrf
 
-                    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                    <div class="connectpro-record-form-fields grid grid-cols-1 gap-6 sm:grid-cols-2">
                         {{-- Name --}}
                         <div>
                             <label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-400">
@@ -147,7 +151,7 @@
                         </div>
                     </div>
 
-                    <div class="mt-6 flex justify-start gap-4">
+                    <div class="connectpro-record-form-actions mt-6 flex justify-start gap-4">
                         <button type="submit" class="btn-primary">{{ __('Add carrier') }}</button>
                         <a href="{{ route('admin.carrier.index') }}" class="btn-default">{{ __('Cancel') }}</a>
                     </div>
@@ -155,6 +159,13 @@
 
             </div>
         </div>
+        <aside class="connectpro-record-form-context">
+            <span class="connectpro-record-context-icon"><i class="bi bi-router"></i></span>
+            <h2>{{ __('Context & permissions') }}</h2>
+            <p class="mt-4">{{ __('Carrier settings control how outbound calls are routed.') }}</p>
+            <p class="mt-2">{{ __('Registration credentials are shown only when registration is required.') }}</p>
+            <p class="mt-2">{{ __('Transport, proxy and caller ID behavior remain unchanged.') }}</p>
+        </aside>
     </div>
 </div>
 @endsection

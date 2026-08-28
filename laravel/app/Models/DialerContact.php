@@ -14,7 +14,17 @@ class DialerContact extends Model
         'company',
         'phone',
         'phone_normalized',
+        'secondary_phone',
         'email',
+        'avatar_url',
+        'address',
+        'account_id',
+        'account_status',
+        'customer_since',
+        'industry',
+        'employees',
+        'annual_revenue',
+        'preferred_contact_time',
         'is_flagged',
         'labels',
     ];
@@ -22,6 +32,7 @@ class DialerContact extends Model
     protected $casts = [
         'is_flagged' => 'boolean',
         'labels' => 'array',
+        'customer_since' => 'date',
     ];
 
     public function creator(): BelongsTo

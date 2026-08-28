@@ -1,9 +1,9 @@
 <aside
     :class="sidebarToggle ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
-    class="connectpro-sidebar fixed inset-y-0 left-0 z-50 flex w-[264px] shrink-0 flex-col border-r border-slate-200 bg-white text-slate-800 transition-all duration-300 dark:border-[#24384c] dark:bg-[#071526] dark:text-white lg:static"
+    class="connectpro-sidebar fixed inset-y-0 left-0 z-50 flex w-[248px] shrink-0 flex-col border-r border-[#20364c] bg-[#061321] text-white transition-all duration-300 lg:static"
     id="appSidebar"
 >
-    <div class="flex h-[90px] items-center gap-3 px-5">
+    <div class="flex h-[82px] items-center gap-3 border-b border-[#20364c] px-5">
         <a href="{{ route('admin.dashboard') }}" class="flex min-w-0 items-center gap-3">
             <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-600/20">
                 <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -11,7 +11,8 @@
                 </svg>
             </span>
             <span class="min-w-0">
-                <span class="block truncate text-xl font-bold tracking-tight text-white">Connect<span class="text-blue-500">Pro</span></span>
+                <span class="block truncate text-xl font-bold tracking-tight text-white">{{ __('VoIP') }} <span class="font-normal text-slate-300">{{ __('Softphone') }}</span></span>
+                <span class="mt-0.5 block text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">ConnectPro</span>
             </span>
         </a>
         <button type="button" class="ml-auto rounded-lg p-2 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 lg:hidden" @click="sidebarToggle = false" aria-label="Close navigation">
@@ -19,12 +20,19 @@
         </button>
     </div>
 
-    <div class="min-h-0 flex-1 overflow-y-auto px-3 py-5 scrollbar-thin">
+    <div class="min-h-0 flex-1 overflow-y-auto px-3 py-4 scrollbar-thin">
         @include('backend.layouts.partials.sidebar-menu')
     </div>
 
-    <div class="border-t border-slate-200 p-4 dark:border-[#24384c]">
-        <button id="sidebarDarkModeToggle" type="button" @click.prevent="toggleTheme()" :aria-pressed="darkMode.toString()" class="mb-4 flex w-full items-center justify-between rounded-xl px-2 py-2 text-sm text-slate-600 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/5">
+    <div class="border-t border-[#20364c] p-3">
+        <div class="mb-3 rounded-xl border border-[#294158] bg-[#0a1a2b] px-3 py-3">
+            <div class="flex items-center justify-between text-xs">
+                <span class="flex items-center gap-2 font-semibold text-emerald-400"><span class="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(74,222,128,.75)]"></span>{{ __('Connected') }}</span>
+                <i class="bi bi-soundwave text-lg text-blue-400"></i>
+            </div>
+            <p class="mt-1 truncate text-[10px] text-slate-400">SIP: {{ auth()->user()->sipCredential?->sip_username ?? '—' }}<span>@</span>{{ config('services.webrtc.domain') ?: request()->getHost() }}</p>
+        </div>
+        <button id="sidebarDarkModeToggle" type="button" @click.prevent="toggleTheme()" :aria-pressed="darkMode.toString()" class="mb-2 flex w-full items-center justify-between rounded-xl px-2 py-2 text-sm text-slate-300 transition hover:bg-white/5">
             <span class="flex items-center gap-3"><i class="bi text-xl" :class="darkMode ? 'bi-moon-stars' : 'bi-sun'"></i><span x-text="darkMode ? '{{ __('Dark Mode') }}' : '{{ __('Light Mode') }}'"></span></span>
             <span class="relative h-6 w-11 rounded-full transition-colors" :class="darkMode ? 'bg-blue-600' : 'bg-slate-300'"><span class="absolute top-1 h-4 w-4 rounded-full bg-white shadow transition-all" :class="darkMode ? 'left-6' : 'left-1'"></span></span>
         </button>

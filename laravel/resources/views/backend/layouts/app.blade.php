@@ -80,7 +80,7 @@ x-init="
                 class="fixed w-full h-screen z-9 bg-gray-900/50"></div>
             <!-- End Small Device Overlay -->
 
-            @unless(request()->routeIs('admin.dialer.*'))
+            @unless(request()->routeIs('admin.dialer.*') || request()->routeIs('admin.contacts.*'))
                 @include('backend.layouts.partials.header')
             @endunless
 

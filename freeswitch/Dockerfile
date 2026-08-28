@@ -24,3 +24,11 @@ COPY --from=sngrep-builder /usr/share/terminfo /usr/share/terminfo
 RUN ln -sf /usr/share/terminfo/x/xterm+256color /usr/share/terminfo/x/xterm-256color
 
 COPY conf /etc/freeswitch
+
+# Add reload watcher script and entrypoint
+COPY reload-watcher.sh /usr/local/bin/reload-watcher.sh
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY detect-host-ip.sh /usr/local/bin/detect-host-ip.sh
+RUN chmod +x /usr/local/bin/reload-watcher.sh /usr/local/bin/entrypoint.sh /usr/local/bin/detect-host-ip.sh
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

@@ -56,6 +56,26 @@ const detectDockerGateway = () => {
   }
 };
 
+const detectFreeSwitchHost = () => {
+  const configured = optionalEnv(process.env.FREESWITCH_HOST, null);
+  if (configured) return configured;
+
+  const hostIpFile = optionalEnv(
+    process.env.FREESWITCH_HOST_IP_FILE,
+    '/mnt/gateways/.host-ip'
+  );
+  try {
+    const detected = optionalEnv(fs.readFileSync(hostIpFile, 'utf8'), null);
+    if (detected && /^(?:\d{1,3}\.){3}\d{1,3}$/.test(detected)) {
+      return detected;
+    }
+  } catch (err) {
+    // The shared file is created by the host-networked FreeSWITCH container.
+  }
+
+  return detectDockerGateway() || 'host.docker.internal';
+};
+
 // Detect the host's primary IP address (works both in Docker and on bare metal)
 const detectHostIp = () => {
   try {
@@ -85,7 +105,7 @@ const baseConfig = {
   },
   jwtSecret: process.env.JWT_SECRET || 'change_me',
   freeswitch: {
-    host: optionalEnv(process.env.FREESWITCH_HOST, detectDockerGateway() || 'host.docker.internal'),
+    host: detectFreeSwitchHost(),
     port: process.env.FREESWITCH_PORT || 8021,
     password: process.env.FREESWITCH_PASSWORD || 'ClueCon',
     connectTimeoutMs: toInt(process.env.FREESWITCH_CONNECT_TIMEOUT_MS, 5000),
@@ -174,12 +194,13 @@ const initConfig = async () => {
       }
     }
 
-    // Final fallback: use Docker gateway IP (host's LAN IP from container)
+    // Final fallback: use the host IP published by host-networked FreeSWITCH.
+    // Never advertise the backend container's Docker bridge gateway as SIP.
     if (!baseConfig.freeswitch.externalSipIp) {
-      const gatewayIp = detectDockerGateway();
-      if (gatewayIp) {
-        baseConfig.freeswitch.externalSipIp = gatewayIp;
-        console.log(`[config] Using Docker gateway IP as external SIP IP: ${gatewayIp}`);
+      const freeswitchHost = baseConfig.freeswitch.host;
+      if (freeswitchHost && freeswitchHost !== 'host.docker.internal') {
+        baseConfig.freeswitch.externalSipIp = freeswitchHost;
+        console.log(`[config] Using FreeSWITCH host IP as external SIP IP: ${freeswitchHost}`);
       }
     }
   }
