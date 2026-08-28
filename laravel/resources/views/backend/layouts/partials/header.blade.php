@@ -4,8 +4,6 @@
     </button>
 
     <div class="min-w-0 flex-1">
-        <p class="truncate text-sm font-semibold text-gray-900 dark:text-white">{{ config('app.name') }}</p>
-        <p class="hidden truncate text-xs text-gray-400 sm:block">{{ __('Carrier-connected communications workspace') }}</p>
     </div>
 
     <div class="flex items-center gap-2">

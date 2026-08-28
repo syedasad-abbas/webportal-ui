@@ -57,7 +57,12 @@ RUN chmod +x /usr/local/bin/laravel-entrypoint.sh
 
 
 # Expose Apache port
-EXPOSE 80
+EXPOSE 18080
+
+# Change Apache to listen on port 18080
+RUN sed -i 's/Listen 80/Listen 18080/g' /etc/apache2/ports.conf
+RUN sed -i 's/:80/:18080/g' /etc/apache2/sites-available/*.conf
+RUN sed -i 's/<VirtualHost \*:80>/<VirtualHost *:18080>/g' /etc/apache2/sites-available/*.conf
 
 
 

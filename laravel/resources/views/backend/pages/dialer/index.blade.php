@@ -501,9 +501,6 @@
 <div class="connectpro-dialer min-h-full bg-[#06111f] text-white">
     <div class="connectpro-dialer-toolbar flex min-h-[82px] items-center gap-4 border-b border-[#20364c] bg-[#071526]/95 px-3 backdrop-blur-xl sm:px-6">
         <button type="button" @click.stop="sidebarToggle = true" class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#2a4055] bg-[#091827] text-slate-200 lg:hidden" aria-label="{{ __('Open navigation') }}"><i class="bi bi-list text-2xl"></i></button>
-        <div class="hidden shrink-0 items-center gap-3 sm:flex">
-            <div><p class="text-lg font-bold text-slate-300">NightWave</p></div>
-        </div>
         <nav class="connectpro-reference-nav hidden items-center gap-2 lg:flex" aria-label="{{ __('Dialer navigation') }}">
             <a href="{{ route('admin.contacts.index') }}">{{ __('Contacts') }}</a>
             <a class="connectpro-reference-nav-active" href="#">{{ __('Dialpad') }}</a>

@@ -146,9 +146,9 @@
     <!-- <param name="timer-affinity" value="disabled"/> -->
     <!-- NEEDS DOCUMENTATION -->
 
-    <!-- RTP port range -->
-    <param name="rtp-start-port" value="4000"/>
-    <param name="rtp-end-port" value="6000"/>
+    <!-- RTP port range - using 40000-41000 to avoid conflicts with existing services -->
+    <param name="rtp-start-port" value="40000"/>
+    <param name="rtp-end-port" value="41000"/>
 
     <!-- Test each port to make sure it is not in use by some other process before allocating it to RTP -->
     <!-- <param name="rtp-port-usage-robustness" value="true"/> -->

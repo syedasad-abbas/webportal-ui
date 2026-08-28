@@ -49,12 +49,16 @@ services:
 
   postgres:
     image: postgres:16
+    network_mode: host
     environment:
       POSTGRES_DB: webphone
       POSTGRES_USER: webphone
       POSTGRES_PASSWORD: supersecret
+      PGPORT: 5433
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U webphone"]
       interval: 10s
@@ -88,20 +92,19 @@ services:
     image: node:20-alpine
     working_dir: /app
     command: sh -c "npm install && npm start"
-    ports:
-      - "4000:4000"
+    network_mode: host
     env_file:
       - ./backend/.env
     environment:
       <<: *backend-env
       BOOTSTRAP_DEFAULTS: "true"
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5433
     volumes:
       - ./backend:/app
       - ./recordings:/recordings
       - freeswitch_gateways:/mnt/gateways
       - freeswitch_users:/mnt/users
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     depends_on:
       postgres:
         condition: service_healthy
@@ -113,18 +116,20 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    network_mode: host
     env_file:
       - ./laravel/.env
     environment:
       APP_ENV: local
       APP_DEBUG: "true"
+      SERVER_PORT: 18080
       DB_CONNECTION: pgsql
-      DB_HOST: postgres
-      DB_PORT: 5432
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5433
       DB_DATABASE: webphone
       DB_USERNAME: webphone
       DB_PASSWORD: supersecret
-      BACKEND_URL: http://backend:4000
+      BACKEND_URL: http://127.0.0.1:4000
       BACKEND_INTERNAL_TOKEN: ${BACKEND_INTERNAL_TOKEN:-sync-secret}
     volumes:
       - ./laravel:/var/www/html
@@ -157,6 +162,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    network_mode: host
     command: php artisan queue:work --verbose --tries=3 --timeout=90
     env_file:
       - ./laravel/.env
