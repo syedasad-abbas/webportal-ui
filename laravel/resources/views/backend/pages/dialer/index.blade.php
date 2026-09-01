@@ -493,6 +493,49 @@
     html:not(.dark) #dialer-full-activity .ring-amber-500\/20 {
         --tw-ring-color: rgba(245, 158, 11, 0.2) !important;
     }
+    /* Light mode for inbound call banner */
+    html:not(.dark) .connectpro-incoming-card {
+        border-color: #d6e0eb !important;
+        background: rgba(255, 255, 255, 0.95) !important;
+        box-shadow: 0 30px 100px rgba(0, 0, 0, 0.15) !important;
+    }
+    html:not(.dark) .connectpro-incoming-shell {
+        color: #0f172a !important;
+    }
+    html:not(.dark) .connectpro-incoming-card > p:first-child {
+        color: #2563eb !important;
+    }
+    html:not(.dark) .connectpro-incoming-card > p:nth-child(2) {
+        color: #475569 !important;
+    }
+    html:not(.dark) #incoming-caller {
+        color: #0f172a !important;
+    }
+    html:not(.dark) #incoming-company {
+        color: #2563eb !important;
+    }
+    html:not(.dark) #incoming-did {
+        color: #475569 !important;
+    }
+    html:not(.dark) .connectpro-incoming-avatar {
+        border-color: #94a3b8 !important;
+        background: #e2e8f0 !important;
+        box-shadow: 0 0 0 8px rgba(59, 130, 246, 0.1), 0 0 0 18px rgba(59, 130, 246, 0.05), 0 0 48px rgba(37, 99, 235, 0.2) !important;
+    }
+    html:not(.dark) .connectpro-incoming-context {
+        border-color: #d6e0eb !important;
+        background: rgba(255, 255, 255, 0.9) !important;
+    }
+    html:not(.dark) .connectpro-incoming-context > div {
+        border-color: #e2e8f0 !important;
+        background: #f8fafc !important;
+    }
+    html:not(.dark) .connectpro-incoming-context p {
+        color: #334155 !important;
+    }
+    html:not(.dark) .connectpro-incoming-context p:first-child {
+        color: #0f172a !important;
+    }
 }
 </style>
 @endpush
@@ -884,6 +927,15 @@ document.addEventListener('DOMContentLoaded', function () {
         return (parts.slice(0, 2).map((part) => part[0]).join('') || '?').toUpperCase();
     };
 
+    const generateInitialsAvatarUrl = (name) => {
+        const initials = contactInitials(name);
+        const colors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
+        const colorIndex = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length;
+        const bgColor = colors[colorIndex];
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144"><rect width="144" height="144" rx="72" fill="${bgColor}"/><text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" fill="white" font-family="Arial,sans-serif" font-size="56" font-weight="bold">${initials}</text></svg>`;
+        return 'data:image/svg+xml,' + encodeURIComponent(svg);
+    };
+
     const updateIncomingContact = (contact, fallbackPhone = '') => {
         if (typeof inboundCall === 'undefined' || !inboundCall) return;
         const phone = contact?.phone || fallbackPhone || inboundCall.callerIdNumber || inboundCall.did || '—';
@@ -893,8 +945,23 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         if (incomingPhoneEl) incomingPhoneEl.textContent = phone;
         if (incomingAvatarEl) {
-            incomingAvatarEl.src = contact?.avatar_url || '{{ asset('images/user/user-01.jpg') }}';
-            incomingAvatarEl.alt = contact?.name || inboundCall.callerIdNumber || '{{ __('Caller') }}';
+            const avatarContainer = incomingAvatarEl.closest('.connectpro-incoming-avatar');
+            if (contact?.avatar_url) {
+                incomingAvatarEl.src = contact.avatar_url;
+                incomingAvatarEl.alt = contact.name || '{{ __('Caller') }}';
+                incomingAvatarEl.style.display = 'block';
+                if (avatarContainer) avatarContainer.style.display = 'flex';
+            } else if (contact?.name) {
+                incomingAvatarEl.src = generateInitialsAvatarUrl(contact.name);
+                incomingAvatarEl.alt = contact.name;
+                incomingAvatarEl.style.display = 'block';
+                if (avatarContainer) avatarContainer.style.display = 'flex';
+            } else {
+                incomingAvatarEl.removeAttribute('src');
+                incomingAvatarEl.alt = '';
+                incomingAvatarEl.style.display = 'none';
+                if (avatarContainer) avatarContainer.style.display = 'none';
+            }
         }
     };
 
