@@ -5,7 +5,6 @@
         <a href="{{ route('admin.dialer.index') }}">{{ __('Dialpad') }}</a>
         <a href="{{ route('admin.contacts.call-history') }}">{{ __('History') }}</a>
         <a href="{{ route('admin.contacts.activity') }}">{{ __('Activity') }}</a>
-        <a href="#">{{ __('Queues') }}</a>
         <a href="#">{{ __('Reports') }}</a>
     </nav>
 </header>

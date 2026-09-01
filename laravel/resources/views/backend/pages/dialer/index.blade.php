@@ -506,7 +506,6 @@
             <a class="connectpro-reference-nav-active" href="#">{{ __('Dialpad') }}</a>
             <a href="{{ route('admin.contacts.call-history') }}">{{ __('History') }}</a>
             <a href="{{ route('admin.contacts.activity') }}">{{ __('Activity') }}</a>
-            <a href="#">{{ __('Queues') }}</a>
             <a href="#">{{ __('Reports') }}</a>
         </nav>
         <div class="relative mx-auto hidden w-full max-w-xl md:block">
@@ -752,7 +751,7 @@
         <div id="dialer-inbound-socket" data-config='@json($inboundSocket ?? [])' class="hidden" aria-hidden="true"></div>
 
         <!-- Full Call History Panel (shown when History tab is clicked) -->
-        <div id="dialer-full-history" class="hidden">
+        <div id="dialer-full-history" class="hidden mt-4">
             <section class="overflow-hidden rounded-2xl border border-[#294158] bg-[#091827] shadow-2xl shadow-black/20">
                 <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#294158] p-4 sm:px-5">
                     <div><h2 class="text-lg font-semibold">{{ __('Call History') }}</h2><p class="mt-1 text-xs text-slate-400">{{ __('All inbound and outbound calls') }}</p></div>
@@ -774,7 +773,7 @@
          </div>
 
          <!-- Full Activity Panel (shown when Activity tab is clicked) -->
-         <div id="dialer-full-activity" class="hidden">
+         <div id="dialer-full-activity" class="hidden mt-4">
              <section class="overflow-hidden rounded-2xl border border-[#294158] bg-[#091827] shadow-2xl shadow-black/20">
                  <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#294158] p-4 sm:px-5">
                      <div><h2 class="text-lg font-semibold">{{ __('Activity Log') }}</h2><p class="mt-1 text-xs text-slate-400">{{ __('Contact and system activity') }}</p></div>
@@ -2535,6 +2534,14 @@ document.addEventListener('DOMContentLoaded', function () {
         alertBox.classList.add('hidden');
         alertBox.textContent = '';
 
+        const destination = hiddenInput ? hiddenInput.value.trim() : '';
+        if (!destination) {
+            alertBox.textContent = '{{ __('Enter a phone number before starting a call.') }}';
+            alertBox.classList.remove('hidden');
+            displayInput?.focus();
+            return;
+        }
+
         await disconnectBrowserAudio();
         conferenceName = null;
         callUuid = null;
@@ -2549,7 +2556,7 @@ document.addEventListener('DOMContentLoaded', function () {
         hangupInProgress = false;
 
         const payload = {
-            destination: hiddenInput ? hiddenInput.value : ''
+            destination
         };
 
         lookupContactByPhone(payload.destination);
