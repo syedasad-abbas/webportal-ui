@@ -14,6 +14,24 @@ else
     echo "[freeswitch] Warning: unable to detect the host machine IP" >&2
 fi
 
+# Optional explicit overrides. With neither set, vars.xml advertises the
+# detected host address for both SIP and RTP.
+sip_ip_override="${FREESWITCH_EXTERNAL_SIP_IP:-${EXTERNAL_IP:-}}"
+rtp_ip_override="${FREESWITCH_EXTERNAL_RTP_IP:-${EXTERNAL_IP:-}}"
+if [ -n "$sip_ip_override" ] || [ -n "$rtp_ip_override" ]; then
+    vars_file="/etc/freeswitch/vars.xml"
+    if [ -f "$vars_file" ]; then
+        if [ -n "$sip_ip_override" ]; then
+            sed -i -E "s|data=\"external_sip_ip=[^\"]*\"|data=\"external_sip_ip=${sip_ip_override}\"|" "$vars_file"
+            echo "[freeswitch] Overrode external_sip_ip with $sip_ip_override"
+        fi
+        if [ -n "$rtp_ip_override" ]; then
+            sed -i -E "s|data=\"external_rtp_ip=[^\"]*\"|data=\"external_rtp_ip=${rtp_ip_override}\"|" "$vars_file"
+            echo "[freeswitch] Overrode external_rtp_ip with $rtp_ip_override"
+        fi
+    fi
+fi
+
 # Start the XML reload watcher in the background
 /usr/local/bin/reload-watcher.sh &
 

@@ -1,7 +1,7 @@
 x-backend-env: &backend-env
   PORT: 4000
   DB_HOST: postgres
-  DB_PORT: 5432
+  DB_PORT: 5433
   DB_NAME: webphone
   DB_USER: webphone
   DB_PASSWORD: supersecret
@@ -35,7 +35,7 @@ services:
       - ./docker/nginx/www:/var/www/certbot
       - ./docker/nginx/letsencrypt:/etc/letsencrypt
     depends_on:
-      - laravel
+      - app
     restart: unless-stopped
 
   certbot:
@@ -49,12 +49,10 @@ services:
 
   postgres:
     image: postgres:16
-    network_mode: host
     environment:
       POSTGRES_DB: webphone
       POSTGRES_USER: webphone
       POSTGRES_PASSWORD: supersecret
-      PGPORT: 5433
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
@@ -92,41 +90,23 @@ services:
         hard: 32768
     restart: unless-stopped
 
-  backend:
-    image: node:20-alpine
-    working_dir: /app
-    command: sh -c "npm install && npm start"
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.unified
     network_mode: host
+    ports:
+      - "18080:18080"
+      - "4000:4000"
+      - "5173:5173"
     env_file:
+      - ./laravel/.env
       - ./backend/.env
     environment:
       <<: *backend-env
       BOOTSTRAP_DEFAULTS: "true"
-      DB_HOST: 127.0.0.1
-      DB_PORT: 5433
-    volumes:
-      - ./backend:/app
-      - ./recordings:/recordings
-      - freeswitch_gateways:/mnt/gateways
-      - freeswitch_users:/mnt/users
-    depends_on:
-      postgres:
-        condition: service_healthy
-      freeswitch:
-        condition: service_started
-    restart: unless-stopped
-
-  laravel:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    network_mode: host
-    env_file:
-      - ./laravel/.env
-    environment:
       APP_ENV: local
       APP_DEBUG: "true"
-      SERVER_PORT: 18080
       DB_CONNECTION: pgsql
       DB_HOST: 127.0.0.1
       DB_PORT: 5433
@@ -135,47 +115,22 @@ services:
       DB_PASSWORD: supersecret
       BACKEND_URL: http://127.0.0.1:4000
       BACKEND_INTERNAL_TOKEN: ${BACKEND_INTERNAL_TOKEN:-sync-secret}
-    volumes:
-      - ./laravel:/var/www/html
-      - laravel_storage:/var/www/html/storage
-    ports:
-      - "18080:80"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      backend:
-        condition: service_started
-    restart: unless-stopped
-
-  vite:
-    image: node:20-alpine
-    working_dir: /var/www/html
-    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 5173"
-    volumes:
-      - ./laravel:/var/www/html
-      - ./docker/nginx/letsencrypt:/etc/vite-certs:ro
-    environment:
       VITE_DEV_SERVER_URL: ${VITE_DEV_SERVER_URL:-http://localhost:5173}
       VITE_DEV_SERVER_PORT: ${VITE_DEV_SERVER_PORT:-5173}
-    ports:
-      - "5173:5173"
-    depends_on:
-      - laravel
-
-  queue:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    network_mode: host
-    command: php artisan queue:work --verbose --tries=3 --timeout=90
-    env_file:
-      - ./laravel/.env
     volumes:
       - ./laravel:/var/www/html
+      - ./backend:/app
+      - ./recordings:/var/recordings
+      - freeswitch_gateways:/mnt/gateways
+      - freeswitch_users:/mnt/users
       - laravel_storage:/var/www/html/storage
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       postgres:
         condition: service_healthy
+      freeswitch:
+        condition: service_started
     restart: unless-stopped
 
 volumes:

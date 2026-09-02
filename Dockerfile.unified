@@ -1,0 +1,74 @@
+FROM php:8.3-apache
+
+# Set working directory
+WORKDIR /var/www/html
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    unzip \
+    git \
+    curl \
+    zip \
+    libzip-dev \
+    libfreetype6-dev \
+    libjpeg62-turbo-dev \
+    libpng-dev \
+    libpq-dev \
+    cron \
+    supervisor \
+    nodejs \
+    npm \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install zip pdo pdo_mysql pdo_pgsql gd \
+    && rm -rf /var/lib/apt/lists/*
+
+# Enable Apache modules
+RUN a2enmod rewrite
+
+# Install Node.js 20 if not available
+RUN if ! node --version | grep -q "v20"; then \
+        curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+        && apt-get install -y nodejs \
+        && npm install --global npm@10 \
+        && rm -rf /var/lib/apt/lists/*; \
+    fi
+
+# Install Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+# Create directories for services
+RUN mkdir -p /app /var/log/supervisor
+
+# Copy Laravel application
+COPY laravel/ /var/www/html/
+
+# Copy Backend application
+COPY backend/ /app/
+
+# Set proper permissions
+RUN chown -R www-data:www-data /var/www/html /app
+RUN chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
+
+# Install Composer dependencies
+RUN composer install --no-interaction --prefer-dist --optimize-autoloader --working-dir=/var/www/html
+
+# Install Node.js dependencies
+RUN cd /app && npm install --production=false
+
+# Copy supervisord config
+COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+# Copy entrypoint script
+COPY docker/unified-entrypoint.sh /usr/local/bin/unified-entrypoint.sh
+RUN chmod +x /usr/local/bin/unified-entrypoint.sh
+
+# Change Apache to listen on port 18080
+RUN sed -i 's/Listen 80/Listen 18080/g' /etc/apache2/ports.conf
+RUN sed -i 's/:80/:18080/g' /etc/apache2/sites-available/*.conf
+RUN sed -i 's/<VirtualHost \*:80>/<VirtualHost *:18080>/g' /etc/apache2/sites-available/*.conf
+
+# Expose ports
+EXPOSE 18080 4000 5173
+
+ENTRYPOINT ["/usr/local/bin/unified-entrypoint.sh"]
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

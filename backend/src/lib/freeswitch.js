@@ -273,7 +273,11 @@ const getGlobalVar = async (name) => {
     throw new Error('Invalid FreeSWITCH global variable name');
   }
   const value = await sendApiCommand(`global_getvar ${name}`);
-  return value && value !== '_undef_' ? value.trim() : null;
+  const normalized = value ? value.trim() : '';
+  if (!normalized || normalized === '_undef_' || /^-ERR\b/i.test(normalized)) {
+    return null;
+  }
+  return normalized;
 };
 
 const rescanProfile = async (profile = defaultProfile) => sendApiCommand(`sofia profile ${profile} rescan`);

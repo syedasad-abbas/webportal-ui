@@ -76,6 +76,22 @@ const detectFreeSwitchHost = () => {
   return detectDockerGateway() || 'host.docker.internal';
 };
 
+const detectPublishedFreeSwitchIp = () => {
+  const hostIpFile = optionalEnv(
+    process.env.FREESWITCH_HOST_IP_FILE,
+    '/mnt/gateways/.host-ip'
+  );
+  try {
+    const detected = optionalEnv(fs.readFileSync(hostIpFile, 'utf8'), null);
+    if (detected && /^(?:\d{1,3}\.){3}\d{1,3}$/.test(detected)) {
+      return detected;
+    }
+  } catch (err) {
+    // FreeSWITCH may not have published the host address yet.
+  }
+  return null;
+};
+
 // Detect the host's primary IP address (works both in Docker and on bare metal)
 const detectHostIp = () => {
   try {
@@ -113,6 +129,10 @@ const baseConfig = {
     externalSipIp: optionalEnv(
       process.env.FREESWITCH_EXTERNAL_SIP_IP,
       optionalEnv(process.env.PUBLIC_HOST, optionalEnv(process.env.PUBLIC_IP, null))
+    ),
+    advertisedSipIp: optionalEnv(
+      process.env.FREESWITCH_EXTERNAL_SIP_IP,
+      detectPublishedFreeSwitchIp()
     ),
     directoryDomain: optionalEnv(
       process.env.FREESWITCH_DIRECTORY_DOMAIN,
@@ -168,6 +188,25 @@ const initConfig = async () => {
   configInitialized = true;
 
   const { getGlobalVar } = require('./lib/freeswitch');
+
+  // Use the same address as Sofia for From/identity headers. Keep this
+  // independent from RTP discovery, which may resolve to a public NAT address.
+  if (!baseConfig.freeswitch.advertisedSipIp) {
+    try {
+      const advertisedSipIp = await getGlobalVar('external_sip_ip');
+      if (advertisedSipIp && advertisedSipIp !== 'stun:stun.freeswitch.org') {
+        baseConfig.freeswitch.advertisedSipIp = advertisedSipIp;
+      }
+    } catch (err) {
+      // Fall back to the configured ESL host when it is an IP address.
+    }
+    if (
+      !baseConfig.freeswitch.advertisedSipIp &&
+      /^(?:\d{1,3}\.){3}\d{1,3}$/.test(baseConfig.freeswitch.host || '')
+    ) {
+      baseConfig.freeswitch.advertisedSipIp = baseConfig.freeswitch.host;
+    }
+  }
 
   // Auto-detect external SIP IP from FreeSWITCH's STUN-discovered address
   if (!baseConfig.freeswitch.externalSipIp) {

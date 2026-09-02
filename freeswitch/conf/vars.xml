@@ -281,11 +281,10 @@
        for external_rtp_ip and external_sip_ip
   -->
 
-  <!-- Sofia binds to the automatically detected local_ip_v4. STUN separately
-       discovers the public address advertised to carriers and in SDP. For a
-       static production WAN IP these may be replaced with literal values. -->
-  <X-PRE-PROCESS cmd="stun-set" data="external_rtp_ip=stun:stun.freeswitch.org"/>
-  <X-PRE-PROCESS cmd="stun-set" data="external_sip_ip=stun:stun.freeswitch.org"/>
+  <!-- The external profile runs on the host network. Advertise its detected
+       address for both SIP signaling and RTP/SDP without pinning an IP. -->
+  <X-PRE-PROCESS cmd="set" data="external_rtp_ip=$${local_ip_v4}"/>
+  <X-PRE-PROCESS cmd="set" data="external_sip_ip=$${local_ip_v4}"/>
 
   <!-- unroll-loops
        Used to turn on sip loopback unrolling.

@@ -37,13 +37,16 @@ const buildGatewayXml = (carrier, gatewayName) => {
     { name: 'username', value: carrier.registration_username },
     { name: 'password', value: carrier.registration_password },
     { name: 'from-user', value: carrier.registration_username },
-    { name: 'from-domain', value: carrier.sip_domain },
+    // Resolve this global inside FreeSWITCH so persisted gateway files remain
+    // portable when the stack is moved to a host with a different address.
+    { name: 'from-domain', value: '$${external_sip_ip}' },
     { name: 'extension', value: carrier.registration_username },
     { name: 'proxy', value: endpoint },
     { name: 'outbound-proxy', value: carrier.outbound_proxy },
     { name: 'register-proxy', value: shouldRegister ? endpoint : null },
     { name: 'register-transport', value: shouldRegister ? transport : null },
     { name: 'register', value: shouldRegister ? 'true' : 'false' },
+    { name: 'caller-id-in-from', value: 'true' },
     { name: 'expire-seconds', value: shouldRegister ? '3600' : null },
     { name: 'retry-seconds', value: shouldRegister ? '30' : null },
     { name: 'ping', value: shouldRegister ? '30' : null }

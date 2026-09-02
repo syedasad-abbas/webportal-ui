@@ -277,9 +277,9 @@ const originate = async ({ user, destination, callerId }) => {
   if (useGateway && !gatewayName) {
     throw new Error('Carrier gateway is not configured');
   }
-  // Sofia owns transport advertisement. Without an explicit public override,
-  // keep identity headers on the carrier domain instead of a Docker gateway.
-  const preferredFromHost = config.freeswitch.externalSipIp || record.sip_domain || null;
+  // Keep From and identity headers aligned with Sofia's Via/Contact address.
+  // The carrier still controls the Request-URI and outbound proxy.
+  const preferredFromHost = config.freeswitch.advertisedSipIp || record.sip_domain || null;
   const fromHostBase = preferredFromHost;
   const fromHostWithPort = fromHostBase && record.sip_port
     ? `${fromHostBase}:${record.sip_port}`
