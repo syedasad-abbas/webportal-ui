@@ -1,5 +1,6 @@
 const fs = require('fs/promises');
 const path = require('path');
+const crypto = require('crypto');
 const config = require('../config');
 const db = require('../db');
 const freeswitch = require('./freeswitch');
@@ -15,10 +16,17 @@ const escapeXml = (value) =>
 
 const safeFileName = (username) => username.replace(/[^a-zA-Z0-9_.-]/g, '_');
 
-const buildUserXml = ({ username, password }) => `<include>
+const hashPassword = (password) => {
+  const hash = crypto.createHash('sha256').update(password).digest('hex');
+  return `\${hash}SHA256:${hash}`;
+};
+
+const buildUserXml = ({ username, password }) => {
+  const hashedPassword = hashPassword(password);
+  return `<include>
   <user id="${escapeXml(username)}">
     <params>
-      <param name="password" value="${escapeXml(password)}"/>
+      <param name="password" value="${escapeXml(hashedPassword)}"/>
     </params>
     <variables>
       <variable name="user_context" value="default"/>
@@ -28,6 +36,7 @@ const buildUserXml = ({ username, password }) => `<include>
   </user>
 </include>
 `;
+};
 
 const writeSipUser = async ({ username, password }) => {
   if (!directoryPath || !username || !password) return false;

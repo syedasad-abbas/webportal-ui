@@ -14,6 +14,7 @@ const carrierService = require('../services/carrierService');
 const { authenticate } = require('../middleware/auth');
 const config = require('../config');
 const { syncSipUser } = require('../lib/sipDirectoryConfig');
+const { authRateLimiter } = require('../middleware/rateLimiter');
 // End workers
 // Create router
 const router = express.Router();
@@ -35,7 +36,7 @@ const allowInternalOrAdmin = (req, res, next) => {
 // Authentication routes
 // User management routes
 // Carrier management routes
-router.post('/login', async (req, res) => {
+router.post('/login', authRateLimiter, async (req, res) => {
   const schema = Joi.object({
     email: Joi.string().email({ tlds: { allow: false } }).required(),
     password: Joi.string().required()

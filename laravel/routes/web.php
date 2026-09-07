@@ -42,7 +42,7 @@ Route::get('/home', 'HomeController@index')->name('home');
  * Public auth routes for portal login.
  */
 Route::get('/login', [UserAuthController::class, 'showLogin'])->name('user.login');
-Route::post('/login', [UserAuthController::class, 'login'])->name('user.login.submit');
+Route::post('/login', [UserAuthController::class, 'login'])->middleware('throttle:6,15')->name('user.login.submit');
 
 /**
  * Admin routes.

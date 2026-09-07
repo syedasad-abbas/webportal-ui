@@ -3,6 +3,7 @@
 namespace App\Exceptions;
 
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
+use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Throwable;
 
 class Handler extends ExceptionHandler
@@ -36,6 +37,18 @@ class Handler extends ExceptionHandler
      */
     public function render($request, Throwable $exception)
     {
+        if ($exception instanceof ThrottleRequestsException) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Too many attempts. Please try again later.',
+                ], 429);
+            }
+
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Too many attempts. Please try again later.');
+        }
+
         return parent::render($request, $exception);
     }
 }

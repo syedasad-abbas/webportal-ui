@@ -37,9 +37,9 @@
     <groups>
       <group name="default">
 	<users>
-	  <!-- Portal-managed users must precede vanilla sample users with the same IDs. -->
+	  <!-- Only portal-managed users are active. Vanilla sample accounts remain
+	       on disk under default/ but are intentionally not loaded. -->
 	  <X-PRE-PROCESS cmd="include" data="webphone/*.xml"/>
-	  <X-PRE-PROCESS cmd="include" data="default/*.xml"/>
 	</users>
       </group>
 

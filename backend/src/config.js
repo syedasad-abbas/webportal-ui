@@ -1,6 +1,45 @@
 require('dotenv').config();
 const fs = require('fs');
 
+const FORBIDDEN_DEFAULTS = [
+  'change-me', 'change_me', 'changeme',
+  'sync-secret', 'sync_secret', 'secret',
+  'cluecon', 'ClueCon',
+  '12345678', 'admin', 'password',
+  'supersecret', 'super_secret'
+];
+
+const validateSecrets = () => {
+  const requiredSecrets = {
+    JWT_SECRET: process.env.JWT_SECRET,
+    DB_PASSWORD: process.env.DB_PASSWORD,
+    BACKEND_INTERNAL_TOKEN: process.env.BACKEND_INTERNAL_TOKEN,
+    DEFAULT_ADMIN_PASSWORD: process.env.DEFAULT_ADMIN_PASSWORD,
+    DEFAULT_ADMIN_EMAIL: process.env.DEFAULT_ADMIN_EMAIL,
+    FREESWITCH_PASSWORD: process.env.FREESWITCH_PASSWORD
+  };
+
+  const errors = [];
+  for (const [key, value] of Object.entries(requiredSecrets)) {
+    if (!value || typeof value !== 'string' || value.trim() === '') {
+      errors.push(`${key} is not set`);
+    } else if (FORBIDDEN_DEFAULTS.includes(value) || FORBIDDEN_DEFAULTS.includes(value.toLowerCase())) {
+      errors.push(`${key} is using a default/insecure value`);
+    } else if (key === 'DEFAULT_ADMIN_PASSWORD' && value.length < 8) {
+      errors.push(`${key} must be at least 8 characters long`);
+    }
+  }
+
+  if (errors.length > 0) {
+    console.error('[config] FATAL: Insecure configuration detected:');
+    errors.forEach((e) => console.error(`  - ${e}`));
+    console.error('[config] Set the required environment variables in your .env file or shell.');
+    process.exit(1);
+  }
+
+  console.log('[config] All required secrets are set and secure');
+};
+
 const parseJSON = (value, fallback) => {
   try {
     return JSON.parse(value);
@@ -184,6 +223,7 @@ const baseConfig = {
 let configInitialized = false;
 
 const initConfig = async () => {
+  validateSecrets();
   if (configInitialized) return baseConfig;
   configInitialized = true;
 

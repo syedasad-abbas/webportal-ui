@@ -1,2 +1,9 @@
 .qa-artifacts/
 .qa-firefox/
+
+# Environment files with secrets
+.env
+.env.local
+.env.production
+.env.production.local
+*.env.local

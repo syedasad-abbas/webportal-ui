@@ -46,9 +46,6 @@ RUN chmod -R 775 storage bootstrap/cache
 # Install Composer dependencies
 RUN composer install --no-interaction --prefer-dist --optimize-autoloader
 
-# Generate application key
-RUN php artisan key:generate
-
 RUN (crontab -l ; echo '* * * * * cd /var/www/html && /usr/local/bin/php artisan app:campaign-stats-update 2>&1') | crontab
 
 # Copy entrypoint script that builds assets if needed

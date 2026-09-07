@@ -1,9 +1,10 @@
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const db = require('../db');
 const config = require('../config');
 
 const generateCode = () => {
-  const value = Math.floor(Math.random() * 1000000);
+  const value = crypto.randomInt(0, 1000000);
   return value.toString().padStart(6, '0');
 };
 

@@ -1,19 +1,19 @@
 x-backend-env: &backend-env
   PORT: 4000
   DB_HOST: postgres
-  DB_PORT: 5433
+  DB_PORT: 5432
   DB_NAME: webphone
   DB_USER: webphone
-  DB_PASSWORD: supersecret
-  JWT_SECRET: change-me
-  BACKEND_INTERNAL_TOKEN: ${BACKEND_INTERNAL_TOKEN:-sync-secret}
-  DEFAULT_ADMIN_EMAIL: superadmin@example.com
-  DEFAULT_ADMIN_PASSWORD: 12345678
+  DB_PASSWORD: ${DB_PASSWORD:-dev-db-password-7f3a9c2e}
+  JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret-4b8d1e6f}
+  BACKEND_INTERNAL_TOKEN: ${BACKEND_INTERNAL_TOKEN:-dev-backend-token-9c2a7e5d}
+  DEFAULT_ADMIN_EMAIL: ${DEFAULT_ADMIN_EMAIL:-superadmin@example.com}
+  DEFAULT_ADMIN_PASSWORD: ${DEFAULT_ADMIN_PASSWORD:-dev-admin-password-8e4c1a7b}
   # FREESWITCH_HOST: empty = read the host LAN IP published by host-networked FreeSWITCH
   FREESWITCH_HOST: ${FREESWITCH_HOST:-}
   FREESWITCH_HOST_IP_FILE: /mnt/gateways/.host-ip
   FREESWITCH_PORT: 8021
-  FREESWITCH_PASSWORD: ClueCon
+  FREESWITCH_PASSWORD: ${FREESWITCH_PASSWORD:-dev-freeswitch-password-6d2b9f4a}
   FREESWITCH_CONNECT_TIMEOUT_MS: 5000
   FREESWITCH_RECORDINGS_PATH: /var/recordings
   FREESWITCH_GATEWAY_PATH: /mnt/gateways
@@ -52,13 +52,13 @@ services:
     environment:
       POSTGRES_DB: webphone
       POSTGRES_USER: webphone
-      POSTGRES_PASSWORD: supersecret
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-dev-db-password-7f3a9c2e}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5433:5432"
+      - "127.0.0.1:5433:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U webphone"]
+      test: ["CMD-SHELL", "pg_isready -U webphone -h 127.0.0.1 -p 5432"]
       interval: 10s
       retries: 5
     restart: unless-stopped
@@ -74,7 +74,7 @@ services:
       - freeswitch_gateways:/etc/freeswitch/gateways
       - freeswitch_users:/etc/freeswitch/directory/webphone
     environment:
-      EVENT_SOCKET_PASSWORD: ClueCon
+      EVENT_SOCKET_PASSWORD: ${FREESWITCH_PASSWORD:-dev-freeswitch-password-6d2b9f4a}
       FREESWITCH_HOST_IP_FILE: /etc/freeswitch/gateways/.host-ip
       # Empty defaults to this machine's primary IPv4 for SIP Via/Contact.
       FREESWITCH_EXTERNAL_SIP_IP: ${FREESWITCH_EXTERNAL_SIP_IP:-}
@@ -83,7 +83,7 @@ services:
       # Backend URL for inbound.lua - FreeSWITCH uses host networking, so it
       # reaches the backend container via the host-mapped port (4000:4000)
       BACKEND_URL: http://127.0.0.1:4000
-      BACKEND_INTERNAL_TOKEN: ${BACKEND_INTERNAL_TOKEN:-sync-secret}
+      BACKEND_INTERNAL_TOKEN: ${BACKEND_INTERNAL_TOKEN:-dev-backend-token-9c2a7e5d}
     ulimits:
       nofile:
         soft: 32768
@@ -98,10 +98,6 @@ services:
     ports:
       - "18080:18080"
       - "4000:4000"
-      - "5173:5173"
-    env_file:
-      - ./laravel/.env
-      - ./backend/.env
     environment:
       <<: *backend-env
       BOOTSTRAP_DEFAULTS: "true"
@@ -112,11 +108,16 @@ services:
       DB_PORT: 5433
       DB_DATABASE: webphone
       DB_USERNAME: webphone
-      DB_PASSWORD: supersecret
+      DB_PASSWORD: ${DB_PASSWORD:-dev-db-password-7f3a9c2e}
+      DB_USER: webphone
+      DB_NAME: webphone
+      JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret-4b8d1e6f}
+      DEFAULT_ADMIN_EMAIL: ${DEFAULT_ADMIN_EMAIL:-superadmin@example.com}
+      DEFAULT_ADMIN_PASSWORD: ${DEFAULT_ADMIN_PASSWORD:-dev-admin-password-8e4c1a7b}
+      FREESWITCH_PASSWORD: ${FREESWITCH_PASSWORD:-dev-freeswitch-password-6d2b9f4a}
+      APP_KEY: ${APP_KEY:-base64:7xQj4dM2vN8pL5sR1wK6cH9bF3gT0yUeA2iO4zX6nP8=}
       BACKEND_URL: http://127.0.0.1:4000
-      BACKEND_INTERNAL_TOKEN: ${BACKEND_INTERNAL_TOKEN:-sync-secret}
-      VITE_DEV_SERVER_URL: ${VITE_DEV_SERVER_URL:-http://localhost:5173}
-      VITE_DEV_SERVER_PORT: ${VITE_DEV_SERVER_PORT:-5173}
+      BACKEND_INTERNAL_TOKEN: ${BACKEND_INTERNAL_TOKEN:-dev-backend-token-9c2a7e5d}
     volumes:
       - ./laravel:/var/www/html
       - ./backend:/app

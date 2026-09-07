@@ -12,16 +12,18 @@ mkdir -p /var/www/html/storage/framework/{cache,sessions,views}
 mkdir -p /var/www/html/storage/logs
 chown -R www-data:www-data /var/www/html/storage
 
-# Generate app key if not set
-if [ -f /var/www/html/.env ]; then
-    if ! grep -q "APP_KEY=base64:" /var/www/html/.env; then
-        echo "Generating application key..."
-        php /var/www/html/artisan key:generate --force
-    fi
+# A development Vite marker must never override the compiled asset manifest.
+rm -f /var/www/html/public/hot
+
+if [ "${RUN_MIGRATIONS:-false}" = "true" ]; then
+    php /var/www/html/artisan migrate --force
 fi
 
+# Cache Laravel configuration, routes, events, and views for production.
+php /var/www/html/artisan optimize
+
 # Set up cron jobs
-echo "* * * * * cd /var/www/html && /usr/local/bin/php artisan campaign-stats-update 2>&1" | crontab -
+echo "* * * * * cd /var/www/html && /usr/local/bin/php artisan app:campaign-stats-update >> /proc/1/fd/1 2>> /proc/1/fd/2" | crontab -
 
 # Start supervisord
 echo "Starting services..."

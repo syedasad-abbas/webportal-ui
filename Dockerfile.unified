@@ -1,74 +1,78 @@
-FROM php:8.3-apache
+# syntax=docker/dockerfile:1
 
-# Set working directory
-WORKDIR /var/www/html
+FROM node:20-alpine AS frontend-build
+WORKDIR /build
+COPY laravel/package.json laravel/package-lock.json ./
+RUN npm ci
+COPY laravel/ ./
+RUN rm -f public/hot && npm run build
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    unzip \
-    git \
-    curl \
-    zip \
-    libzip-dev \
-    libfreetype6-dev \
-    libjpeg62-turbo-dev \
-    libpng-dev \
-    libpq-dev \
-    cron \
-    supervisor \
-    nodejs \
-    npm \
+FROM node:20-bookworm-slim AS backend-build
+WORKDIR /app
+COPY backend/package.json ./
+RUN npm install --omit=dev && npm cache clean --force
+
+FROM php:8.3-apache AS php-base
+
+ENV APP_ENV=production \
+    APP_DEBUG=false \
+    NODE_ENV=production
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        cron \
+        libfreetype6-dev \
+        libjpeg62-turbo-dev \
+        libpng-dev \
+        libpq-dev \
+        libzip-dev \
+        supervisor \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install zip pdo pdo_mysql pdo_pgsql gd \
+    && docker-php-ext-install -j"$(nproc)" gd pdo_mysql pdo_pgsql zip \
+    && a2enmod rewrite \
+    && sed -i 's/Listen 80/Listen 18080/g' /etc/apache2/ports.conf \
+    && sed -i 's/:80/:18080/g' /etc/apache2/sites-available/*.conf \
     && rm -rf /var/lib/apt/lists/*
 
-# Enable Apache modules
-RUN a2enmod rewrite
+# The backend only needs the Node runtime. npm is used exclusively in build stages.
+COPY --from=node:20-bookworm-slim /usr/local/bin/node /usr/local/bin/node
 
-# Install Node.js 20 if not available
-RUN if ! node --version | grep -q "v20"; then \
-        curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-        && apt-get install -y nodejs \
-        && npm install --global npm@10 \
-        && rm -rf /var/lib/apt/lists/*; \
-    fi
+FROM php-base AS application-build
+WORKDIR /var/www/html
+COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
+COPY laravel/ ./
+RUN composer install \
+      --no-dev \
+      --no-interaction \
+      --no-progress \
+      --prefer-dist \
+      --optimize-autoloader \
+    && rm -rf /root/.composer/cache
+COPY --from=frontend-build /build/public/build ./public/build
+RUN rm -f public/hot
 
-# Install Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+FROM php-base AS production
+WORKDIR /var/www/html
 
-# Create directories for services
-RUN mkdir -p /app /var/log/supervisor
-
-# Copy Laravel application
-COPY laravel/ /var/www/html/
-
-# Copy Backend application
-COPY backend/ /app/
-
-# Set proper permissions
-RUN chown -R www-data:www-data /var/www/html /app
-RUN chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
-
-# Install Composer dependencies
-RUN composer install --no-interaction --prefer-dist --optimize-autoloader --working-dir=/var/www/html
-
-# Install Node.js dependencies
-RUN cd /app && npm install --production=false
-
-# Copy supervisord config
+COPY --from=application-build --chown=www-data:www-data /var/www/html /var/www/html
+COPY backend/package.json /app/
+COPY backend/src /app/src
+COPY --from=backend-build /app/node_modules /app/node_modules
 COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
-
-# Copy entrypoint script
 COPY docker/unified-entrypoint.sh /usr/local/bin/unified-entrypoint.sh
-RUN chmod +x /usr/local/bin/unified-entrypoint.sh
 
-# Change Apache to listen on port 18080
-RUN sed -i 's/Listen 80/Listen 18080/g' /etc/apache2/ports.conf
-RUN sed -i 's/:80/:18080/g' /etc/apache2/sites-available/*.conf
-RUN sed -i 's/<VirtualHost \*:80>/<VirtualHost *:18080>/g' /etc/apache2/sites-available/*.conf
+RUN chmod +x /usr/local/bin/unified-entrypoint.sh \
+    && mkdir -p \
+        /var/log/supervisor \
+        /var/www/html/storage/framework/cache \
+        /var/www/html/storage/framework/sessions \
+        /var/www/html/storage/framework/views \
+        /var/www/html/storage/logs \
+    && chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
-# Expose ports
-EXPOSE 18080 4000 5173
+EXPOSE 18080 4000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD node -e "Promise.all([fetch('http://127.0.0.1:18080'),fetch('http://127.0.0.1:4000/health')]).then(r=>process.exit(r.every(x=>x.ok)?0:1)).catch(()=>process.exit(1))"
 
 ENTRYPOINT ["/usr/local/bin/unified-entrypoint.sh"]
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

@@ -3,10 +3,11 @@ const Joi = require('joi');
 const authService = require('../services/authService');
 const passwordResetService = require('../services/passwordResetService');
 const config = require('../config');
+const { authRateLimiter } = require('../middleware/rateLimiter');
 
 const router = express.Router();
 
-router.post('/login', async (req, res) => {
+router.post('/login', authRateLimiter, async (req, res) => {
   const schema = Joi.object({
     email: Joi.string().email({ tlds: { allow: false } }).required(),
     password: Joi.string().required()
@@ -25,7 +26,7 @@ router.post('/login', async (req, res) => {
   }
 });
 
-router.post('/forgot-password', async (req, res) => {
+router.post('/forgot-password', authRateLimiter, async (req, res) => {
   const schema = Joi.object({
     email: Joi.string().email({ tlds: { allow: false } }).required(),
     role: Joi.string().valid('user', 'admin').default('user')
@@ -36,28 +37,16 @@ router.post('/forgot-password', async (req, res) => {
     return res.status(400).json({ message: error.message });
   }
 
-  const internalToken = config.passwordReset.internalToken;
-  const requestToken = req.get('x-internal-token');
-  if (internalToken && internalToken !== requestToken) {
-    return res.json({ message: 'If the account exists, a code will be sent.' });
+  try {
+    await passwordResetService.createOtp(value.email, value.role);
+  } catch (err) {
+    console.error('[auth] forgot-password error', { email: value.email, error: err.message });
   }
 
-  try {
-    const otp = await passwordResetService.createOtp(value.email, value.role);
-    if (!otp) {
-      return res.json({ message: 'If the account exists, a code will be sent.' });
-    }
-    return res.json({
-      message: 'OTP created.',
-      code: otp.code,
-      expiresAt: otp.expiresAt
-    });
-  } catch (err) {
-    return res.status(500).json({ message: 'Unable to create OTP.' });
-  }
+  return res.json({ message: 'If the account exists, a code will be sent.' });
 });
 
-router.post('/reset-password', async (req, res) => {
+router.post('/reset-password', authRateLimiter, async (req, res) => {
   const schema = Joi.object({
     email: Joi.string().email({ tlds: { allow: false } }).required(),
     role: Joi.string().valid('user', 'admin').default('user'),
