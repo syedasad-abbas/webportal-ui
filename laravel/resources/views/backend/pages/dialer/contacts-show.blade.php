@@ -89,7 +89,7 @@
                         <div class="relative z-10 rounded-xl border border-dashed border-[#365068] bg-[#071625] px-5 py-10 text-center text-sm text-slate-400">{{ __('No notes have been added for this contact.') }}</div>
                     @endforelse
                 </div>
-                <form class="mt-4 flex items-center gap-2 rounded-xl border border-[#365068] bg-[#071625] p-2" data-contact-comment-form data-url="{{ route('admin.dialer.contacts.comments.store', $contact) }}">
+                <form class="mt-4 flex items-center gap-2 rounded-xl border border-[#365068] bg-[#19283d] p-2" data-contact-comment-form data-url="{{ route('admin.dialer.contacts.comments.store', $contact) }}">
                     <input name="body" maxlength="2000" placeholder="{{ __('Add a note or comment…') }}" class="min-w-0 flex-1 border-0 bg-transparent px-2 text-sm text-white outline-none ring-0 placeholder:text-slate-500">
                     <button class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white hover:bg-blue-500" aria-label="{{ __('Add comment') }}"><i class="bi bi-send-fill"></i></button>
                 </form>

@@ -49,8 +49,8 @@
                 </div>
                 <div class="p-4">
                     <div class="mb-4">
-                        <input type="checkbox" id="checkPermissionAll" class="mr-2">
-                        <label for="checkPermissionAll" class="text-sm text-gray-700 dark:text-gray-400">
+                        <input type="checkbox" id="checkPermissionAll" class="mr-2 border-gray-400 dark:border-gray-500 rounded focus:ring-2 focus:ring-primary text-primary">
+                        <label for="checkPermissionAll" class="text-sm text-gray-800 dark:text-gray-200">
                             {{ __('Select All') }}
                         </label>
                     </div>
@@ -59,8 +59,8 @@
                     @foreach ($permission_groups as $group)
                     <div class="mb-6">
                         <div class="flex items-center mb-2">
-                            <input type="checkbox" id="group{{ $i }}Management" class="mr-2">
-                            <label for="group{{ $i }}Management" class="capitalize text-sm font-medium text-gray-700 dark:text-gray-400">
+                        <input type="checkbox" id="group{{ $i }}Management" class="mr-2 border-gray-400 dark:border-gray-500 rounded focus:ring-2 focus:ring-primary text-primary">
+                        <label for="group{{ $i }}Management" class="capitalize text-sm font-medium text-gray-800 dark:text-gray-200">
                                 {{ ucfirst($group->name) }}
                             </label>
                         </div>
@@ -70,8 +70,8 @@
                             @endphp
                             @foreach ($permissions as $permission)
                             <div>
-                                <input type="checkbox" id="checkPermission{{ $permission->id }}" name="permissions[]" value="{{ $permission->name }}" class="mr-2">
-                                <label for="checkPermission{{ $permission->id }}" class="capitalize text-sm text-gray-700 dark:text-gray-400">
+                                <input type="checkbox" id="checkPermission{{ $permission->id }}" name="permissions[]" value="{{ $permission->name }}" class="mr-2 border-gray-400 dark:border-gray-500 rounded focus:ring-2 focus:ring-primary text-primary">
+                                <label for="checkPermission{{ $permission->id }}" class="capitalize text-sm text-gray-800 dark:text-gray-200">
                                     {{ $permission->name }}
                                 </label>
                             </div>
