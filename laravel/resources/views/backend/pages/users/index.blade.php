@@ -153,10 +153,6 @@
 
                     <tbody>
                         @forelse ($users as $user)
-                            @if ((auth()->user()->hasRole('Agent') || auth()->user()->hasRole('support')) && auth()->id() !== $user->id)
-                                @continue
-                            @endif
-
                             @php
                                 $displayExternal = $user->external_name ?? $user->full_name ?? $user->name ?? '-';
                                 $displayInternal = $user->internal_name ?? '';

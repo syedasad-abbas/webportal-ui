@@ -2852,10 +2852,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const socket = window.io(cfg.url, {
             transports: ['websocket', 'polling'],
-            auth: { userId: cfg.userId }
-        });
-        socket.on('connect', () => {
-            socket.emit('identify', cfg.userId);
+            auth: { token: @json(session('admin_token')) }
         });
         socket.on('incoming.call', (payload) => {
             if (!payload || !payload.callUuid) return;

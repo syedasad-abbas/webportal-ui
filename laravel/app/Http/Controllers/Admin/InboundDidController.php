@@ -13,7 +13,7 @@ class InboundDidController extends Controller
     private function requirePermission(string $permission): void
     {
         $user = auth()->user();
-        abort_unless($user && ($user->hasAnyRole(['Admin', 'Superadmin']) || $user->can($permission)), 403);
+        abort_unless($user && $user->can($permission), 403);
     }
 
     private function normalizeDid(?string $did): string

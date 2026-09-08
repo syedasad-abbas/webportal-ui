@@ -36,12 +36,14 @@
                             ]),
                         ])
 
+                        @can('settings.edit')
                         <!-- Submit Button -->
                         <div class="flex justify-start">
                             <button type="submit" class="btn-primary">
                                 {{ __('Save') }}
                             </button>
                         </div>
+                        @endcan
                     </form>
                 </div>
             </div>

@@ -1,6 +1,9 @@
 const { Server } = require('socket.io');
 const fs = require('fs');
 const path = require('path');
+const jwt = require('jsonwebtoken');
+const config = require('./config');
+const { getAssignedPermissions } = require('./services/permissionService');
 
 let ioInstance = null;
 
@@ -87,26 +90,19 @@ const initSocket = (httpServer) => {
     }
   });
 
+  ioInstance.use((socket, next) => {
+    try {
+      const user = jwt.verify(socket.handshake.auth?.token || '', config.jwtSecret);
+      if (!user.id) return next(new Error('Unauthorized'));
+      socket.data.userId = user.id;
+      return next();
+    } catch (err) {
+      return next(new Error('Unauthorized'));
+    }
+  });
+
   ioInstance.on('connection', (socket) => {
-    console.log('[socket] client connected', socket.id);
-
-    // Allow a client to identify itself so we can target events at one user.
-    // Accepts userId from handshake auth or query, or a later 'identify' event.
-    const joinUserRoom = (userId) => {
-      const id = parseInt(userId, 10);
-      if (!Number.isInteger(id) || id <= 0) {
-        return;
-      }
-      socket.join(userRoom(id));
-      console.log('[socket] client joined room', { socket: socket.id, userId: id });
-    };
-
-    joinUserRoom(socket.handshake.auth?.userId ?? socket.handshake.query?.userId);
-    socket.on('identify', joinUserRoom);
-
-    socket.on('disconnect', () => {
-      console.log('[socket] client disconnected', socket.id);
-    });
+    socket.join(userRoom(socket.data.userId));
   });
 
   return ioInstance;
@@ -119,19 +115,28 @@ const getSocket = () => {
   return ioInstance;
 };
 
-const emitSocketEvent = (event, payload) => {
-  if (!ioInstance) {
-    return;
+const emitAuthorized = async (event, payload, permission, userId = null) => {
+  if (!ioInstance) return;
+  const permissionsByUser = new Map();
+  for (const socket of ioInstance.sockets.sockets.values()) {
+    const id = socket.data.userId;
+    if (!id || (userId !== null && String(id) !== String(userId))) continue;
+    try {
+      if (!permissionsByUser.has(id)) {
+        permissionsByUser.set(id, await getAssignedPermissions(id));
+      }
+      if (permissionsByUser.get(id).includes(permission)) socket.emit(event, payload);
+    } catch (err) {
+      console.warn('[socket] unable to verify permissions', { error: err.message });
+    }
   }
-  ioInstance.emit(event, payload);
 };
 
-const emitToUser = (userId, event, payload) => {
-  if (!ioInstance) {
-    return;
-  }
-  ioInstance.to(userRoom(userId)).emit(event, payload);
-};
+const emitSocketEvent = (event, payload) =>
+  emitAuthorized(event, payload, 'dashboard.view');
+
+const emitToUser = (userId, event, payload) =>
+  emitAuthorized(event, payload, 'dialer.create_call', userId);
 
 module.exports = {
   initSocket,

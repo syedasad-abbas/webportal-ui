@@ -28,7 +28,7 @@ class UpdateRoleRequest extends FormRequest
 
         return ld_apply_filters('role.update.validation.rules', [
             'name' => 'required|max:100|unique:roles,name,'.$roleId,
-            'permissions' => 'required|array',
+            'permissions' => 'sometimes|array',
             'permissions.*' => 'string|exists:permissions,name',
         ], $roleId);
     }

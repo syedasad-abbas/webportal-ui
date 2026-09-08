@@ -6,7 +6,7 @@
 
 @section('admin-content')
 @php
-  $isAdmin = auth()->check() && auth()->user()->hasAnyRole(['Admin', 'Superadmin']);
+  $isAdmin = auth()->check() && auth()->user()->hasAnyPermission(['carrier.edit', 'carrier.delete']);
 @endphp
 
 <div class="connectpro-admin-page p-4 mx-auto max-w-(--breakpoint-2xl) md:p-6">
@@ -147,12 +147,15 @@
                                     <td class="px-5 py-4 sm:px-6 text-right">
                                         <div class="flex justify-end">
                                             <x-buttons.action-buttons :label="__('Actions')" :show-label="false" align="right">
+                                                @can('carrier.edit')
                                                 <x-buttons.action-item
                                                     :href="route('admin.carrier.edit', $carrierItem['id'])"
                                                     icon="pencil"
                                                     :label="__('Edit')"
                                                 />
 
+                                                @endcan
+                                                @can('carrier.delete')
                                                 <div x-data="{ deleteModalOpen: false }">
                                                     <x-buttons.action-item
                                                         type="modal-trigger"
@@ -173,6 +176,7 @@
                                                         confirmButtonText="{{ __('Yes, delete') }}"
                                                     />
                                                 </div>
+                                                @endcan
                                             </x-buttons.action-buttons>
                                         </div>
                                     </td>

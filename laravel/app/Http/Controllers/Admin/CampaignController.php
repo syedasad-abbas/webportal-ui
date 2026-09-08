@@ -12,7 +12,13 @@ class CampaignController extends Controller
 {
     public function __construct()
 {
-    $this->middleware('can:campaign.add')->only(['index','store','status']);
+    $this->middleware('can:campaign.add')->only(['store']);
+    $this->middleware('can:campaign.edit')->only(['edit', 'update']);
+    $this->middleware('can:campaign.delete')->only(['destroy']);
+    $this->middleware(function ($request, $next) {
+        abort_unless($request->user()?->hasAnyPermission(['campaign.add', 'campaign.edit', 'campaign.delete', 'campaign.play']), 403);
+        return $next($request);
+    })->only(['index', 'status']);
 }
     // Campaign list page
     public function index()

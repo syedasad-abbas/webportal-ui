@@ -9,7 +9,7 @@ const config = require('./config');
 const { ensureDefaults } = require('./services/bootstrapService');
 const { syncAllSipUsers } = require('./lib/sipDirectoryConfig');
 const { initSocket } = require('./socket');
-const { scheduleMetricsBroadcast, startMetricsBroadcasting, fetchDashboardMetrics } = require('./services/metricsService');
+const { scheduleMetricsBroadcast, startMetricsBroadcasting } = require('./services/metricsService');
 const adminRoutes = require('./routes/admin');
 const authRoutes = require('./routes/auth');
 const callRoutes = require('./routes/calls');
@@ -165,11 +165,7 @@ const start = async () => {
   await ensureDefaults();
   await syncAllSipUsers();
   const io = initSocket(httpServer);
-  io.on('connection', (socket) => {
-    fetchDashboardMetrics()
-      .then((snapshot) => socket.emit('dashboard.metrics', snapshot))
-      .catch((err) => console.warn('[metrics] initial emit failed', err.message));
-  });
+  io.on('connection', () => scheduleMetricsBroadcast());
   httpServer.listen(config.port, () => {
     console.log(`Backend listening on port ${config.port}`);
     startMetricsBroadcasting();

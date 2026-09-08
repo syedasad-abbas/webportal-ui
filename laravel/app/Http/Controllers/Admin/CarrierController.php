@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Gate;
 
 class CarrierController extends Controller
 {
@@ -31,6 +32,8 @@ class CarrierController extends Controller
 
     public function index(Request $request)
     {
+        Gate::authorize('carrier.view');
+
         $token = $this->getAdminToken($request);
         if (! is_string($token)) {
             return $token; // redirect response
@@ -60,6 +63,8 @@ class CarrierController extends Controller
 
     public function create(Request $request)
     {
+        Gate::authorize('carrier.create');
+
         // No reference data needed for create in your current form
         return view('backend.pages.carrier.create', [
             'breadcrumbs' => [
@@ -76,6 +81,8 @@ class CarrierController extends Controller
 
     public function store(Request $request)
     {
+        Gate::authorize('carrier.create');
+
         $token = $this->getAdminToken($request);
         if (! is_string($token)) {
             return $token; // redirect response
@@ -124,6 +131,8 @@ class CarrierController extends Controller
 
     public function edit(Request $request, string $carrierId)
     {
+        Gate::authorize('carrier.edit');
+
         $token = $this->getAdminToken($request);
         if (! is_string($token)) {
             return $token; // redirect response
@@ -153,6 +162,8 @@ class CarrierController extends Controller
 
     public function update(Request $request, string $carrierId)
     {
+        Gate::authorize('carrier.edit');
+
         $token = $this->getAdminToken($request);
         if (! is_string($token)) {
             return $token; // redirect response
@@ -198,6 +209,8 @@ class CarrierController extends Controller
 
     public function destroy(Request $request, string $carrierId)
     {
+        Gate::authorize('carrier.delete');
+
         $token = $this->getAdminToken($request);
         if (! is_string($token)) {
             return $token; // redirect response

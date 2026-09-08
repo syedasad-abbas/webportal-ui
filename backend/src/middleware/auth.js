@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const config = require('../config');
 const { scheduleMetricsBroadcast } = require('../services/metricsService');
 const db = require('../db');
+const { getAssignedPermissions } = require('../services/permissionService');
 
 const permissionAliases = {
   dial: ['dialer.create_call'],
@@ -49,20 +50,22 @@ const authenticate = (roles = []) => {
 
 const requirePermissions = (required = []) => {
   const requiredList = Array.isArray(required) ? required : [required];
-  return (req, res, next) => {
-    if (!requiredList.length) {
+  return async (req, res, next) => {
+    if (!requiredList.length) return next();
+    if (!req.user?.id) return res.status(401).json({ message: 'Missing authentication' });
+
+    try {
+      // Read the same assignments as Laravel on every request; JWT claims can be stale.
+      const granted = await getAssignedPermissions(req.user.id);
+      req.user.permissions = granted;
+      if (!requiredList.every((permission) => hasPermission(granted, permission))) {
+        return res.status(403).json({ message: 'Forbidden' });
+      }
       return next();
+    } catch (err) {
+      console.warn('[auth] permission lookup failed', { error: err.message });
+      return res.status(503).json({ message: 'Unable to verify permissions' });
     }
-    const role = req.user?.role;
-    if (role === 'superadmin' || role === 'admin') {
-      return next();
-    }
-    const granted = Array.isArray(req.user?.permissions) ? req.user.permissions : [];
-    const hasAll = requiredList.every((permission) => hasPermission(granted, permission));
-    if (!hasAll) {
-      return res.status(403).json({ message: 'Forbidden' });
-    }
-    return next();
   };
 };
 

@@ -25,7 +25,7 @@ class SettingsController extends Controller
 
     public function index($tab = null): Renderable
     {
-        $this->checkAuthorization(Auth::user(), ['settings.edit']);
+        $this->checkAuthorization(Auth::user(), ['settings.view']);
 
         $tab = $tab ?? request()->input('tab', 'general');
 

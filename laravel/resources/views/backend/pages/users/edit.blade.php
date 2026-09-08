@@ -36,12 +36,9 @@
                                     required
                                     value="{{ old('external_name', $user->external_name ?? '') }}"
                                     placeholder="{{ __('Displayed to others') }}"
-                                    @if(auth()->user()->hasRole('Agent') || auth()->user()->hasRole('support')) readonly @endif
+
                                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
                                 >
-                                @if(auth()->user()->hasRole('Agent') || auth()->user()->hasRole('support'))
-                                    <input type="hidden" name="external_name" value="{{ old('external_name', $user->external_name ?? '') }}">
-                                @endif
                             </div>
 
                             {{-- Internal Name --}}
@@ -56,12 +53,9 @@
                                     required
                                     value="{{ old('internal_name', $user->internal_name ?? '') }}"
                                     placeholder="{{ __('For internal reference') }}"
-                                    @if(auth()->user()->hasRole('Agent') || auth()->user()->hasRole('support')) readonly @endif
+
                                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
                                 >
-                                @if(auth()->user()->hasRole('Agent') || auth()->user()->hasRole('support'))
-                                    <input type="hidden" name="internal_name" value="{{ old('internal_name', $user->internal_name ?? '') }}">
-                                @endif
                             </div>
 
                             {{-- Email --}}
@@ -76,7 +70,7 @@
                                     required
                                     value="{{ old('email', $user->email) }}"
                                     placeholder="{{ __('user@example.com') }}"
-                                    @if(auth()->user()->hasRole('Agent') || auth()->user()->hasRole('support')) readonly @endif
+
                                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
                                 >
                             </div>
@@ -117,7 +111,7 @@
                                 <select
                                     name="carrierId"
                                     id="carrierId"
-                                    @if(auth()->user()->hasRole('Agent') || auth()->user()->hasRole('support')) disabled @endif
+
                                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
                                 >
                                     <option value="">{{ __('Default') }}</option>
@@ -129,9 +123,6 @@
                                     @endforeach
                                 </select>
 
-                                @if(auth()->user()->hasRole('Agent') || auth()->user()->hasRole('support'))
-                                    <input type="hidden" name="carrierId" value="{{ old('carrierId', $user->carrier_id ?? '') }}">
-                                @endif
                             </div>
 
                             {{-- Recording --}}
@@ -142,16 +133,13 @@
                                 <select
                                     name="recording_enabled"
                                     id="recording_enabled"
-                                    @if(auth()->user()->hasRole('Agent') || auth()->user()->hasRole('support')) disabled @endif
+
                                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
                                 >
                                     <option value="1" {{ old('recording_enabled', (int)($user->recording_enabled ?? 0)) == 1 ? 'selected' : '' }}>{{ __('Enabled') }}</option>
                                     <option value="0" {{ old('recording_enabled', (int)($user->recording_enabled ?? 0)) == 0 ? 'selected' : '' }}>{{ __('Disabled') }}</option>
                                 </select>
 
-                                @if(auth()->user()->hasRole('Agent') || auth()->user()->hasRole('support'))
-                                    <input type="hidden" name="recording_enabled" value="{{ old('recording_enabled', (int)($user->recording_enabled ?? 0)) }}">
-                                @endif
                             </div>
 
                             {{-- SIP Username --}}
@@ -165,12 +153,9 @@
                                     id="sip_username"
                                     value="{{ old('sip_username', $user->sipCredential->sip_username ?? '') }}"
                                     placeholder="{{ __('e.g. 1001') }}"
-                                    @if(auth()->user()->hasRole('Agent') || auth()->user()->hasRole('support')) readonly @endif
+
                                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
                                 >
-                                @if(auth()->user()->hasRole('Agent') || auth()->user()->hasRole('support'))
-                                    <input type="hidden" name="sip_username" value="{{ old('sip_username', $user->sipCredential->sip_username ?? '') }}">
-                                @endif
                             </div>
 
                             {{-- SIP Password --}}
@@ -183,16 +168,13 @@
                                     name="sip_password"
                                     id="sip_password"
                                     placeholder="{{ __('Leave blank to keep current') }}"
-                                    @if(auth()->user()->hasRole('Agent') || auth()->user()->hasRole('support')) readonly @endif
+
                                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
                                 >
-                                @if(auth()->user()->hasRole('Agent') || auth()->user()->hasRole('support'))
-                                    <input type="hidden" name="sip_password" value="">
-                                @endif
                             </div>
 
                             {{-- Roles --}}
-                            @if (!(auth()->user()->hasRole('Agent') || auth()->user()->hasRole('support')))
+                            @can('user.edit')
                                 <div>
                                     <x-inputs.combobox
                                         name="roles[]"
@@ -211,10 +193,10 @@
                                         value="{{ ucfirst($user->roles->pluck('name')->first()) }}"
                                         class="dark:bg-dark-900 shadow-theme-xs h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90" />
                                 </div>
-                            @endif
+                            @endcan
 
                             {{-- Status --}}
-                            @if (!(auth()->user()->hasRole('Agent') || auth()->user()->hasRole('support')))
+                            @can('user.edit')
                                 <div>
                                     <label for="is_active" class="block text-sm font-medium text-gray-700 dark:text-gray-400">
                                         {{ __('Status') }}
@@ -232,7 +214,7 @@
                                         value="{{ $user->is_active ? __('Enabled') : __('Disabled') }}"
                                         class="dark:bg-dark-900 shadow-theme-xs h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90" />
                                 </div>
-                            @endif
+                            @endcan
 
                             {!! ld_apply_filters('after_username_field', '', $user) !!}
                         </div>

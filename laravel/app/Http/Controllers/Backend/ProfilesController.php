@@ -29,10 +29,10 @@ class ProfilesController extends Controller
 
     public function update(Request $request): RedirectResponse
     {
-        $this->checkAuthorization(auth()->user(), ['profile.edit'], true);
+        $this->checkAuthorization(auth()->user(), ['profile.update'], true);
 
         // Prevent modification of super admin in demo mode.
-        $this->preventSuperAdminModification(auth()->user(), ['profile.edit']);
+        $this->preventSuperAdminModification(auth()->user(), ['profile.update']);
 
         $user = Auth::user();
 

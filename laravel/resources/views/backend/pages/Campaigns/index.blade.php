@@ -9,6 +9,7 @@
         <x-breadcrumbs :breadcrumbs="$breadcrumbs" />
 
         <div class="space-y-6">
+            @can('campaign.add')
             <div class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
                 <div class="p-5 space-y-6 border-t border-gray-100 dark:border-gray-800 sm:p-6">
                     <form action="{{ route('admin.campaigns.store') }}" method="POST" enctype="multipart/form-data" class="space-y-6">
@@ -91,6 +92,7 @@
                 </div>
             </div>
 
+            @endcan
             @if($campaigns->isNotEmpty())
                 <div class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
                     <div class="p-5 space-y-4 border-t border-gray-100 dark:border-gray-800 sm:p-6">
@@ -175,11 +177,14 @@
                                             <td class="px-4 py-4 align-top">
                                                 <div class="flex justify-center">
                                                     <x-buttons.action-buttons :label="__('Actions')" :show-label="false" align="right">
+                                                        @can('campaign.edit')
                                                         <x-buttons.action-item
                                                             :href="route('admin.campaigns.edit', $campaign)"
                                                             icon="pencil"
                                                             :label="__('Edit')"
                                                         />
+                                                        @endcan
+                                                        @can('campaign.delete')
                                                         <div x-data="{ deleteModalOpen: false }">
                                                             <x-buttons.action-item
                                                                 type="modal-trigger"
@@ -200,6 +205,7 @@
                                                                 confirmButtonText="{{ __('Yes, delete') }}"
                                                             />
                                                         </div>
+                                                        @endcan
                                                     </x-buttons.action-buttons>
                                                 </div>
                                             </td>

@@ -1,6 +1,6 @@
 /**
  * Admin routes for authentication, user, group, and carrier management
- * Access restricted to admin and superadmin roles
+ * Access controlled by assigned permissions
  */
 const express = require('express');
 const Joi = require('joi');
@@ -11,28 +11,13 @@ const authService = require('../services/authService');
 const userService = require('../services/userService');
 const groupService = require('../services/groupService');
 const carrierService = require('../services/carrierService');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, requirePermissions, requireInternalToken } = require('../middleware/auth');
 const config = require('../config');
 const { syncSipUser } = require('../lib/sipDirectoryConfig');
 const { authRateLimiter } = require('../middleware/rateLimiter');
 // End workers
 // Create router
 const router = express.Router();
-// Helper function to check for internal token
-const hasInternalToken = (req) => {
-  const token = config.internalTokens?.backendSync;
-  if (!token) {
-    return false;
-  }
-  return req.get('x-internal-token') === token;
-};
-// Middleware to allow internal token or admin authentication
-const allowInternalOrAdmin = (req, res, next) => {
-  if (hasInternalToken(req)) {
-    return next();
-  }
-  return authenticate(['admin', 'superadmin'])(req, res, next);
-};
 // Authentication routes
 // User management routes
 // Carrier management routes
@@ -71,12 +56,12 @@ router.post('/login', authRateLimiter, async (req, res) => {
   }
 });
 // User management routes
-router.get('/users', authenticate(['admin', 'superadmin']), async (_req, res) => {
+router.get('/users', authenticate(), requirePermissions(['user.view']), async (_req, res) => {
   const users = await userService.listUsers();
   return res.json(users);
 });
 
-router.get('/users/:userId', authenticate(['admin', 'superadmin']), async (req, res) => {
+router.get('/users/:userId', authenticate(), requirePermissions(['user.view']), async (req, res) => {
   try {
     const user = await userService.getUserById(req.params.userId);
     if (!user || user.role !== 'user') {
@@ -88,7 +73,7 @@ router.get('/users/:userId', authenticate(['admin', 'superadmin']), async (req, 
   }
 });
 // Create new user
-router.post('/users', authenticate(['admin', 'superadmin']), async (req, res) => {
+router.post('/users', authenticate(), requirePermissions(['user.create']), async (req, res) => {
   const schema = Joi.object({
     fullName: Joi.string().required(),
     email: Joi.string().email({ tlds: { allow: false } }).required(),
@@ -113,7 +98,7 @@ router.post('/users', authenticate(['admin', 'superadmin']), async (req, res) =>
   }
 });
 // Sync (create or update) user
-router.post('/users/sync', allowInternalOrAdmin, async (req, res) => {
+router.post('/users/sync', requireInternalToken, async (req, res) => {
   const schema = Joi.object({
     fullName: Joi.string().allow('', null),
     email: Joi.string().email({ tlds: { allow: false } }).required(),
@@ -147,7 +132,7 @@ router.post('/users/sync', allowInternalOrAdmin, async (req, res) => {
   }
 });
 // Update user
-router.put('/users/:userId', authenticate(['admin', 'superadmin']), async (req, res) => {
+router.put('/users/:userId', authenticate(), requirePermissions(['user.edit']), async (req, res) => {
   const schema = Joi.object({
     fullName: Joi.string().optional(),
     email: Joi.string().email({ tlds: { allow: false } }).optional(),
@@ -174,7 +159,7 @@ router.put('/users/:userId', authenticate(['admin', 'superadmin']), async (req, 
   }
 });
 // Delete user
-router.delete('/users/:userId', authenticate(['admin', 'superadmin']), async (req, res) => {
+router.delete('/users/:userId', authenticate(), requirePermissions(['user.delete']), async (req, res) => {
   try {
     await userService.deleteUser(req.params.userId);
     return res.status(204).send();
@@ -183,12 +168,12 @@ router.delete('/users/:userId', authenticate(['admin', 'superadmin']), async (re
   }
 });
 // Group management routes
-router.get('/groups', authenticate(['admin', 'superadmin']), async (_req, res) => {
+router.get('/groups', authenticate(), requirePermissions(['user.view']), async (_req, res) => {
   const groups = await groupService.listGroups();
   return res.json(groups);
 });
 // Create new group
-router.post('/groups', authenticate(['admin', 'superadmin']), async (req, res) => {
+router.post('/groups', authenticate(), requirePermissions(['user.create']), async (req, res) => {
   const schema = Joi.object({
     name: Joi.string().required(),
     permissions: Joi.array().items(Joi.string()).default([])
@@ -203,12 +188,12 @@ router.post('/groups', authenticate(['admin', 'superadmin']), async (req, res) =
   return res.status(201).json(group);
 });
 // Carrier management routes
-router.get('/carriers', authenticate(['admin', 'superadmin']), async (_req, res) => {
+router.get('/carriers', authenticate(), requirePermissions(['carrier.view']), async (_req, res) => {
   const carriers = await carrierService.listCarriers();
   return res.json(carriers);
 });
 // Get carrier by ID
-router.get('/carriers/:carrierId', authenticate(['admin', 'superadmin']), async (req, res) => {
+router.get('/carriers/:carrierId', authenticate(), requirePermissions(['carrier.view']), async (req, res) => {
   const carrier = await carrierService.getCarrierById(req.params.carrierId);
   if (!carrier) {
     return res.status(404).json({ message: 'Carrier not found' });
@@ -216,7 +201,7 @@ router.get('/carriers/:carrierId', authenticate(['admin', 'superadmin']), async 
   return res.json(carrier);
 });
 // Create new carrier
-router.post('/carriers', authenticate(['admin', 'superadmin']), async (req, res) => {
+router.post('/carriers', authenticate(), requirePermissions(['carrier.create']), async (req, res) => {
   const schema = Joi.object({
     name: Joi.string().required(),
     callerId: Joi.string().allow('', null),
@@ -255,7 +240,7 @@ router.post('/carriers', authenticate(['admin', 'superadmin']), async (req, res)
   }
 });
 // Update carrier
-router.put('/carriers/:carrierId', authenticate(['admin', 'superadmin']), async (req, res) => {
+router.put('/carriers/:carrierId', authenticate(), requirePermissions(['carrier.edit']), async (req, res) => {
   const schema = Joi.object({
     name: Joi.string().optional(),
     callerId: Joi.string().allow('', null).optional(),
@@ -296,7 +281,7 @@ router.put('/carriers/:carrierId', authenticate(['admin', 'superadmin']), async 
   }
 });
 // Delete carrier
-router.delete('/carriers/:carrierId', authenticate(['admin', 'superadmin']), async (req, res) => {
+router.delete('/carriers/:carrierId', authenticate(), requirePermissions(['carrier.delete']), async (req, res) => {
   try {
     await carrierService.deleteCarrier(req.params.carrierId);
     return res.status(204).send();
@@ -308,7 +293,7 @@ router.delete('/carriers/:carrierId', authenticate(['admin', 'superadmin']), asy
   }
 });
 // Add prefix to carrier
-router.post('/carriers/:carrierId/prefixes', authenticate(['admin', 'superadmin']), async (req, res) => {
+router.post('/carriers/:carrierId/prefixes', authenticate(), requirePermissions(['carrier.edit']), async (req, res) => {
   const schema = Joi.object({
     prefix: Joi.string().required(),
     callerId: Joi.string().required()

@@ -67,7 +67,7 @@ return [
 
         'recordings' => [
             'driver' => env('RECORDINGS_DRIVER', 'local'),
-            'root' => env('RECORDINGS_PATH', base_path('../recordings')),
+            'root' => env('RECORDINGS_PATH', is_dir('/var/recordings') ? '/var/recordings' : base_path('../recordings')),
             'url' => env('RECORDINGS_URL', env('APP_URL').'/recordings'),
             'visibility' => env('RECORDINGS_VISIBILITY', 'private'),
         ],

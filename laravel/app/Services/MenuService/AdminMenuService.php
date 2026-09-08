@@ -168,7 +168,7 @@ $this->addMenuItem([
     'route' => route('admin.dialer.index'),
     'active' => Route::is('admin.dialer.*'),
     'priority' => 10,
-    'permissions' => [], // empty => everyone (but still must be logged in)
+    'permissions' => ['dialer.create_call'],
 ]);
 
 //recording menu
@@ -184,42 +184,37 @@ $this->addMenuItem([
 ]);
 
 
-$user = auth()->user();
-$isAdmin = $user && $user->hasAnyRole(['Admin', 'Superadmin']); // or hasRole('Superadmin') etc.
-
-if ($isAdmin) {
     $this->addMenuItem([
         'label' => __('Carrier'),
         'icon' => 'user.svg',
         'id' => 'carrier-submenu',
         'active' => Route::is('admin.carrier.*'),
         'priority' => 26,
-        'permissions' => [],
+        'permissions' => ['carrier.view', 'carrier.create'],
         'children' => [
             [
                 'label' => __('View carrier'),
                 'route' => route('admin.carrier.index'),
                 'active' => Route::is('admin.carrier.index'),
                 'priority' => 10,
-                'permissions' => [],
+                'permissions' => ['carrier.view'],
             ],
             [
                 'label' => __('New Carrier'),
                 'route' => route('admin.carrier.create'),
                 'active' => Route::is('admin.carrier.create'),
                 'priority' => 20,
-                'permissions' => [],
+                'permissions' => ['carrier.create'],
             ],
             [
                 'label' => __('Inbound DIDs'),
                 'route' => route('admin.carrier.inbound-dids.index'),
                 'active' => Route::is('admin.carrier.inbound-dids.*'),
                 'priority' => 30,
-                'permissions' => [],
+                'permissions' => ['carrier.view'],
             ],
         ],
     ]);
-}
         $this->addMenuItem([
             'label' => __('Modules'),
             'icon' => 'three-dice.svg',
@@ -236,14 +231,14 @@ if ($isAdmin) {
             'id' => 'settings-submenu',
             'active' => Route::is('admin.settings.*') || Route::is('admin.translations.*'),
             'priority' => 1,
-            'permissions' => ['settings.edit', 'translations.view'],
+            'permissions' => ['settings.view', 'translations.view'],
             'children' => [
                 [
                     'label' => __('General Settings'),
                     'route' => route('admin.settings.index'),
                     'active' => Route::is('admin.settings.index'),
                     'priority' => 20,
-                    'permissions' => 'settings.edit',
+                    'permissions' => 'settings.view',
                 ],
                 [
                     'label' => __('Translations'),

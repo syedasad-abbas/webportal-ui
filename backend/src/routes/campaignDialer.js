@@ -1,15 +1,11 @@
 const express = require('express');
 const Joi = require('joi');
 const { authenticate, requirePermissions } = require('../middleware/auth');
-const config = require('../config');
 const campaignDialerService = require('../services/campaignDialerService');
 
 const router = express.Router();
-const dialerRoles = Array.isArray(config.frontend?.allowedRoles)
-  ? config.frontend.allowedRoles
-  : [];
-const authMiddleware = dialerRoles.length ? authenticate(dialerRoles) : authenticate();
-const dialPermission = config.permissions?.callDial || 'dial';
+const authMiddleware = authenticate();
+const dialPermission = 'campaign.play';
 
 router.post('/start', authMiddleware, requirePermissions([dialPermission]), async (req, res) => {
   const schema = Joi.object({

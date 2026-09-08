@@ -30,8 +30,8 @@
                             <span class="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-white">
                                 {{ basename($recording->recording_path) }}
                             </span>
-                            <audio controls class="w-full md:w-56">
-                                <source src="{{ $recording->recording_url ?? '' }}" type="audio/mpeg">
+                            <audio controls preload="none" class="w-full md:w-56">
+                                <source src="{{ $recording->recording_url ?? '' }}">
                             </audio>
                         </div>
                     @else

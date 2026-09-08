@@ -198,29 +198,6 @@ class UsersController extends Controller
 
         $this->preventSuperAdminModification($user);
 
-        // Agent/support: password-only updates
-        if (auth()->user()->hasRole('Agent') || auth()->user()->hasRole('support')) {
-            if ($request->filled('password')) {
-                $user->password = Hash::make($request->password);
-
-                $user = ld_apply_filters('user_update_before_save', $user, $request);
-                $user->save();
-                $user = ld_apply_filters('user_update_after_save', $user, $request);
-
-                ld_do_action('user_update_after', $user);
-
-                $this->storeActionLog(ActionType::UPDATED, ['user' => $user]);
-                session()->flash('success', __('Password has been updated.'));
-                $this->syncBackendUser($request, $user, $request->password);
-
-                return back();
-            }
-
-            session()->flash('info', __('No changes were made.'));
-            return back();
-        }
-
-        // Admin/other roles: update everything
         // Full Name removed - use only external_name
         $user->external_name = $request->input('external_name');
         $user->internal_name = $request->input('internal_name');
@@ -256,13 +233,7 @@ class UsersController extends Controller
         ld_do_action('user_update_after', $user);
 
         // Role update
-        $user->roles()->detach();
-        if ($request->filled('roles')) {
-            $roles = array_filter((array) $request->input('roles', []));
-            if (!empty($roles)) {
-                $user->assignRole($roles);
-            }
-        }
+        $user->syncRoles(array_filter((array) $request->input('roles', [])));
 
         $this->storeActionLog(ActionType::UPDATED, ['user' => $user]);
         session()->flash('success', __('User has been updated.'));

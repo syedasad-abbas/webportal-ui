@@ -171,12 +171,12 @@ class ContactCenterController extends Controller
 
     private function authorizeContacts(Request $request): void
     {
-        abort_unless($request->user()?->can('contacts.view') || $request->user()?->hasAnyRole(['Admin', 'Superadmin']), 403);
+        abort_unless($request->user()?->can('contacts.view'), 403);
     }
 
     private function authorizeContactPermission(Request $request, string $permission): void
     {
-        abort_unless($request->user()?->can($permission) || $request->user()?->hasAnyRole(['Admin', 'Superadmin']), 403);
+        abort_unless($request->user()?->can($permission), 403);
     }
 
     private function validateContactForm(Request $request): array

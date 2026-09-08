@@ -159,7 +159,8 @@
             let socket;
             try {
                 socket = io(wsUrl, {
-                    transports: ['websocket', 'polling']
+                    transports: ['websocket', 'polling'],
+                    auth: { token: @json(session('admin_token')) }
                 });
             } catch (error) {
                 console.warn('Unable to establish dashboard socket connection', error);

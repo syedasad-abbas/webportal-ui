@@ -40,17 +40,29 @@ class RecordingController extends Controller
         ]);
     }
 
+    public function play(CallLog $callLog)
+    {
+        Gate::authorize('recording.view');
+
+        $disk = Storage::disk($this->recordingsDisk());
+        $path = $callLog->recordingStoragePath();
+        abort_unless($path && $disk->exists($path), 404, __('Recording file not found on disk.'));
+
+        return response()->file($disk->path($path));
+    }
+
     public function download(CallLog $callLog)
     {
         Gate::authorize('recording.download');
 
-        if (! $callLog->recording_path) {
+        $path = $callLog->recordingStoragePath();
+        if (! $path) {
             abort(404, __('Recording not found.'));
         }
 
         $disk = $this->recordingsDisk();
 
-        if (! Storage::disk($disk)->exists($callLog->recording_path)) {
+        if (! Storage::disk($disk)->exists($path)) {
             abort(404, __('Recording file not found on disk.'));
         }
 
@@ -59,7 +71,7 @@ class RecordingController extends Controller
             basename($callLog->recording_path)
         );
 
-        return Storage::disk($disk)->download($callLog->recording_path, $downloadName);
+        return Storage::disk($disk)->download($path, $downloadName);
     }
 
     public function destroy(CallLog $callLog)
@@ -68,8 +80,9 @@ class RecordingController extends Controller
 
         $disk = $this->recordingsDisk();
 
-        if ($callLog->recording_path && Storage::disk($disk)->exists($callLog->recording_path)) {
-            Storage::disk($disk)->delete($callLog->recording_path);
+        $path = $callLog->recordingStoragePath();
+        if ($path && Storage::disk($disk)->exists($path)) {
+            Storage::disk($disk)->delete($path);
         }
 
         $callLog->delete();

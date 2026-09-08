@@ -14,6 +14,8 @@ class EditorController extends Controller
      */
     public function upload(Request $request)
     {
+        abort_unless($request->user()?->hasAnyPermission(['post.create', 'post.edit', 'blog.create', 'blog.edit']), 403);
+
         // Validate the uploaded file
         $validated = $request->validate([
             'file' => 'required|file|mimes:jpg,jpeg,png,gif|max:2048', // Allow only image files up to 2MB

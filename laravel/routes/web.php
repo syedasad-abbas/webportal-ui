@@ -100,6 +100,7 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['auth']], 
     // Recordings
     Route::get('/recordings', [RecordingController::class, 'index'])->name('recordings.index');
     Route::get('/recordings/search', [RecordingController::class, 'search'])->name('recordings.search');
+    Route::get('/recordings/{callLog}/play', [RecordingController::class, 'play'])->name('recordings.play');
     Route::get('/recordings/{callLog}/download', [RecordingController::class, 'download'])->name('recordings.download');
     Route::delete('/recordings/{callLog}', [RecordingController::class, 'destroy'])->name('recordings.destroy');
 
@@ -171,7 +172,7 @@ Route::delete('/carrier/{carrierId}', [CarrierController::class, 'destroy'])->na
             Route::get('/dialer/campaign/next', [DialerController::class, 'nextLead'])->name('dialer.campaign.next');
         });
 
-        Route::middleware('can:campaign.add')->group(function () {
+        Route::group([], function () {
             Route::get('/campaigns', [CampaignController::class, 'index'])->name('campaigns.index');
             Route::post('/campaigns/store', [CampaignController::class, 'store'])->name('campaigns.store');
             Route::get('/campaigns/{campaign}/status', [CampaignController::class, 'status'])->name('campaigns.status');

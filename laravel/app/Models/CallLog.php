@@ -88,25 +88,32 @@ class CallLog extends Model
         return $query;
     }
 
-    public function getRecordingUrlAttribute(): ?string
+    public function recordingStoragePath(): ?string
     {
         if (! $this->recording_path) {
             return null;
         }
 
-        $disk = config('filesystems.recordings_disk', 'recordings');
-
-        try {
-            if (! Storage::disk($disk)->exists($this->recording_path)) {
-                return null;
+        $path = $this->recording_path;
+        $root = rtrim(Storage::disk(config('filesystems.recordings_disk', 'recordings'))->path(''), '/');
+        foreach (array_unique([$root, '/var/recordings']) as $prefix) {
+            if (str_starts_with($path, $prefix.'/')) {
+                $path = substr($path, strlen($prefix) + 1);
+                break;
             }
+        }
 
-            $root = rtrim(Storage::disk($disk)->path(''), '/').'/';
-            $relativePath = ltrim(str_replace($root, '', $this->recording_path), '/');
-
-            return Storage::disk($disk)->url($relativePath);
-        } catch (\Throwable $e) {
+        if (str_starts_with($path, '/') || in_array('..', explode('/', $path), true)) {
             return null;
         }
+
+        return $path;
+    }
+
+    public function getRecordingUrlAttribute(): ?string
+    {
+        return $this->recording_path
+            ? route('admin.recordings.play', $this)
+            : null;
     }
 }
