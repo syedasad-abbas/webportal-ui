@@ -13,15 +13,27 @@ mkdir -p /var/www/html/storage/logs
 chown -R www-data:www-data /var/www/html/storage
 chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
-# A development Vite marker must never override the compiled asset manifest.
-rm -f /var/www/html/public/hot
-
-if [ "${RUN_MIGRATIONS:-false}" = "true" ]; then
-    php /var/www/html/artisan migrate --force
+# Ensure recordings are web-accessible via /recordings
+if [ ! -e /var/www/html/public/recordings ] && [ -d /var/recordings ]; then
+    ln -s /var/recordings /var/www/html/public/recordings
 fi
 
-# Cache Laravel configuration, routes, events, and views for production.
-php /var/www/html/artisan optimize
+if [ "${APP_ENV:-production}" = "local" ]; then
+  echo "[entrypoint] Development mode detected, skipping production optimization"
+  if [ ! -f /var/www/html/public/hot ]; then
+    echo "http://localhost:5173" > /var/www/html/public/hot
+  fi
+else
+  # A development Vite marker must never override the compiled asset manifest.
+  rm -f /var/www/html/public/hot
+
+  if [ "${RUN_MIGRATIONS:-false}" = "true" ]; then
+      php /var/www/html/artisan migrate --force
+  fi
+
+  # Cache Laravel configuration, routes, events, and views for production.
+  php /var/www/html/artisan optimize
+fi
 
 # Artisan creates cache files as root during startup; Apache must be able to update them.
 chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache

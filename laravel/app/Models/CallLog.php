@@ -101,7 +101,10 @@ class CallLog extends Model
                 return null;
             }
 
-            return Storage::disk($disk)->url($this->recording_path);
+            $root = rtrim(Storage::disk($disk)->path(''), '/').'/';
+            $relativePath = ltrim(str_replace($root, '', $this->recording_path), '/');
+
+            return Storage::disk($disk)->url($relativePath);
         } catch (\Throwable $e) {
             return null;
         }

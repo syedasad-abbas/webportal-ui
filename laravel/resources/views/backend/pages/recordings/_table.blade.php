@@ -3,7 +3,7 @@
         <tr class="border-b border-gray-100 dark:border-gray-700">
             <th class="px-5 py-3 font-semibold">{{ __('Caller ID') }}</th>
             <th class="px-5 py-3 font-semibold">{{ __('Destination') }}</th>
-            <th class="px-5 py-3 font-semibold">{{ __('User ID') }}</th>
+            <th class="px-5 py-3 font-semibold">{{ __('User') }}</th>
             <th class="px-5 py-3 font-semibold">{{ __('Date & Time') }}</th>
             <th class="px-5 py-3 font-semibold">{{ __('Duration') }}</th>
             <th class="px-5 py-3 font-semibold">{{ __('Recording') }}</th>
@@ -15,7 +15,7 @@
             <tr class="border-b border-gray-100 dark:border-gray-800">
                 <td class="px-5 py-4">{{ $recording->caller_id ?? '—' }}</td>
                 <td class="px-5 py-4">{{ $recording->destination ?? '—' }}</td>
-                <td class="px-5 py-4">#{{ $recording->user_id ?? '—' }}</td>
+                <td class="px-5 py-4">{{ $recording->user->external_name ?? $recording->user->name ?? '—' }}</td>
                 <td class="px-5 py-4">{{ $recording->created_at?->format('Y-m-d H:i') ?? '—' }}</td>
                 <td class="px-5 py-4">
                     @if($recording->duration_seconds)

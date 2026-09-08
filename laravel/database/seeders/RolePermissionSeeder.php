@@ -44,6 +44,15 @@ class RolePermissionSeeder extends Seeder
             \Spatie\Permission\Models\Permission::query()->where('guard_name', 'web')->get()
         );
 
+        // Ensure Admin role can access recordings.
+        if (isset($roles['Admin'])) {
+            $roles['Admin']->givePermissionTo([
+                'recording.view',
+                'recording.download',
+                'recording.delete',
+            ]);
+        }
+
         // Assign superadmin role to superadmin user if exists
         $user = User::where('internal_name', 'superadmin')->first();
         if ($user) {

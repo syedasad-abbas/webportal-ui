@@ -3,7 +3,7 @@
 @section('title', __('Recordings'))
 
 @section('admin-content')
-    <div class="p-4 mx-auto max-w-6xl md:p-6">
+    <div class="p-4 mx-auto md:p-6">
         <div class="mb-4">
             <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">{{ __('Recordings') }}</h1>
             <p class="text-sm text-gray-500 dark:text-gray-400">
