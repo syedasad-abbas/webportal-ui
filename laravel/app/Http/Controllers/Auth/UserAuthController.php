@@ -35,7 +35,9 @@ class UserAuthController extends Controller
             // Keep backend permissions/role in sync on every successful Laravel login.
             $this->syncBackendUser($request);
 
-            $response = Http::baseUrl(config('services.backend.url'))
+            $response = Http::withHeaders([
+                'x-internal-token' => config('services.backend.internal_token'),
+            ])->baseUrl(config('services.backend.url'))
                 ->post('/admin/login', [
                     'email' => $request->input('email'),
                     'password' => $request->input('password'),
@@ -48,7 +50,9 @@ class UserAuthController extends Controller
             } else {
                 $synced = $this->syncBackendUser($request);
                 if ($synced) {
-                    $retry = Http::baseUrl(config('services.backend.url'))
+                    $retry = Http::withHeaders([
+                        'x-internal-token' => config('services.backend.internal_token'),
+                    ])->baseUrl(config('services.backend.url'))
                         ->post('/admin/login', [
                             'email' => $request->input('email'),
                             'password' => $request->input('password'),

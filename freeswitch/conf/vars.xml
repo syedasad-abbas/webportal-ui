@@ -283,8 +283,8 @@
 
   <!-- The external profile runs on the host network. Advertise its detected
        address for both SIP signaling and RTP/SDP without pinning an IP. -->
-  <X-PRE-PROCESS cmd="set" data="external_rtp_ip=$${local_ip_v4}"/>
-  <X-PRE-PROCESS cmd="set" data="external_sip_ip=$${local_ip_v4}"/>
+  <X-PRE-PROCESS cmd="set" data="external_rtp_ip=87.99.140.75"/>
+  <X-PRE-PROCESS cmd="set" data="external_sip_ip=87.99.140.75"/>
 
   <!-- unroll-loops
        Used to turn on sip loopback unrolling.

@@ -28,6 +28,11 @@ class CampaignStatsUpdate extends Command
      */
     public function handle()
     {
+        if (filter_var(env('EXT_DB_ENABLED', false), FILTER_VALIDATE_BOOLEAN) !== true) {
+            $this->info('External Asterisk database is disabled; skipping campaign stats update.');
+            return self::SUCCESS;
+        }
+
         // Set your target user (can be looped later for all users if needed)
         $targetUser = '2238';
         $targetDate = '2025-06-16';

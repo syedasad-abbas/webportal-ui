@@ -18,7 +18,7 @@ certificate valid for its public hostname.
 
 The host firewall/router must allow the intended sources to reach SIP
 `5060/udp,tcp` (WebRTC/internal), SIP `5080/udp,tcp` (carrier/external), WebSocket
-`5066/tcp` or WSS `7443/tcp`, and RTP `40000-41000/udp`. FreeSWITCH dynamically
+`5066/tcp` or WSS `7443/tcp`, and RTP `4000-6000/udp`. FreeSWITCH dynamically
 selects media ports from that RTP range for each call; port `5080` carries SIP
 signaling only. Port `8021/tcp` is
 the FreeSWITCH control socket: allow it only from the Docker application subnet,

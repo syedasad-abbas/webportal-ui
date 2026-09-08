@@ -1,6 +1,9 @@
 #!/bin/sh
 # Entrypoint script for FreeSWITCH container
 
+# Apply the ESL password before FreeSWITCH starts.
+/usr/local/bin/configure-event-socket.sh || exit 1
+
 # FreeSWITCH uses host networking, so it is the authoritative place to detect
 # the host machine's LAN address. Publish that address through the shared
 # gateway volume for the bridged backend container to use for ESL.

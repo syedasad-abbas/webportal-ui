@@ -30,8 +30,8 @@ RUN apt-get update \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j"$(nproc)" gd pdo_mysql pdo_pgsql zip \
     && a2enmod rewrite \
-    && sed -i 's/Listen 80/Listen 18080/g' /etc/apache2/ports.conf \
-    && sed -i 's/:80/:18080/g' /etc/apache2/sites-available/*.conf \
+    && sed -i 's/Listen 80/Listen 8080/g' /etc/apache2/ports.conf \
+    && sed -i 's/:80/:8080/g' /etc/apache2/sites-available/*.conf \
     && rm -rf /var/lib/apt/lists/*
 
 # The backend only needs the Node runtime. npm is used exclusively in build stages.
@@ -70,9 +70,9 @@ RUN chmod +x /usr/local/bin/unified-entrypoint.sh \
         /var/www/html/storage/logs \
     && chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
-EXPOSE 18080 4000
+EXPOSE 8080 4000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-  CMD node -e "Promise.all([fetch('http://127.0.0.1:18080'),fetch('http://127.0.0.1:4000/health')]).then(r=>process.exit(r.every(x=>x.ok)?0:1)).catch(()=>process.exit(1))"
+    CMD node -e "Promise.all([fetch('http://127.0.0.1:8080'),fetch('http://127.0.0.1:4000/health')]).then(r=>process.exit(r.every(x=>x.ok)?0:1)).catch(()=>process.exit(1))"
 
 ENTRYPOINT ["/usr/local/bin/unified-entrypoint.sh"]

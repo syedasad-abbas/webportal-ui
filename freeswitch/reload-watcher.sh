@@ -9,14 +9,14 @@ echo "[watcher] Starting XML reload watcher..."
 
 # Initial reload to ensure FreeSWITCH picks up existing files
 sleep 5
-fs_cli -x "reloadxml" > /dev/null 2>&1
+fs_cli -p "${EVENT_SOCKET_PASSWORD:-ClueCon}" -x "reloadxml" > /dev/null 2>&1
 echo "[watcher] Initial reload complete"
 
 # Watch for trigger file and reload
 while true; do
   if [ -f "$TRIGGER_FILE" ]; then
     rm -f "$TRIGGER_FILE"
-    fs_cli -x "reloadxml" > /dev/null 2>&1
+    fs_cli -p "${EVENT_SOCKET_PASSWORD:-ClueCon}" -x "reloadxml" > /dev/null 2>&1
     echo "[watcher] XML reloaded"
   fi
   sleep 2

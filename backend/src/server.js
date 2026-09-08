@@ -22,7 +22,7 @@ const { csrfProtection, validateCsrfToken, CSRF_HEADER_NAME } = require('./middl
 
   const addOrigin = (url) => {
     if (!url) return;
-    let origin = url.replace(/\/$/, '');
+    const origin = new URL(url).origin;
     if (!seen.has(origin)) {
       seen.add(origin);
       origins.add(origin);
@@ -31,7 +31,7 @@ const { csrfProtection, validateCsrfToken, CSRF_HEADER_NAME } = require('./middl
 
   const addOriginWithPort = (url, port) => {
     if (!url) return;
-    let origin = url.replace(/\/$/, '');
+    const origin = new URL(url).origin;
     const urlObj = new URL(origin);
     const hostWithPort = `${urlObj.protocol}//${urlObj.hostname}:${port}`;
     if (!seen.has(hostWithPort)) {

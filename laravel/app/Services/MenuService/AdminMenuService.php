@@ -220,32 +220,6 @@ if ($isAdmin) {
         ],
     ]);
 }
-   // Leads Menu with Submenu
-$this->addMenuItem([
-    'label'     => __('Leads'),
-    'icon'      => 'document-text.svg',
-    'id'        => 'leads-submenu',
-    'active'    => Route::is('admin.leads.*'),
-    'priority'  => 18,
-    'permissions' => ['leads.view'],
-    'children'  => [
-        [
-            'label'     => __('All Leads'),
-            'route'     => route('admin.leads.index'),
-            'active'    => Route::is('admin.leads.index'),
-            'priority'  => 10,
-            'permissions' => 'leads.view',
-        ],
-        [
-            'label'     => __('New Lead'),
-            'route'     => route('admin.leads.create'),
-            'active'    => Route::is('admin.leads.create'),
-            'priority'  => 20,
-            'permissions' => 'leads.create',
-        ],
-    ],
-]);
-
         $this->addMenuItem([
             'label' => __('Modules'),
             'icon' => 'three-dice.svg',

@@ -39,6 +39,11 @@ class RolePermissionSeeder extends Seeder
         $this->command->info('Creating predefined roles...');
         $roles = $this->rolesService->createPredefinedRoles();
 
+        // Superadmin must retain every permission, including permissions added by migrations.
+        $roles['superadmin']->syncPermissions(
+            \Spatie\Permission\Models\Permission::query()->where('guard_name', 'web')->get()
+        );
+
         // Assign superadmin role to superadmin user if exists
         $user = User::where('internal_name', 'superadmin')->first();
         if ($user) {

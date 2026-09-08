@@ -7,3 +7,18 @@
 .env.production
 .env.production.local
 *.env.local
+
+# Node dependencies
+node_modules/
+
+# Let's Encrypt certificates and private keys
+docker/nginx/letsencrypt/
+
+# Call recordings / runtime data
+recordings/
+
+# Laravel dependencies
+laravel/vendor/
+
+# Logs
+*.log

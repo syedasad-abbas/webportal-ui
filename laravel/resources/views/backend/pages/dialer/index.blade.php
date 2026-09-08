@@ -644,6 +644,7 @@
                 </div>
 
                 <audio id="dialer-audio" class="hidden" autoplay playsinline></audio>
+                <button id="dialer-enable-audio" type="button" class="hidden rounded-lg bg-blue-600 px-4 py-2 text-white">{{ __('Enable audio') }}</button>
             </section>
 
             <aside id="contact-workspace-panel" class="connectpro-contact-workspace min-w-0 border-0 bg-transparent p-3 shadow-none sm:p-5">
@@ -1932,6 +1933,15 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
+    const enableAudioButton = document.getElementById('dialer-enable-audio');
+    enableAudioButton?.addEventListener('click', () => {
+        void webRtcClient?.resumeAudio();
+    });
+    window.addEventListener('dialer:audio-status', (event) => {
+        updateBrowserAudioStatus(event.detail.message, event.detail.hasError);
+        enableAudioButton?.classList.toggle('hidden', !event.detail.playbackBlocked);
+    });
+
     const updateWebPhoneState = (state, status = 'ready') => {
         if (webPhoneStateEl) webPhoneStateEl.textContent = state;
         if (!webPhoneStateDotEl) return;
@@ -1963,7 +1973,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 clearTimeout(browserAudioRetryTimer);
                 browserAudioRetryTimer = null;
             }
-            updateBrowserAudioStatus('Browser audio connected');
+            updateBrowserAudioStatus('Waiting for browser audio…');
         } catch (error) {
             console.error('Failed to connect browser audio', error);
             browserAudioActive = false;
@@ -2017,7 +2027,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
         if (browserAudioActive) {
-            updateBrowserAudioStatus(muted ? 'Microphone muted' : 'Browser audio connected');
+            updateBrowserAudioStatus(muted ? 'Microphone muted' : 'Microphone enabled');
         }
     };
 

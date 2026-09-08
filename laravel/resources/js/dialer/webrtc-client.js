@@ -32,6 +32,85 @@ class DialerWebRTC {
         this.pendingMute = false;
         this.reconnectTimer = null;
         this.shouldReconnect = true;
+        this.mediaTimer = null;
+        this.mediaSession = null;
+        this.playbackBlocked = false;
+    }
+
+    reportAudioStatus(message, hasError = false) {
+        window.dispatchEvent(new CustomEvent("dialer:audio-status", {
+            detail: { message, hasError, playbackBlocked: this.playbackBlocked }
+        }));
+    }
+
+    async resumeAudio() {
+        const session = this.simpleUser?.session;
+        if (!session || !this.remoteAudio?.srcObject) return;
+        this.remoteAudio.muted = false;
+        try {
+            await this.remoteAudio.play();
+            if (this.mediaSession !== session) return;
+            this.playbackBlocked = false;
+            this.reportAudioStatus("Audio playback enabled; checking incoming audio…");
+        } catch (error) {
+            if (this.mediaSession !== session) return;
+            this.playbackBlocked = true;
+            this.reportAudioStatus("Click Enable audio to hear the call.", true);
+            console.warn("Remote audio playback failed", error);
+        }
+    }
+
+    stopMediaMonitor() {
+        window.clearInterval(this.mediaTimer);
+        this.mediaTimer = null;
+        this.mediaSession = null;
+        this.playbackBlocked = false;
+        this.reportAudioStatus("Browser audio idle");
+    }
+
+    startMediaMonitor() {
+        this.stopMediaMonitor();
+        const session = this.simpleUser?.session;
+        const peer = session?.sessionDescriptionHandler?.peerConnection;
+        if (!peer) return;
+        this.mediaSession = session;
+        let lastPackets = 0;
+        let lastReceivedAt = Date.now();
+        let checking = false;
+        this.reportAudioStatus("Checking browser audio…");
+        void this.resumeAudio();
+        this.mediaTimer = window.setInterval(async () => {
+            if (checking || this.mediaSession !== session) return;
+            checking = true;
+            try {
+                const stats = await peer.getStats();
+                if (this.mediaSession !== session) return;
+                let packets = 0;
+                stats.forEach((entry) => {
+                    if (entry.type === "inbound-rtp" && (entry.kind || entry.mediaType) === "audio") {
+                        packets += entry.packetsReceived || 0;
+                    }
+                });
+                const received = packets > lastPackets;
+                if (received) lastReceivedAt = Date.now();
+                lastPackets = packets;
+                if (["failed", "disconnected", "closed"].includes(peer.connectionState)) {
+                    this.reportAudioStatus("Browser audio connection lost.", true);
+                } else if (this.playbackBlocked) {
+                    this.reportAudioStatus("Click Enable audio to hear the call.", true);
+                } else if (Date.now() - lastReceivedAt > 10000) {
+                    this.reportAudioStatus("No incoming audio packets; check the media connection.", true);
+                } else if (received && !this.remoteAudio.paused && !this.remoteAudio.muted) {
+                    this.reportAudioStatus("Receiving browser audio");
+                } else if (this.remoteAudio.srcObject && this.remoteAudio.paused) {
+                    void this.resumeAudio();
+                }
+            } catch (error) {
+                console.warn("Unable to inspect incoming audio", error);
+            } finally {
+                checking = false;
+            }
+        }, 2000);
     }
 
     get isConfigured() {
@@ -39,6 +118,7 @@ class DialerWebRTC {
     }
 
     async resetClient() {
+        this.stopMediaMonitor();
         if (!this.simpleUser) {
             return;
         }
@@ -141,6 +221,8 @@ class DialerWebRTC {
                 const aor = `sip:${this.username}@${this.domain}`;
                 const options = {
                     aor,
+                    // This wrapper owns reconnects; avoid a competing SIP.js retry loop.
+                    reconnectionAttempts: 0,
                     media: {
                         constraints: { audio: true, video: false },
                         remote: { audio: this.remoteAudio }
@@ -149,13 +231,13 @@ class DialerWebRTC {
                         authorizationUsername: this.username,
                         authorizationPassword: this.password,
                         transportOptions: {
-                            server: this.wsUrl
+                            server: this.wsUrl,
+                            connectionTimeout: 15,
+                            keepAliveInterval: 25
                         },
                         sessionDescriptionHandlerFactoryOptions: {
-                            peerConnectionOptions: {
-                                rtcConfiguration: {
-                                    iceServers: this.iceServers
-                                }
+                            peerConnectionConfiguration: {
+                                iceServers: this.iceServers
                             }
                         }
                     },
@@ -168,6 +250,7 @@ class DialerWebRTC {
                             }
                         },
                         onServerDisconnect: () => {
+                            this.stopMediaMonitor();
                             this.connected = false;
                             this.currentConference = null;
                             this.scheduleReconnect();
@@ -181,9 +264,12 @@ class DialerWebRTC {
                             }));
                         },
                         onCallAnswered: () => {
+                            this.startMediaMonitor();
+                            void this.applyMuteState(this.pendingMute);
                             window.dispatchEvent(new CustomEvent("dialer:sip-answered"));
                         },
                         onCallHangup: () => {
+                            this.stopMediaMonitor();
                             this.currentConference = null;
                             window.dispatchEvent(new CustomEvent("dialer:sip-hangup"));
                         }
@@ -232,6 +318,7 @@ class DialerWebRTC {
     }
 
     async leaveConference() {
+        this.stopMediaMonitor();
         return this.withSessionOp(async () => {
             if (!this.simpleUser) {
                 return;

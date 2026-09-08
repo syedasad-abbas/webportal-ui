@@ -28,7 +28,12 @@ COPY conf /etc/freeswitch
 # Add reload watcher script and entrypoint
 COPY reload-watcher.sh /usr/local/bin/reload-watcher.sh
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY configure-event-socket.sh /usr/local/bin/configure-event-socket.sh
 COPY detect-host-ip.sh /usr/local/bin/detect-host-ip.sh
-RUN chmod +x /usr/local/bin/reload-watcher.sh /usr/local/bin/entrypoint.sh /usr/local/bin/detect-host-ip.sh
+RUN chmod +x /usr/local/bin/configure-event-socket.sh /usr/local/bin/reload-watcher.sh /usr/local/bin/entrypoint.sh /usr/local/bin/detect-host-ip.sh
+
+# Override the base image probe so ESL checks use the configured password.
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD fs_cli -H 127.0.0.1 -p "${EVENT_SOCKET_PASSWORD:-ClueCon}" -x status | grep -q '^UP'
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

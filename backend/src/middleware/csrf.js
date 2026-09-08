@@ -37,6 +37,13 @@ const validateCsrfToken = (req, res, next) => {
     return next();
   }
 
+  if (
+    process.env.BACKEND_INTERNAL_TOKEN &&
+    req.headers['x-internal-token'] === process.env.BACKEND_INTERNAL_TOKEN
+  ) {
+    return next();
+  }
+
   const cookieToken = getCsrfToken(req);
   const headerToken = req.headers[CSRF_HEADER_NAME] || req.headers[CSRF_HEADER_NAME.toLowerCase()];
 

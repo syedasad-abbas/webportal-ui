@@ -20,7 +20,9 @@ class DialerController extends Controller
 
     protected function backend(string $token)
     {
-        return Http::withToken($token)->baseUrl(config('services.backend.url'));
+        return Http::withToken($token)
+            ->withHeaders(['x-internal-token' => config('services.backend.internal_token')])
+            ->baseUrl(config('services.backend.url'));
     }
 
     protected function requireBackendToken(Request $request): string

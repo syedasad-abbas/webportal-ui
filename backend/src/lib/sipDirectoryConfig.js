@@ -3,7 +3,6 @@ const path = require('path');
 const crypto = require('crypto');
 const config = require('../config');
 const db = require('../db');
-const freeswitch = require('./freeswitch');
 
 const directoryPath = config.freeswitch.directoryConfigPath;
 
@@ -16,17 +15,15 @@ const escapeXml = (value) =>
 
 const safeFileName = (username) => username.replace(/[^a-zA-Z0-9_.-]/g, '_');
 
-const hashPassword = (password) => {
-  const hash = crypto.createHash('sha256').update(password).digest('hex');
-  return `\${hash}SHA256:${hash}`;
-};
-
 const buildUserXml = ({ username, password }) => {
-  const hashedPassword = hashPassword(password);
+  const domain = config.freeswitch.directoryDomain;
+  if (!domain) throw new Error('FreeSWITCH directory domain is required for SIP digest provisioning');
+  // SIP Digest needs HA1 = MD5(username:realm:password), not a hash of the password alone.
+  const digest = crypto.createHash('md5').update(`${username}:${domain}:${password}`).digest('hex');
   return `<include>
   <user id="${escapeXml(username)}">
     <params>
-      <param name="password" value="${escapeXml(hashedPassword)}"/>
+      <param name="a1-hash" value="${digest}"/>
     </params>
     <variables>
       <variable name="user_context" value="default"/>
@@ -76,6 +73,7 @@ const syncAllSipUsers = async () => {
       writeSipUser({ username: row.sip_username, password: row.sip_password })
     )
   );
+  await triggerReload();
   console.log(`[sip-directory] synchronized ${result.rowCount} user(s)`);
 };
 

@@ -28,8 +28,7 @@ services:
     profiles:
       - prod
     image: nginx:alpine
-    ports:
-      - "8443:8443"
+    network_mode: host
     volumes:
       - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro
       - ./docker/nginx/www:/var/www/certbot
@@ -42,6 +41,7 @@ services:
     profiles:
       - prod
     image: certbot/certbot
+    network_mode: host
     volumes:
       - ./docker/nginx/www:/var/www/certbot
       - ./docker/nginx/letsencrypt:/etc/letsencrypt
@@ -96,13 +96,15 @@ services:
       dockerfile: Dockerfile.unified
     network_mode: host
     ports:
-      - "18080:18080"
+      - "8080:8080"
       - "4000:4000"
     environment:
       <<: *backend-env
       BOOTSTRAP_DEFAULTS: "true"
-      APP_ENV: local
-      APP_DEBUG: "true"
+      RUN_MIGRATIONS: "true"
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_URL: ${APP_URL:-https://dialer.maketoplus.com:443}
       DB_CONNECTION: pgsql
       DB_HOST: 127.0.0.1
       DB_PORT: 5433
@@ -114,13 +116,13 @@ services:
       JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret-4b8d1e6f}
       DEFAULT_ADMIN_EMAIL: ${DEFAULT_ADMIN_EMAIL:-superadmin@example.com}
       DEFAULT_ADMIN_PASSWORD: ${DEFAULT_ADMIN_PASSWORD:-dev-admin-password-8e4c1a7b}
+      WEBRTC_WS: "${WEBRTC_WS:-wss://dialer.maketoplus.com/ws}"
+      WEBRTC_SIP_DOMAIN: "${WEBRTC_SIP_DOMAIN:-87.99.140.75}"
       FREESWITCH_PASSWORD: ${FREESWITCH_PASSWORD:-dev-freeswitch-password-6d2b9f4a}
       APP_KEY: ${APP_KEY:-base64:7xQj4dM2vN8pL5sR1wK6cH9bF3gT0yUeA2iO4zX6nP8=}
       BACKEND_URL: http://127.0.0.1:4000
       BACKEND_INTERNAL_TOKEN: ${BACKEND_INTERNAL_TOKEN:-dev-backend-token-9c2a7e5d}
     volumes:
-      - ./laravel:/var/www/html
-      - ./backend:/app
       - ./recordings:/var/recordings
       - freeswitch_gateways:/mnt/gateways
       - freeswitch_users:/mnt/users
