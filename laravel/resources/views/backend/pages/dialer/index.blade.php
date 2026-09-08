@@ -672,10 +672,6 @@
                     <button type="button" data-contact-tab="info" class="flex shrink-0 items-center gap-2 border-b-2 border-transparent px-3 py-3 text-xs font-semibold text-slate-400 sm:text-sm" role="tab" aria-selected="false"><i class="bi bi-person"></i>{{ __('Contact Info') }}</button>
                 </div>
 
-                <div data-contact-tab-panel="notes" class="pt-5">
-                    <div class="flex items-center gap-2 text-lg font-semibold text-white"><i class="bi bi-chat-left-text text-slate-200"></i>{{ __('Notes & Comments') }}</div>
-                </div>
-
                 <div data-contact-tab-panel="info" class="mt-4 hidden rounded-xl border border-[#263b50] bg-[#102338] p-4">
                     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <input id="contact-name-input" type="text" maxlength="255" placeholder="{{ __('Contact name') }}" class="rounded-lg border border-[#365068] bg-[#091827] px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-400 focus:border-blue-500">
