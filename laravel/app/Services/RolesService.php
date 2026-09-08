@@ -65,18 +65,15 @@ class RolesService
     /**
      * Create a new role with permissions
      */
-  public function createRole(string $name, array $permissions = []): \Spatie\Permission\Models\Role
-{
-    /** @var \Spatie\Permission\Models\Role $role */
-    $role = Role::firstOrCreate(['name' => $name, 'guard_name' => 'web']);
+    public function createRole(string $name, array $permissions = []): \Spatie\Permission\Models\Role
+    {
+        /** @var \Spatie\Permission\Models\Role $role */
+        $role = Role::firstOrCreate(['name' => $name, 'guard_name' => 'web']);
 
-    // syncPermissions([]) would remove all permissions, so only sync when provided
-    if (!empty($permissions)) {
         $role->syncPermissions($permissions);
-    }
 
-    return $role;
-}
+        return $role;
+    }
 
 
     /**
@@ -94,9 +91,7 @@ class RolesService
         $role->name = $name;
         $role->save();
 
-        if (! empty($permissions)) {
-            $role->syncPermissions($permissions);
-        }
+        $role->syncPermissions($permissions);
 
         return $role;
     }

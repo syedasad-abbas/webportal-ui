@@ -26,7 +26,7 @@ class StoreRoleRequest extends FormRequest
     {
         return ld_apply_filters('role.store.validation.rules', [
             'name' => 'required|max:100|unique:roles,name',
-            'permissions' => 'required|array|min:1',
+            'permissions' => 'required|array',
             'permissions.*' => 'string|exists:permissions,name',
         ]);
     }

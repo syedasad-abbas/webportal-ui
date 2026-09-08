@@ -144,6 +144,17 @@ class PermissionService
                     'term.delete',
                 ],
             ],
+            [
+                'group_name' => 'contacts',
+                'permissions' => [
+                    'contacts.view',
+                    'contacts.create',
+                    'contacts.edit',
+                    'contacts.delete',
+                    'contacts.comment',
+                    'contacts.labels',
+                ],
+            ],
         ];
 
         return $permissions;
