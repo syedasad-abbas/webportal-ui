@@ -45,7 +45,7 @@ class DialerWebRTC {
 
     async resumeAudio() {
         const session = this.simpleUser?.session;
-        if (!session || !this.remoteAudio?.srcObject) return;
+        if (!session) return;
         this.remoteAudio.muted = false;
         try {
             await this.remoteAudio.play();
@@ -100,9 +100,10 @@ class DialerWebRTC {
                     this.reportAudioStatus("Click Enable audio to hear the call.", true);
                 } else if (Date.now() - lastReceivedAt > 10000) {
                     this.reportAudioStatus("No incoming audio packets; check the media connection.", true);
-                } else if (received && !this.remoteAudio.paused && !this.remoteAudio.muted) {
+                } else if (received) {
                     this.reportAudioStatus("Receiving browser audio");
-                } else if (this.remoteAudio.srcObject && this.remoteAudio.paused) {
+                    void this.resumeAudio();
+                } else {
                     void this.resumeAudio();
                 }
             } catch (error) {
@@ -182,6 +183,7 @@ class DialerWebRTC {
             } catch (error) {
                 console.error("Failed to hangup previous session", error);
             }
+            client.session = null;
         }
 
         try {
@@ -331,6 +333,13 @@ class DialerWebRTC {
                 }
             }
             this.currentConference = null;
+            try {
+                await this.simpleUser.disconnect();
+            } catch (error) {
+                console.error("Unable to disconnect transport", error);
+            }
+            this.simpleUser = null;
+            this.connected = false;
         });
     }
 
@@ -340,22 +349,14 @@ class DialerWebRTC {
             window.clearTimeout(this.reconnectTimer);
             this.reconnectTimer = null;
         }
+        if (this.simpleUser) {
+            try {
+                await this.simpleUser.unregister();
+            } catch (error) {
+                console.error("Failed to unregister WebRTC client", error);
+            }
+        }
         await this.leaveConference();
-        if (!this.simpleUser) {
-            return;
-        }
-        try {
-            await this.simpleUser.unregister();
-        } catch (error) {
-            console.error("Failed to unregister WebRTC client", error);
-        }
-        try {
-            await this.simpleUser.disconnect();
-        } catch (error) {
-            console.error("Failed to disconnect WebRTC client", error);
-        }
-        this.simpleUser = null;
-        this.connected = false;
     }
 
     async applyMuteState(muted) {
