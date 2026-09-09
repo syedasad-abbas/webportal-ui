@@ -574,10 +574,6 @@ html:not(.dark) .connectpro-agent-status { background: #d1fae5 !important; color
                 <a href="{{ route('admin.contacts.activity') }}" class="text-gray-600 hover:text-gray-900 dark:text-slate-300 dark:hover:text-white">{{ __('Activity') }}</a>
                 <a href="#" class="text-gray-600 hover:text-gray-900 dark:text-slate-300 dark:hover:text-white">{{ __('Reports') }}</a>
             </nav>
-            <div class="relative mx-auto hidden w-full max-w-xl md:block">
-                <i class="bi bi-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-400"></i>
-                <input type="search" data-dialer-toolbar-search placeholder="{{ __('Search contacts or numbers…') }}" class="h-12 w-full rounded-2xl border border-gray-300 bg-white pl-11 pr-4 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-[#2a4055] dark:bg-[#0b1b2c] dark:text-white dark:placeholder:text-slate-500">
-            </div>
             <div class="ml-auto flex items-center gap-2">
                 <button type="button" @click="mobileToolbarOpen = !mobileToolbarOpen" class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-gray-300 bg-gray-100 text-gray-700 dark:border-[#2a4055] dark:bg-[#091827] dark:text-slate-200 lg:hidden" aria-label="{{ __('Toggle navigation') }}">
                     <i class="bi bi-grid text-2xl" x-show="!mobileToolbarOpen"></i>
@@ -596,12 +592,6 @@ html:not(.dark) .connectpro-agent-status { background: #d1fae5 !important; color
                 <a href="{{ route('admin.contacts.activity') }}" class="flex items-center gap-2 rounded-xl border border-gray-300 bg-gray-100 px-3 py-2 text-xs font-semibold text-gray-700 hover:border-blue-500 hover:text-blue-600 dark:border-[#2a4055] dark:bg-[#0b1b2c] dark:text-slate-200 dark:hover:border-blue-500 dark:hover:text-blue-400">{{ __('Activity') }}</a>
                 <a href="#" class="flex items-center gap-2 rounded-xl border border-gray-300 bg-gray-100 px-3 py-2 text-xs font-semibold text-gray-700 hover:border-blue-500 hover:text-blue-600 dark:border-[#2a4055] dark:bg-[#0b1b2c] dark:text-slate-200 dark:hover:border-blue-500 dark:hover:text-blue-400">{{ __('Reports') }}</a>
             </nav>
-            <div class="mt-3">
-                <div class="relative">
-                    <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-400"></i>
-                    <input type="search" data-dialer-toolbar-search placeholder="{{ __('Search contacts or numbers…') }}" class="h-10 w-full rounded-xl border border-gray-300 bg-white pl-9 pr-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-[#2a4055] dark:bg-[#0b1b2c] dark:text-white dark:placeholder:text-slate-500">
-                </div>
-            </div>
         </div>
     </div>
     <div class="mx-auto max-w-[1580px] space-y-4 p-3 sm:p-6">
