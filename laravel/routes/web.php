@@ -17,14 +17,12 @@ use App\Http\Controllers\Backend\UserLoginAsController;
 use App\Http\Controllers\Backend\UsersController;
 use App\Http\Controllers\Admin\RecordingController;
 use App\Http\Controllers\Auth\UserAuthController;
-use App\Http\Controllers\Admin\LeadsController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\CarrierController;
 use App\Http\Controllers\Admin\InboundDidController;
 
 use App\Http\Controllers\Admin\DialerController;
 use App\Http\Controllers\Admin\DialerContactController;
-use App\Http\Controllers\Admin\CampaignController;
 use App\Http\Controllers\Admin\ContactCenterController;
 
 use Illuminate\Support\Facades\Route;
@@ -55,10 +53,6 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['auth']], 
 
     Route::resource('roles', RolesController::class);
     Route::delete('roles/delete/bulk-delete', [RolesController::class, 'bulkDelete'])->name('roles.bulk-delete');
-    //leads
-    Route::resource('leads', LeadsController::class)->except(['show']);
-    Route::delete('leads/delete/bulk-delete', [LeadsController::class, 'bulkDelete'])
-    ->name('leads.bulk-delete');
 
     // Permissions
     Route::get('/permissions', [PermissionsController::class, 'index'])->name('permissions.index');
@@ -165,23 +159,7 @@ Route::delete('/carrier/{carrierId}', [CarrierController::class, 'destroy'])->na
 
         Route::post('/dialer/calls/{uuid}/decline', [DialerController::class, 'decline'])->name('dialer.decline');
 
-        Route::middleware('can:campaign.play')->group(function () {
-            Route::post('/dialer/campaign/start', [DialerController::class, 'startCampaign'])->name('dialer.campaign.start');
-            Route::post('/dialer/campaign/restart-failed', [DialerController::class, 'restartFailedCampaign'])->name('dialer.campaign.restart_failed');
-            Route::post('/dialer/campaign/stop', [DialerController::class, 'stopCampaign'])->name('dialer.campaign.stop');
-            Route::get('/dialer/campaign/next', [DialerController::class, 'nextLead'])->name('dialer.campaign.next');
-        });
-
-        Route::group([], function () {
-            Route::get('/campaigns', [CampaignController::class, 'index'])->name('campaigns.index');
-            Route::post('/campaigns/store', [CampaignController::class, 'store'])->name('campaigns.store');
-            Route::get('/campaigns/{campaign}/status', [CampaignController::class, 'status'])->name('campaigns.status');
-            Route::get('/campaigns/{campaign}/edit', [CampaignController::class, 'edit'])->name('campaigns.edit');
-            Route::put('/campaigns/{campaign}', [CampaignController::class, 'update'])->name('campaigns.update');
-            Route::delete('/campaigns/{campaign}', [CampaignController::class, 'destroy'])->name('campaigns.destroy');
-        });
-
-});
+    });
 
 /**
  * Profile routes.

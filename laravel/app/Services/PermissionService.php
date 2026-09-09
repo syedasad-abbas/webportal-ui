@@ -57,29 +57,11 @@ class PermissionService
                 'permissions' => ['dialer.create_call'],
             ],
             [
-                'group_name' => 'campaign',
-                'permissions' => [
-                    'campaign.add',
-                    'campaign.play',
-                    'campaign.edit',
-                    'campaign.delete',
-                ],
-            ],
-            [
                 'group_name' => 'recording',
                 'permissions' => [
                     'recording.view',
                     'recording.download',
                     'recording.delete',
-                ],
-            ],
-            [
-                'group_name' => 'leads',
-                'permissions' => [
-                    'leads.create',
-                    'leads.view',
-                    'leads.edit',
-                    'leads.delete',
                 ],
             ],
             [
