@@ -1941,6 +1941,7 @@ document.addEventListener('DOMContentLoaded', function () {
             ? Number(sipStatus)
             : null;
 
+        callFeedback.update(normalized, sipStatus, hangupCause, Boolean(callConnectedAt));
         if (isConnectedStatus(normalized)) {
             stopCallStateSound();
         } else if (sipCode === 486 || sipCode === 603 || sipCode === 408) {
@@ -2808,6 +2809,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 alertBox.textContent = error.message || `HTTP ${response.status}`;
                 alertBox.classList.remove('hidden');
                 refreshStartButton();
+                setStatus('failed', error.sipStatus || null, error.message || null);
+                showError(error.message || `HTTP ${response.status}`);
                 stopCallStateSound();
                 setStatus('ended');
                 showError(`HTTP ${response.status}`);
@@ -2854,6 +2857,7 @@ document.addEventListener('DOMContentLoaded', function () {
             callActive = false;
             directSipActive = false;
             refreshStartButton();
+            setStatus('failed');
             stopCallStateSound();
             setStatus('ended');
             showError(message);
