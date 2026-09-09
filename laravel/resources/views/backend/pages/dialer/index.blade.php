@@ -558,7 +558,7 @@
 @section('admin-content')
 <div class="connectpro-dialer min-h-full bg-[#06111f] text-white">
     <div class="connectpro-dialer-toolbar" x-data="{ mobileToolbarOpen: false }">
-        <div class="flex min-h-[82px] items-center gap-4 border-b border-[#20364c] bg-[#071526]/95 px-3 backdrop-blur-xl sm:px-6">
+        <div class="flex min-h-[82px] items-center gap-4 border-b border-[#20364c] bg-[#06111f] px-3 sm:px-6">
             <button type="button" @click.stop="sidebarToggle = true" class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#2a4055] bg-[#091827] text-slate-200 lg:hidden" aria-label="{{ __('Open navigation') }}"><i class="bi bi-list text-2xl"></i></button>
             <nav class="connectpro-reference-nav hidden items-center gap-2 lg:flex" aria-label="{{ __('Dialer navigation') }}">
                 <a href="{{ route('admin.contacts.index') }}">{{ __('Contacts') }}</a>
@@ -581,7 +581,7 @@
                 <a href="{{ route('admin.settings.index') }}" class="flex h-11 w-11 items-center justify-center rounded-xl border border-[#2a4055] bg-[#0b1b2c] text-slate-300 hover:border-blue-500 hover:text-blue-400" title="{{ __('Settings') }}"><i class="bi bi-gear-fill text-lg"></i></a>
             </div>
         </div>
-        <div x-show="mobileToolbarOpen" x-cloak class="border-b border-[#20364c] bg-[#071526]/90 px-3 pb-3 pt-2 lg:hidden">
+        <div x-show="mobileToolbarOpen" x-cloak class="border-b border-[#20364c] bg-[#06111f] px-3 pb-3 pt-2 lg:hidden">
             <nav class="flex flex-wrap items-center gap-2" aria-label="{{ __('Dialer navigation') }}">
                 <a href="{{ route('admin.contacts.index') }}" class="flex items-center gap-2 rounded-xl border border-[#2a4055] bg-[#0b1b2c] px-3 py-2 text-xs font-semibold text-slate-200 hover:border-blue-500 hover:text-blue-400">{{ __('Contacts') }}</a>
                 <a href="#" class="flex items-center gap-2 rounded-xl border border-blue-500/40 bg-blue-500/10 px-3 py-2 text-xs font-semibold text-blue-300">{{ __('Dialpad') }}</a>
