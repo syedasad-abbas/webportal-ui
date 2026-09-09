@@ -536,6 +536,17 @@
     html:not(.dark) .connectpro-incoming-context p:first-child {
         color: #0f172a !important;
     }
+    .dialer-audio-sr {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border-width: 0;
+    }
 }
 </style>
 @endpush
@@ -643,7 +654,7 @@
                     </div>
                 </div>
 
-                <audio id="dialer-audio" class="hidden" autoplay playsinline></audio>
+                <audio id="dialer-audio" class="dialer-audio-sr" autoplay playsinline></audio>
                 <button id="dialer-enable-audio" type="button" class="hidden rounded-lg bg-blue-600 px-4 py-2 text-white">{{ __('Enable audio') }}</button>
             </section>
 
@@ -769,7 +780,7 @@
 
         <div id="active-call-window" class="fixed inset-0 z-[90] hidden overflow-y-auto bg-[#020914]/80 p-4 backdrop-blur-md sm:p-8">
             <div class="mx-auto w-full max-w-[520px] rounded-[30px] border border-[#486078] bg-[#0b1725] p-5 text-white shadow-[0_30px_100px_rgba(0,0,0,.65)] sm:p-7">
-                <div class="flex items-center gap-3 border-b border-[#33485d] pb-4"><i class="bi bi-telephone-fill text-xl text-blue-400"></i><span class="text-lg font-medium">{{ __('VoIP Softphone') }}</span><button type="button" data-compact-minimize class="ml-auto text-2xl text-slate-300">−</button><button type="button" data-compact-close class="text-2xl text-slate-300">×</button></div>
+                <div class="flex items-center gap-3 border-b border-[#33485d] pb-4"><i class="bi bi-telephone-fill text-xl text-blue-400"></i><span class="text-lg font-medium">{{ config('settings.app_name', config('app.name', 'VoIP Softphone')) }}</span><button type="button" data-compact-minimize class="ml-auto text-2xl text-slate-300">−</button><button type="button" data-compact-close class="text-2xl text-slate-300">×</button></div>
                 <div class="mt-6 grid items-center gap-4 sm:grid-cols-[104px_minmax(0,1fr)_auto]">
                     <div class="flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-900 text-3xl font-bold shadow-[0_0_0_8px_rgba(59,130,246,.08)]" data-compact-avatar>?</div>
                     <div class="min-w-0"><h2 class="truncate text-2xl font-bold" data-compact-name>{{ __('Unknown caller') }}</h2><p class="mt-1 truncate text-lg text-slate-300" data-compact-phone>—</p><p class="mt-1 flex items-center gap-2 text-sm text-blue-400"><span class="h-2 w-2 rounded-full bg-blue-500"></span>{{ __('Connected') }}</p></div>
@@ -1658,6 +1669,88 @@ document.addEventListener('DOMContentLoaded', function () {
         toneOscillators = [];
     };
 
+    let callStateContext = null;
+    let callStateGain = null;
+    let callStateOscillators = [];
+    let callStateTimer = null;
+
+    const ensureCallStateContext = () => {
+        if (!callStateContext) {
+            callStateContext = new (window.AudioContext || window.webkitAudioContext)();
+            callStateGain = callStateContext.createGain();
+            callStateGain.gain.value = 0.15;
+            callStateGain.connect(callStateContext.destination);
+        }
+    };
+
+    const stopCallStateSound = () => {
+        callStateOscillators.forEach((osc) => {
+            try { osc.stop(); } catch (e) {}
+        });
+        callStateOscillators = [];
+        if (callStateTimer) {
+            clearTimeout(callStateTimer);
+            callStateTimer = null;
+        }
+    };
+
+    const playOscillators = (freqs, duration, type = 'sine') => {
+        ensureCallStateContext();
+        try {
+            if (callStateContext.state === 'suspended') {
+                callStateContext.resume();
+            }
+        } catch (e) {
+            return;
+        }
+        stopCallStateSound();
+        callStateOscillators = freqs.map((freq) => {
+            const osc = callStateContext.createOscillator();
+            osc.type = type;
+            osc.frequency.value = freq;
+            osc.connect(callStateGain);
+            osc.start();
+            return osc;
+        });
+    };
+
+    const playRingback = () => {
+        playOscillators([440, 480], 2000, 'sine');
+        callStateTimer = setTimeout(() => {
+            stopCallStateSound();
+            callStateTimer = setTimeout(() => playRingback(), 2000);
+        }, 2000);
+    };
+
+    const playCallingTone = () => {
+        playOscillators([350, 440], 1500, 'sine');
+        callStateTimer = setTimeout(stopCallStateSound, 1500);
+    };
+
+    const playBusyTone = () => {
+        playOscillators([480, 620], 500, 'square');
+        callStateTimer = setTimeout(() => {
+            stopCallStateSound();
+            callStateTimer = setTimeout(() => playBusyTone(), 500);
+        }, 500);
+    };
+
+    const playReorderTone = () => {
+        playOscillators([480, 620], 250, 'square');
+        callStateTimer = setTimeout(() => {
+            stopCallStateSound();
+            callStateTimer = setTimeout(() => playReorderTone(), 250);
+        }, 250);
+    };
+
+    const playIncomingRingtone = () => {
+        playOscillators([440, 480], 2000, 'sine');
+        callStateTimer = setTimeout(() => {
+            stopCallStateSound();
+            callStateTimer = setTimeout(() => playIncomingRingtone(), 2000);
+        }, 2000);
+    };
+
     const playTone = async (value) => {
         const freqs = dtmfMap[value];
         if (!freqs) return;
@@ -1835,7 +1928,26 @@ document.addEventListener('DOMContentLoaded', function () {
             ? Number(sipStatus)
             : null;
 
-        callFeedback.update(normalized, sipStatus, hangupCause, Boolean(callConnectedAt));
+        if (isConnectedStatus(normalized)) {
+            stopCallStateSound();
+        } else if (sipCode === 486 || sipCode === 603 || sipCode === 408) {
+            stopCallStateSound();
+            playBusyTone();
+        } else if (sipCode && sipCode >= 500) {
+            stopCallStateSound();
+            playReorderTone();
+        } else if (sipCode && sipCode >= 400 && sipCode < 500 && sipCode !== 486) {
+            stopCallStateSound();
+            playReorderTone();
+        } else if (normalized === 'ringing') {
+            stopCallStateSound();
+            playRingback();
+        } else if (normalized === 'trying' || normalized === 'queued') {
+            stopCallStateSound();
+            playCallingTone();
+        } else if (isTerminalStatus(normalized)) {
+            stopCallStateSound();
+        }
 
         const labelMap = {
             busy: 'Busy',
@@ -2629,6 +2741,7 @@ document.addEventListener('DOMContentLoaded', function () {
         callGeneration += 1;
         clearInterval(pollHandle);
         await disconnectBrowserAudio();
+        stopCallStateSound();
         conferenceName = null;
         callUuid = null;
 
@@ -2682,8 +2795,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 alertBox.textContent = error.message || `HTTP ${response.status}`;
                 alertBox.classList.remove('hidden');
                 refreshStartButton();
-                setStatus('failed', error.sipStatus || null, error.message || null);
-                showError(error.message || `HTTP ${response.status}`);
+                stopCallStateSound();
+                setStatus('ended');
+                showError(`HTTP ${response.status}`);
                 return;
             }
 
@@ -2712,6 +2826,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 alertBox.textContent = 'Call queued but no call identifier returned.';
                 alertBox.classList.remove('hidden');
                 refreshStartButton();
+                stopCallStateSound();
                 setStatus('ended');
                 await disconnectBrowserAudio();
             }
@@ -2726,7 +2841,8 @@ document.addEventListener('DOMContentLoaded', function () {
             callActive = false;
             directSipActive = false;
             refreshStartButton();
-            setStatus('failed');
+            stopCallStateSound();
+            setStatus('ended');
             showError(message);
             await disconnectBrowserAudio();
         } finally {
@@ -2748,6 +2864,7 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const hideIncoming = () => {
+        stopCallStateSound();
         inboundCall = null;
         showIncomingBanner(false);
     };
@@ -2755,6 +2872,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const acceptInbound = async () => {
         if (!inboundCall) return;
         const call = inboundCall;
+        stopCallStateSound();
         showIncomingBanner(false);
 
         if (call.directSip) {
@@ -2829,6 +2947,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     window.addEventListener('dialer:sip-incoming', (event) => {
         if (callActive || inboundCall) return;
+        stopCallStateSound();
         inboundCall = {
             directSip: true,
             callerIdNumber: event.detail?.callerIdNumber || 'Unknown',
@@ -2839,6 +2958,7 @@ document.addEventListener('DOMContentLoaded', function () {
         updateIncomingContact(null, inboundCall.callerIdNumber);
         lookupContactByPhone(inboundCall.callerIdNumber);
         showIncomingBanner(true);
+        playIncomingRingtone();
     });
     window.addEventListener('dialer:sip-answered', () => {
         browserAudioActive = true;
@@ -2884,8 +3004,8 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         socket.on('incoming.call', (payload) => {
             if (!payload || !payload.callUuid) return;
-            // Don't interrupt an active call.
             if (callActive) return;
+            stopCallStateSound();
             inboundCall = {
                 callUuid: payload.callUuid,
                 conference: payload.conference || null,
@@ -2897,9 +3017,11 @@ document.addEventListener('DOMContentLoaded', function () {
             updateIncomingContact(null, payload.callerIdNumber || payload.did || '');
             lookupContactByPhone(payload.callerIdNumber || payload.did || '');
             showIncomingBanner(true);
+            playIncomingRingtone();
         });
         socket.on('incoming.call.cancel', (payload) => {
             if (!inboundCall || !payload || payload.callUuid !== inboundCall.callUuid) return;
+            stopCallStateSound();
             hideIncoming();
         });
     };
