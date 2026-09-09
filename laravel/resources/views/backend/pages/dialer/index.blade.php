@@ -1720,16 +1720,16 @@ document.addEventListener('DOMContentLoaded', function () {
     const playRingback = () => {
         playOscillators([440, 480], 2000, 'sine');
         callStateTimer = setTimeout(() => {
-            if (callStateStopped) return;
             stopCallStateSound();
-            callStateTimer = setTimeout(() => playRingback(), 2000);
+            if (!callStateStopped) {
+                callStateTimer = setTimeout(() => playRingback(), 2000);
+            }
         }, 2000);
     };
 
     const playCallingTone = () => {
         playOscillators([350, 440], 1500, 'sine');
         callStateTimer = setTimeout(() => {
-            if (callStateStopped) return;
             stopCallStateSound();
         }, 1500);
     };
@@ -1737,27 +1737,30 @@ document.addEventListener('DOMContentLoaded', function () {
     const playBusyTone = () => {
         playOscillators([480, 620], 500, 'square');
         callStateTimer = setTimeout(() => {
-            if (callStateStopped) return;
             stopCallStateSound();
-            callStateTimer = setTimeout(() => playBusyTone(), 500);
+            if (!callStateStopped) {
+                callStateTimer = setTimeout(() => playBusyTone(), 500);
+            }
         }, 500);
     };
 
     const playReorderTone = () => {
         playOscillators([480, 620], 250, 'square');
         callStateTimer = setTimeout(() => {
-            if (callStateStopped) return;
             stopCallStateSound();
-            callStateTimer = setTimeout(() => playReorderTone(), 250);
+            if (!callStateStopped) {
+                callStateTimer = setTimeout(() => playReorderTone(), 250);
+            }
         }, 250);
     };
 
     const playIncomingRingtone = () => {
         playOscillators([440, 480], 2000, 'sine');
         callStateTimer = setTimeout(() => {
-            if (callStateStopped) return;
             stopCallStateSound();
-            callStateTimer = setTimeout(() => playIncomingRingtone(), 2000);
+            if (!callStateStopped) {
+                callStateTimer = setTimeout(() => playIncomingRingtone(), 2000);
+            }
         }, 2000);
     };
 
