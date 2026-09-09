@@ -390,7 +390,7 @@ class UsersController extends Controller
         $deletedCount = 0;
 
         foreach ($users as $user) {
-            if ($user->hasRole('superadmin')) {
+            if ($user->hasRole('Superadmin')) {
                 continue;
             }
 
