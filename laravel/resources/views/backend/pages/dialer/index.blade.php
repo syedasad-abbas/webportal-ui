@@ -19,7 +19,7 @@
 @media (min-width: 768px) {
     .connectpro-dialer { height: 100%; min-height: 0; overflow: hidden; background: #08111e !important; }
     body:has(.connectpro-dialer) .connectpro-sidebar + div { min-width: 0; width: auto; }
-    .connectpro-dialer-toolbar { min-height: 58px; border-color: #1d2d42; background: #0b1524; padding-right: 1.25rem; padding-left: 1.25rem; }
+    .connectpro-dialer-toolbar { min-height: 58px; border-color: #1d2d42; padding-right: 1.25rem; padding-left: 1.25rem; }
     .connectpro-dialer-toolbar input { height: 38px; border-radius: 8px; border-color: #263951; background: #132137; }
     .connectpro-dialer-toolbar > button { display: none !important; }
     .connectpro-dialer-toolbar > .relative { display: none; }
@@ -29,11 +29,13 @@
     .connectpro-reference-nav a { display: inline-flex; align-items: center; min-height: 32px; padding: 0 .9rem; border-radius: 8px; color: #8ea0b8; font-size: .65rem; font-weight: 600; }
     .connectpro-reference-nav a:hover, .connectpro-reference-nav .connectpro-reference-nav-active { background: #1b3154; color: #f8fafc; }
     .connectpro-agent-status { background: #064e3b; color: #34d399; }
-    html:not(.dark) .connectpro-dialer-toolbar { background: #f3f4f6; border-color: #e5e7eb; }
-    html:not(.dark) .connectpro-dialer-toolbar input { background: #ffffff; border-color: #d1d5db; color: #111827; }
-    html:not(.dark) .connectpro-reference-nav a { color: #4b5563; }
-    html:not(.dark) .connectpro-reference-nav a:hover, html:not(.dark) .connectpro-reference-nav .connectpro-reference-nav-active { background: #e5e7eb; color: #111827; }
-    html:not(.dark) .connectpro-agent-status { background: #d1fae5; color: #065f46; }
+}
+html:not(.dark) .connectpro-dialer-toolbar { background: #f3f4f6 !important; border-color: #e5e7eb !important; }
+html:not(.dark) .connectpro-dialer-toolbar input { background: #ffffff !important; border-color: #d1d5db !important; color: #111827 !important; }
+html:not(.dark) .connectpro-reference-nav a { color: #4b5563 !important; }
+html:not(.dark) .connectpro-reference-nav a:hover, html:not(.dark) .connectpro-reference-nav .connectpro-reference-nav-active { background: #e5e7eb !important; color: #111827 !important; }
+html:not(.dark) .connectpro-agent-status { background: #d1fae5 !important; color: #065f46 !important; }
+@media (min-width: 768px) {
     .connectpro-dialer > div:not(.connectpro-dialer-toolbar) { width: 100%; max-width: 1180px; height: calc(100dvh - 58px); min-height: 0; overflow: hidden; padding: .875rem; }
     .connectpro-two-panel-grid { grid-template-columns: minmax(170px, 220px) minmax(0, 1fr) minmax(220px, 266px) !important; grid-template-rows: minmax(0, 1fr) auto; gap: .875rem; height: 100%; min-height: 0 !important; }
     .connectpro-dialer .connectpro-dialer-panel:first-child { grid-column: 2; grid-row: 1; min-height: 100%; border-radius: 12px; border-color: #20344c; background: #111c2b; padding: 1.125rem; box-shadow: none; }
