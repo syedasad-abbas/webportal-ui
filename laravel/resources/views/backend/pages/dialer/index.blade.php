@@ -1683,7 +1683,10 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
+    let callStateStopped = true;
+
     const stopCallStateSound = () => {
+        callStateStopped = true;
         callStateOscillators.forEach((osc) => {
             try { osc.stop(); } catch (e) {}
         });
@@ -1703,6 +1706,7 @@ document.addEventListener('DOMContentLoaded', function () {
         } catch (e) {
             return;
         }
+        callStateStopped = false;
         stopCallStateSound();
         callStateOscillators = freqs.map((freq) => {
             const osc = callStateContext.createOscillator();
@@ -1715,37 +1719,49 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const playRingback = () => {
+        if (callStateStopped) return;
         playOscillators([440, 480], 2000, 'sine');
         callStateTimer = setTimeout(() => {
+            if (callStateStopped) return;
             stopCallStateSound();
             callStateTimer = setTimeout(() => playRingback(), 2000);
         }, 2000);
     };
 
     const playCallingTone = () => {
+        if (callStateStopped) return;
         playOscillators([350, 440], 1500, 'sine');
-        callStateTimer = setTimeout(stopCallStateSound, 1500);
+        callStateTimer = setTimeout(() => {
+            if (callStateStopped) return;
+            stopCallStateSound();
+        }, 1500);
     };
 
     const playBusyTone = () => {
+        if (callStateStopped) return;
         playOscillators([480, 620], 500, 'square');
         callStateTimer = setTimeout(() => {
+            if (callStateStopped) return;
             stopCallStateSound();
             callStateTimer = setTimeout(() => playBusyTone(), 500);
         }, 500);
     };
 
     const playReorderTone = () => {
+        if (callStateStopped) return;
         playOscillators([480, 620], 250, 'square');
         callStateTimer = setTimeout(() => {
+            if (callStateStopped) return;
             stopCallStateSound();
             callStateTimer = setTimeout(() => playReorderTone(), 250);
         }, 250);
     };
 
     const playIncomingRingtone = () => {
+        if (callStateStopped) return;
         playOscillators([440, 480], 2000, 'sine');
         callStateTimer = setTimeout(() => {
+            if (callStateStopped) return;
             stopCallStateSound();
             callStateTimer = setTimeout(() => playIncomingRingtone(), 2000);
         }, 2000);
