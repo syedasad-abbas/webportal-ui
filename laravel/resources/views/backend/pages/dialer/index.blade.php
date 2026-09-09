@@ -29,6 +29,11 @@
     .connectpro-reference-nav a { display: inline-flex; align-items: center; min-height: 32px; padding: 0 .9rem; border-radius: 8px; color: #8ea0b8; font-size: .65rem; font-weight: 600; }
     .connectpro-reference-nav a:hover, .connectpro-reference-nav .connectpro-reference-nav-active { background: #1b3154; color: #f8fafc; }
     .connectpro-agent-status { background: #064e3b; color: #34d399; }
+    html:not(.dark) .connectpro-dialer-toolbar { background: #f3f4f6; border-color: #e5e7eb; }
+    html:not(.dark) .connectpro-dialer-toolbar input { background: #ffffff; border-color: #d1d5db; color: #111827; }
+    html:not(.dark) .connectpro-reference-nav a { color: #4b5563; }
+    html:not(.dark) .connectpro-reference-nav a:hover, html:not(.dark) .connectpro-reference-nav .connectpro-reference-nav-active { background: #e5e7eb; color: #111827; }
+    html:not(.dark) .connectpro-agent-status { background: #d1fae5; color: #065f46; }
     .connectpro-dialer > div:not(.connectpro-dialer-toolbar) { width: 100%; max-width: 1180px; height: calc(100dvh - 58px); min-height: 0; overflow: hidden; padding: .875rem; }
     .connectpro-two-panel-grid { grid-template-columns: minmax(170px, 220px) minmax(0, 1fr) minmax(220px, 266px) !important; grid-template-rows: minmax(0, 1fr) auto; gap: .875rem; height: 100%; min-height: 0 !important; }
     .connectpro-dialer .connectpro-dialer-panel:first-child { grid-column: 2; grid-row: 1; min-height: 100%; border-radius: 12px; border-color: #20344c; background: #111c2b; padding: 1.125rem; box-shadow: none; }
@@ -556,43 +561,43 @@
 @endpush
 
 @section('admin-content')
-<div class="connectpro-dialer min-h-full bg-[#06111f] text-white">
+<div class="connectpro-dialer min-h-full bg-white text-gray-900 dark:bg-[#06111f] dark:text-white">
     <div class="connectpro-dialer-toolbar" x-data="{ mobileToolbarOpen: false }">
-        <div class="flex min-h-[82px] items-center gap-4 border-b border-[#20364c] bg-[#06111f] px-3 sm:px-6">
-            <button type="button" @click.stop="sidebarToggle = true" class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#2a4055] bg-[#091827] text-slate-200 lg:hidden" aria-label="{{ __('Open navigation') }}"><i class="bi bi-list text-2xl"></i></button>
+        <div class="flex min-h-[82px] items-center gap-4 border-b border-gray-200 dark:border-[#20364c] bg-white dark:bg-[#06111f] px-3 sm:px-6">
+            <button type="button" @click.stop="sidebarToggle = true" class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-gray-300 bg-gray-100 text-gray-700 dark:border-[#2a4055] dark:bg-[#091827] dark:text-slate-200 lg:hidden" aria-label="{{ __('Open navigation') }}"><i class="bi bi-list text-2xl"></i></button>
             <nav class="connectpro-reference-nav hidden items-center gap-2 lg:flex" aria-label="{{ __('Dialer navigation') }}">
-                <a href="{{ route('admin.contacts.index') }}">{{ __('Contacts') }}</a>
-                <a class="connectpro-reference-nav-active" href="#">{{ __('Dialpad') }}</a>
-                <a href="{{ route('admin.contacts.call-history') }}">{{ __('History') }}</a>
-                <a href="{{ route('admin.contacts.activity') }}">{{ __('Activity') }}</a>
-                <a href="#">{{ __('Reports') }}</a>
+                <a href="{{ route('admin.contacts.index') }}" class="text-gray-600 hover:text-gray-900 dark:text-slate-300 dark:hover:text-white">{{ __('Contacts') }}</a>
+                <a class="connectpro-reference-nav-active text-gray-900 dark:text-white" href="#">{{ __('Dialpad') }}</a>
+                <a href="{{ route('admin.contacts.call-history') }}" class="text-gray-600 hover:text-gray-900 dark:text-slate-300 dark:hover:text-white">{{ __('History') }}</a>
+                <a href="{{ route('admin.contacts.activity') }}" class="text-gray-600 hover:text-gray-900 dark:text-slate-300 dark:hover:text-white">{{ __('Activity') }}</a>
+                <a href="#" class="text-gray-600 hover:text-gray-900 dark:text-slate-300 dark:hover:text-white">{{ __('Reports') }}</a>
             </nav>
             <div class="relative mx-auto hidden w-full max-w-xl md:block">
-                <i class="bi bi-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                <input type="search" data-dialer-toolbar-search placeholder="{{ __('Search contacts or numbers…') }}" class="h-12 w-full rounded-2xl border border-[#2a4055] bg-[#0b1b2c] pl-11 pr-4 text-sm text-white outline-none placeholder:text-slate-500 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10">
+                <i class="bi bi-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-400"></i>
+                <input type="search" data-dialer-toolbar-search placeholder="{{ __('Search contacts or numbers…') }}" class="h-12 w-full rounded-2xl border border-gray-300 bg-white pl-11 pr-4 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-[#2a4055] dark:bg-[#0b1b2c] dark:text-white dark:placeholder:text-slate-500">
             </div>
             <div class="ml-auto flex items-center gap-2">
-                <button type="button" @click="mobileToolbarOpen = !mobileToolbarOpen" class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#2a4055] bg-[#091827] text-slate-200 lg:hidden" aria-label="{{ __('Toggle navigation') }}">
+                <button type="button" @click="mobileToolbarOpen = !mobileToolbarOpen" class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-gray-300 bg-gray-100 text-gray-700 dark:border-[#2a4055] dark:bg-[#091827] dark:text-slate-200 lg:hidden" aria-label="{{ __('Toggle navigation') }}">
                     <i class="bi bi-grid text-2xl" x-show="!mobileToolbarOpen"></i>
                     <i class="bi bi-x text-2xl" x-show="mobileToolbarOpen" x-cloak></i>
                 </button>
-                <span class="connectpro-agent-status hidden items-center rounded-full px-3 py-1 text-[10px] font-semibold lg:inline-flex">{{ __('Agent online') }}</span>
-                <a href="{{ route('admin.contacts.index') }}" class="flex h-11 w-11 items-center justify-center rounded-xl border border-[#2a4055] bg-[#0b1b2c] text-blue-400 hover:border-blue-500" title="{{ __('Contacts') }}"><i class="bi bi-people-fill text-lg"></i></a>
-                <a href="{{ route('admin.settings.index') }}" class="flex h-11 w-11 items-center justify-center rounded-xl border border-[#2a4055] bg-[#0b1b2c] text-slate-300 hover:border-blue-500 hover:text-blue-400" title="{{ __('Settings') }}"><i class="bi bi-gear-fill text-lg"></i></a>
+                <span class="connectpro-agent-status hidden items-center rounded-full px-3 py-1 text-[10px] font-semibold lg:inline-flex bg-emerald-100 text-emerald-700 dark:bg-[#064e3b] dark:text-emerald-400">{{ __('Agent online') }}</span>
+                <a href="{{ route('admin.contacts.index') }}" class="flex h-11 w-11 items-center justify-center rounded-xl border border-gray-300 bg-gray-100 text-blue-600 hover:border-blue-500 dark:border-[#2a4055] dark:bg-[#0b1b2c] dark:text-blue-400" title="{{ __('Contacts') }}"><i class="bi bi-people-fill text-lg"></i></a>
+                <a href="{{ route('admin.settings.index') }}" class="flex h-11 w-11 items-center justify-center rounded-xl border border-gray-300 bg-gray-100 text-gray-600 hover:border-blue-500 hover:text-blue-600 dark:border-[#2a4055] dark:bg-[#0b1b2c] dark:text-slate-300 dark:hover:border-blue-500 dark:hover:text-blue-400" title="{{ __('Settings') }}"><i class="bi bi-gear-fill text-lg"></i></a>
             </div>
         </div>
-        <div x-show="mobileToolbarOpen" x-cloak class="border-b border-[#20364c] bg-[#06111f] px-3 pb-3 pt-2 lg:hidden">
+        <div x-show="mobileToolbarOpen" x-cloak class="border-b border-gray-200 dark:border-[#20364c] bg-white dark:bg-[#06111f] px-3 pb-3 pt-2 lg:hidden">
             <nav class="flex flex-wrap items-center gap-2" aria-label="{{ __('Dialer navigation') }}">
-                <a href="{{ route('admin.contacts.index') }}" class="flex items-center gap-2 rounded-xl border border-[#2a4055] bg-[#0b1b2c] px-3 py-2 text-xs font-semibold text-slate-200 hover:border-blue-500 hover:text-blue-400">{{ __('Contacts') }}</a>
-                <a href="#" class="flex items-center gap-2 rounded-xl border border-blue-500/40 bg-blue-500/10 px-3 py-2 text-xs font-semibold text-blue-300">{{ __('Dialpad') }}</a>
-                <a href="{{ route('admin.contacts.call-history') }}" class="flex items-center gap-2 rounded-xl border border-[#2a4055] bg-[#0b1b2c] px-3 py-2 text-xs font-semibold text-slate-200 hover:border-blue-500 hover:text-blue-400">{{ __('History') }}</a>
-                <a href="{{ route('admin.contacts.activity') }}" class="flex items-center gap-2 rounded-xl border border-[#2a4055] bg-[#0b1b2c] px-3 py-2 text-xs font-semibold text-slate-200 hover:border-blue-500 hover:text-blue-400">{{ __('Activity') }}</a>
-                <a href="#" class="flex items-center gap-2 rounded-xl border border-[#2a4055] bg-[#0b1b2c] px-3 py-2 text-xs font-semibold text-slate-200 hover:border-blue-500 hover:text-blue-400">{{ __('Reports') }}</a>
+                <a href="{{ route('admin.contacts.index') }}" class="flex items-center gap-2 rounded-xl border border-gray-300 bg-gray-100 px-3 py-2 text-xs font-semibold text-gray-700 hover:border-blue-500 hover:text-blue-600 dark:border-[#2a4055] dark:bg-[#0b1b2c] dark:text-slate-200 dark:hover:border-blue-500 dark:hover:text-blue-400">{{ __('Contacts') }}</a>
+                <a href="#" class="flex items-center gap-2 rounded-xl border border-blue-300 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 dark:border-blue-500/40 dark:bg-blue-500/10 dark:text-blue-300">{{ __('Dialpad') }}</a>
+                <a href="{{ route('admin.contacts.call-history') }}" class="flex items-center gap-2 rounded-xl border border-gray-300 bg-gray-100 px-3 py-2 text-xs font-semibold text-gray-700 hover:border-blue-500 hover:text-blue-600 dark:border-[#2a4055] dark:bg-[#0b1b2c] dark:text-slate-200 dark:hover:border-blue-500 dark:hover:text-blue-400">{{ __('History') }}</a>
+                <a href="{{ route('admin.contacts.activity') }}" class="flex items-center gap-2 rounded-xl border border-gray-300 bg-gray-100 px-3 py-2 text-xs font-semibold text-gray-700 hover:border-blue-500 hover:text-blue-600 dark:border-[#2a4055] dark:bg-[#0b1b2c] dark:text-slate-200 dark:hover:border-blue-500 dark:hover:text-blue-400">{{ __('Activity') }}</a>
+                <a href="#" class="flex items-center gap-2 rounded-xl border border-gray-300 bg-gray-100 px-3 py-2 text-xs font-semibold text-gray-700 hover:border-blue-500 hover:text-blue-600 dark:border-[#2a4055] dark:bg-[#0b1b2c] dark:text-slate-200 dark:hover:border-blue-500 dark:hover:text-blue-400">{{ __('Reports') }}</a>
             </nav>
             <div class="mt-3">
                 <div class="relative">
-                    <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                    <input type="search" data-dialer-toolbar-search placeholder="{{ __('Search contacts or numbers…') }}" class="h-10 w-full rounded-xl border border-[#2a4055] bg-[#0b1b2c] pl-9 pr-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10">
+                    <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-400"></i>
+                    <input type="search" data-dialer-toolbar-search placeholder="{{ __('Search contacts or numbers…') }}" class="h-10 w-full rounded-xl border border-gray-300 bg-white pl-9 pr-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-[#2a4055] dark:bg-[#0b1b2c] dark:text-white dark:placeholder:text-slate-500">
                 </div>
             </div>
         </div>
