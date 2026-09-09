@@ -77,7 +77,7 @@ trait AuthorizationChecker
 
     public function preventSuperAdminRoleModification(Role $role, string $action = 'modified'): void
     {
-        if (config('app.demo_mode') && $role->name == 'Superadmin') {
+        if ($role->name === 'Superadmin') {
             abort(403, "The Superadmin role can not be {$action}.");
         }
     }
