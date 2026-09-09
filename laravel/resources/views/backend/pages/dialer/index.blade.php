@@ -2466,10 +2466,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const campaignActionSelect = document.getElementById('campaign_action_select');
     const campaignModeBadge = document.getElementById('campaignModeBadge');
     const campaignRoutes = {
-        start: '{{ route('admin.dialer.campaign.start') }}',
-        restartFailed: '{{ route('admin.dialer.campaign.restart_failed') }}',
-        stop: '{{ route('admin.dialer.campaign.stop') }}',
-        next: '{{ route('admin.dialer.campaign.next') }}',
+        start: '',
+        restartFailed: '',
+        stop: '',
+        next: '',
     };
 
     const campaignState = {
