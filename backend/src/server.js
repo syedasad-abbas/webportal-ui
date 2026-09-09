@@ -162,6 +162,7 @@ module.exports = { sanitizeDbError };
 
 const start = async () => {
   await config.initConfig();
+  require('./lib/callOutcomes').start();
   await ensureDefaults();
   await syncAllSipUsers();
   const io = initSocket(httpServer);

@@ -775,7 +775,7 @@
                     <div class="min-w-0"><h2 class="truncate text-2xl font-bold" data-compact-name>{{ __('Unknown caller') }}</h2><p class="mt-1 truncate text-lg text-slate-300" data-compact-phone>—</p><p class="mt-1 flex items-center gap-2 text-sm text-blue-400"><span class="h-2 w-2 rounded-full bg-blue-500"></span>{{ __('Connected') }}</p></div>
                     <span class="rounded-full border border-blue-500 bg-blue-500/10 px-3 py-2 text-sm font-semibold text-blue-400"><i class="bi bi-soundwave mr-1"></i>HD</span>
                 </div>
-                <div class="py-7 text-center"><p class="font-mono text-5xl tracking-wide" data-compact-timer>00:00</p><p class="mt-2 text-lg text-slate-400">{{ __('Talking time') }}</p></div>
+                <div class="py-7 text-center"><p class="font-mono text-5xl tracking-wide" data-compact-timer>00:00</p><p class="mt-2 text-lg text-slate-400"><span data-audio-readiness>{{ __('Waiting for audio') }}</span></p></div>
                 <div class="grid grid-cols-2 gap-8 border-y border-[#33485d] py-6">
                     <button type="button" data-call-proxy="mute" class="flex flex-col items-center gap-3 text-blue-400"><span class="flex h-20 w-20 items-center justify-center rounded-full border-2 border-blue-500 text-3xl shadow-[0_0_25px_rgba(59,130,246,.2)]"><i data-compact-mute-icon class="bi bi-mic-fill"></i></span><span data-compact-mute-label class="text-lg">{{ __('Mute') }}</span></button>
                     <button type="button" data-call-proxy="hangup" class="flex flex-col items-center gap-3 text-red-400"><span class="flex h-20 w-20 items-center justify-center rounded-full bg-red-600 text-3xl text-white shadow-[0_12px_30px_rgba(220,38,38,.3)]"><i class="bi bi-telephone-x-fill"></i></span><span class="text-lg">{{ __('End Call') }}</span></button>
@@ -829,6 +829,7 @@
 @endsection
 
 @push('scripts')
+<script src="{{ asset('js/dialer-feedback.js') }}?v=1"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const form = document.getElementById('dialer-form');
@@ -1569,6 +1570,14 @@ document.addEventListener('DOMContentLoaded', function () {
             .catch(() => {});
     }
 
+    const callFeedback = window.DialerFeedback
+        ? new window.DialerFeedback()
+        : { unlock() {}, stop() {}, update() {} };
+    window.addEventListener('pagehide', () => callFeedback.stop());
+    document.addEventListener('pointerdown', () => callFeedback.unlock(), { once: true });
+    let callGeneration = 0;
+    let callStarting = false;
+    let pollInFlight = null;
     let callUuid = null;
     let pollHandle = null;
     let callActive = false;
@@ -1592,7 +1601,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!startCallButton) {
             return;
         }
-        startCallButton.disabled = manualDialLocked || callActive;
+        startCallButton.disabled = manualDialLocked || callActive || callStarting;
     };
 
     const lockManualDial = () => {
@@ -1817,18 +1826,21 @@ document.addEventListener('DOMContentLoaded', function () {
     const isTerminalStatus = (normalized) => (
         normalized === 'ended' ||
         normalized === 'completed' ||
-        normalized === 'failed'
+        normalized === 'failed' || normalized === 'busy'
     );
 
-    const setStatus = (status, sipStatus = null, sipReason = null, durationSeconds = 0) => {
+    const setStatus = (status, sipStatus = null, sipReason = null, durationSeconds = 0, hangupCause = null) => {
         const normalized = (status || '').toLowerCase();
         const sipCode = sipStatus !== null && sipStatus !== undefined && !Number.isNaN(Number(sipStatus))
             ? Number(sipStatus)
             : null;
 
+        callFeedback.update(normalized, sipStatus, hangupCause, Boolean(callConnectedAt));
+
         const labelMap = {
-            queued: 'Trying',
-            trying: 'Trying',
+            busy: 'Busy',
+            queued: 'Calling',
+            trying: 'Calling',
             ringing: 'Ringing',
             in_call: 'In Call',
             incall: 'In Call',
@@ -1856,7 +1868,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (statusEl) {
             statusEl.textContent = label;
             statusEl.classList.remove('bg-amber-100','text-amber-800','dark:bg-amber-500/30','dark:text-amber-100','bg-blue-100','text-blue-800','dark:bg-blue-500/30','dark:text-blue-100','bg-green-100','text-green-800','dark:bg-green-500/30','dark:text-green-100','bg-red-100','text-red-800','dark:bg-red-500/30','dark:text-red-100','bg-gray-100','text-gray-800','dark:bg-gray-700','dark:text-gray-200');
-            if (label.startsWith('Trying')) {
+            if (label.startsWith('Trying') || label.startsWith('Calling')) {
                 statusEl.classList.add('bg-amber-100','text-amber-800','dark:bg-amber-500/30','dark:text-amber-100');
             } else if (label.startsWith('Ringing')) {
                 statusEl.classList.add('bg-blue-100','text-blue-800','dark:bg-blue-500/30','dark:text-blue-100');
@@ -1878,6 +1890,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         if (isTerminalStatus(normalized)) {
+            callGeneration += 1;
             compactCallWindow?.classList.add('hidden');
             stopTimer();
             disconnectBrowserAudio();
@@ -1931,10 +1944,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const enableAudioButton = document.getElementById('dialer-enable-audio');
     enableAudioButton?.addEventListener('click', () => {
+        callFeedback.unlock();
         void webRtcClient?.resumeAudio();
     });
     window.addEventListener('dialer:audio-status', (event) => {
         updateBrowserAudioStatus(event.detail.message, event.detail.hasError);
+        if (event.detail.audioReady) browserAudioRetryCount = 0;
+        const readiness = document.querySelector('[data-audio-readiness]');
+        if (readiness) readiness.textContent = event.detail.audioReady
+            ? 'Audio connected' : (event.detail.hasError ? 'Audio unavailable — check browser audio' : 'Waiting for audio');
         enableAudioButton?.classList.toggle('hidden', !event.detail.playbackBlocked);
     });
 
@@ -1959,18 +1977,20 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!webRtcClient || !conferenceName || browserAudioActive || browserAudioConnecting || hangupInProgress) {
             return;
         }
+        if (webRtcClient.currentConference === conferenceName && webRtcClient.simpleUser?.session) return;
+        const generation = callGeneration;
         browserAudioConnecting = true;
         updateBrowserAudioStatus('Connecting browser audio…');
         try {
             await webRtcClient.joinConference(conferenceName);
-            browserAudioActive = true;
-            browserAudioRetryCount = 0;
+            if (generation !== callGeneration || !conferenceName) return;
             if (browserAudioRetryTimer) {
                 clearTimeout(browserAudioRetryTimer);
                 browserAudioRetryTimer = null;
             }
             updateBrowserAudioStatus('Waiting for browser audio…');
         } catch (error) {
+            if (generation !== callGeneration || !conferenceName) return;
             console.error('Failed to connect browser audio', error);
             browserAudioActive = false;
             browserAudioRetryCount += 1;
@@ -1988,7 +2008,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }, delayMs);
             }
         } finally {
-            browserAudioConnecting = false;
+            if (generation === callGeneration) browserAudioConnecting = false;
         }
     };
 
@@ -2052,54 +2072,39 @@ document.addEventListener('DOMContentLoaded', function () {
     ensureWebRtcClient();
 
     const pollStatus = async () => {
-        if (hangupInProgress) return;
+        if (hangupInProgress || !callUuid || pollInFlight === callGeneration) return;
+        const generation = callGeneration;
+        const uuid = callUuid;
+        pollInFlight = generation;
+        const isCurrent = () => generation === callGeneration && uuid === callUuid && !hangupInProgress;
         try {
-            const response = await fetch(`/admin/dialer/calls/${callUuid}/status`, {
+            const response = await fetch(`/admin/dialer/calls/${uuid}/status`, {
                 headers: { 'Accept': 'application/json' }
             });
-
+            if (!isCurrent()) return;
             if (!response.ok) {
-                setStatus('ended');
-                showError(`HTTP ${response.status}`);
-                callActive = false;
-                setControls(false);
-                refreshStartButton();
-                stopTimer();
+                showError(`Call status temporarily unavailable (HTTP ${response.status}); retrying.`);
                 return;
             }
-
             const data = await response.json();
-            console.log('[pollStatus] status:', data.status, data);
-            if (hangupInProgress) return;
-            if (data.conferenceName) {
-                conferenceName = data.conferenceName;
-            }
-            setStatus(data.status, data.sipStatus, data.sipReason, data.durationSeconds);
-
+            if (!isCurrent()) return;
+            if (data.conferenceName) conferenceName = data.conferenceName;
+            setStatus(data.status, data.sipStatus, data.sipReason, data.durationSeconds, data.hangupCause);
             const currentStatus = (data.status || '').toLowerCase();
-            if (currentStatus === 'in_call' || currentStatus === 'ringing' || currentStatus === 'queued' || currentStatus === 'trying' || isConnectedStatus(currentStatus)) {
+            if (['ringing', 'queued', 'trying'].includes(currentStatus) || isConnectedStatus(currentStatus)) {
                 callActive = true;
                 setControls(true);
             }
-
             if (isTerminalStatus(currentStatus)) {
                 clearInterval(pollHandle);
                 callActive = false;
                 setControls(false);
                 refreshStartButton();
-                stopTimer();
-                disconnectBrowserAudio();
-                conferenceName = null;
-                callUuid = null;
             }
-        } catch (e) {
-            setStatus('ended');
-            showError('Network error while updating the call.');
-            callActive = false;
-            setControls(false);
-            refreshStartButton();
-            stopTimer();
-            disconnectBrowserAudio();
+        } catch (error) {
+            if (isCurrent()) showError('Call status connection interrupted; retrying.');
+        } finally {
+            if (pollInFlight === generation) pollInFlight = null;
         }
     };
 
@@ -2107,6 +2112,7 @@ document.addEventListener('DOMContentLoaded', function () {
     actionButtons.forEach((button) => {
         button.addEventListener('click', async () => {
             const action = button.dataset.action;
+            if (action === 'hangup') callFeedback.stop();
             if (!callUuid && directSipActive) {
                 if (action === 'mute' || action === 'unmute') {
                     await applyMuteState(action === 'mute');
@@ -2615,6 +2621,13 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
+        if (callActive || callStarting) return;
+        callStarting = true;
+        startCallButton.disabled = true;
+        callFeedback.unlock();
+        callFeedback.stop();
+        callGeneration += 1;
+        clearInterval(pollHandle);
         await disconnectBrowserAudio();
         conferenceName = null;
         callUuid = null;
@@ -2645,14 +2658,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     throw new Error('Browser audio is not configured for this user.');
                 }
 
-                await client.joinConference('9196');
                 directSipActive = true;
-                browserAudioActive = true;
                 callActive = true;
-                setStatus('in_call');
+                await client.joinConference('9196');
                 setControls(true);
-                startTimer();
-                updateBrowserAudioStatus('Echo test connected · speak to hear your voice');
+                updateBrowserAudioStatus('Connecting echo test audio…');
                 return;
             }
 
@@ -2672,8 +2682,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 alertBox.textContent = error.message || `HTTP ${response.status}`;
                 alertBox.classList.remove('hidden');
                 refreshStartButton();
-                setStatus('ended');
-                showError(`HTTP ${response.status}`);
+                setStatus('failed', error.sipStatus || null, error.message || null);
+                showError(error.message || `HTTP ${response.status}`);
                 return;
             }
 
@@ -2713,10 +2723,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 : `Network error while queuing the call${errorMessage ? `: ${errorMessage}` : '.'}`;
             alertBox.textContent = message;
             alertBox.classList.remove('hidden');
+            callActive = false;
+            directSipActive = false;
             refreshStartButton();
-            setStatus('ended');
+            setStatus('failed');
             showError(message);
             await disconnectBrowserAudio();
+        } finally {
+            callStarting = false;
+            refreshStartButton();
         }
     });
 
@@ -2825,9 +2840,20 @@ document.addEventListener('DOMContentLoaded', function () {
         lookupContactByPhone(inboundCall.callerIdNumber);
         showIncomingBanner(true);
     });
-    window.addEventListener('dialer:sip-hangup', () => {
+    window.addEventListener('dialer:sip-answered', () => {
+        browserAudioActive = true;
+        if (directSipActive) setStatus('in_call');
+    });
+    const handleBrowserHangup = () => {
+        browserAudioActive = false;
+        if (callUuid && callActive && !hangupInProgress) {
+            updateBrowserAudioStatus('Browser audio disconnected; reconnecting…', true);
+            clearTimeout(browserAudioRetryTimer);
+            browserAudioRetryCount += 1;
+            if (browserAudioRetryCount < 4) browserAudioRetryTimer = setTimeout(connectBrowserAudio, 1500);
+        }
         if (inboundCall?.directSip) hideIncoming();
-        if (!callUuid && callActive) {
+        if (!callUuid && directSipActive && callActive) {
             directSipActive = false;
             callActive = false;
             browserAudioActive = false;
@@ -2837,7 +2863,9 @@ document.addEventListener('DOMContentLoaded', function () {
             updateBrowserAudioStatus('Browser audio idle');
             refreshStartButton();
         }
-    });
+    };
+    window.addEventListener('dialer:sip-hangup', handleBrowserHangup);
+    window.addEventListener('dialer:sip-disconnected', handleBrowserHangup);
 
     const initInboundSocket = () => {
         if (!window.io || !inboundSocketEl) return;

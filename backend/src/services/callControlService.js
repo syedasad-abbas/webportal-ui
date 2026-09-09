@@ -1,3 +1,4 @@
+const callOutcomes = require('../lib/callOutcomes');
 const db = require('../db');
 const freeswitch = require('../lib/freeswitch');
 const { scheduleMetricsBroadcast } = require('./metricsService');
@@ -78,7 +79,7 @@ const findCallByUuid = async (uuid, userId) => {
 const updateCallCompletion = async (callId, durationSeconds) => {
   await db.query(
     `UPDATE call_logs
-     SET status = 'completed',
+     SET status = CASE WHEN connected_at IS NULL AND COALESCE(duration_seconds, 0) = 0 THEN 'ended' ELSE 'completed' END,
          ended_at = COALESCE(ended_at, NOW()),
          duration_seconds = GREATEST(COALESCE(duration_seconds, 0), COALESCE($1, 0))
      WHERE id = $2`,
@@ -106,6 +107,8 @@ const updateCallDiagnostics = async (callId, diagnostics) => {
 
 // 2) Replace existing fetchCallDiagnostics with this
 const fetchCallDiagnostics = async (uuid) => {
+  const final = callOutcomes.get(uuid);
+  if (final) return final;
   const [
     sipStatusRaw,
     sipReasonRaw,
@@ -136,7 +139,7 @@ const fetchCallDiagnostics = async (uuid) => {
     }
   }
 
-  return {
+  return callOutcomes.get(uuid) || {
     sipStatus: sipStatus || null,
     sipReason,
     hangupCause: hangupCauseRaw || null
@@ -154,6 +157,11 @@ const getStatus = async ({ uuid, userId }) => {
   }
 
   if (!exists) {
+    // bgapi acknowledges the job before the channel is necessarily created.
+    if (!call.ended_at && !diagnostics.hangupCause && !diagnostics.sipStatus &&
+        Date.now() - new Date(call.created_at).getTime() < 3000) {
+      return { status: 'trying', conferenceName, durationSeconds: 0 };
+    }
     await updateCallCompletion(call.id, call.duration_seconds);
     const wasAnswered = Boolean(call.connected_at) || (call.duration_seconds && Number(call.duration_seconds) > 0);
     return {
@@ -167,16 +175,14 @@ const getStatus = async ({ uuid, userId }) => {
     };
   }
 
-  const [answeredEpoch, billsec, callstate, channelState] = await Promise.all([
+  const [answeredEpoch, billsec, callstate] = await Promise.all([
     freeswitch.getChannelVar(uuid, 'answered_epoch'),
     freeswitch.getChannelVar(uuid, 'billsec'),
-    freeswitch.getChannelVar(uuid, 'callstate'),
-    freeswitch.getChannelVar(uuid, 'channel_state')
+    freeswitch.getChannelVar(uuid, 'callstate')
   ]);
 
   const answered = (answeredEpoch && Number(answeredEpoch) > 0) ||
-    (callstate && callstate.toUpperCase() === 'ACTIVE') ||
-    (channelState && channelState.toUpperCase() === 'CS_EXECUTE');
+    (callstate && callstate.toUpperCase() === 'ACTIVE');
   const durationSeconds = billsec ? Number(billsec) : 0;
   const connectedFromLog = Boolean(call.connected_at);
   const connected = answered || durationSeconds > 0 || connectedFromLog;
@@ -193,12 +199,12 @@ const getStatus = async ({ uuid, userId }) => {
     scheduleMetricsBroadcast();
   }
 
-  let status = connected ? 'in_call' : 'ringing';
+  let status = connected ? 'in_call' : (['RINGING', 'EARLY'].includes((callstate || '').toUpperCase()) ? 'ringing' : 'trying');
   const sipCode = diagnostics.sipStatus;
   if (!connected && sipCode) {
     if (sipCode >= 200 && sipCode < 300) {
       status = 'in_call';
-    } else if (sipCode >= 400) {
+    } else if (sipCode >= 400 && ![401, 407].includes(sipCode)) {
       status = 'ended';
     } else if (sipCode >= 180 && sipCode < 200) {
       status = 'ringing';

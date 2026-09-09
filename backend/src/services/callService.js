@@ -1,3 +1,4 @@
+const callOutcomes = require('../lib/callOutcomes');
 const { randomUUID } = require('crypto');
 const db = require('../db');
 const freeswitch = require('../lib/freeswitch');
@@ -26,6 +27,8 @@ const toSipCode = (value) => {
 };
 
 const fetchCallDiagnostics = async (uuid) => {
+  const final = callOutcomes.get(uuid);
+  if (final) return final;
   const [sipTermStatus, sipTermPhrase, hangupCause, sipLastResponse, sipLastResponseText] = await Promise.all([
     freeswitch.getChannelVar(uuid, 'sip_term_status'),
     freeswitch.getChannelVar(uuid, 'sip_term_phrase'),
@@ -39,7 +42,7 @@ const fetchCallDiagnostics = async (uuid) => {
     toSipCode(sipLastResponseText) ??
     toSipCode(sipLastResponse);
 
-  return {
+  return callOutcomes.get(uuid) || {
     sipStatus: sipStatus || null,
     sipReason: sipTermPhrase || sipLastResponseText || null,
     hangupCause: hangupCause || null
@@ -126,6 +129,7 @@ const applyDialPrefix = (destinationDigits, prefixEntry) => {
 
 const monitorCallProgress = async ({ callUuid, conferenceName, userId }) => {
   
+  const startedAt = Date.now();
   let answeredLogged = false;
   let conferenceLogged = false;
 
@@ -171,6 +175,10 @@ const monitorCallProgress = async ({ callUuid, conferenceName, userId }) => {
     await persistDiagnosticsByUuid({ callUuid, userId, diagnostics });
 
     const exists = await freeswitch.callExists(callUuid);
+    if (!exists && !diagnostics.hangupCause && !diagnostics.sipStatus && Date.now() - startedAt < 3000) {
+      schedulePoll(500);
+      return;
+    }
     if (!exists) {
       await markEnded(diagnostics);
       return;
@@ -200,15 +208,16 @@ const monitorCallProgress = async ({ callUuid, conferenceName, userId }) => {
       }
     }
 
-    const interval = answeredLogged || conferenceLogged ? 5000 : 1500;
-setTimeout(poll, interval);
+    schedulePoll(answeredLogged || conferenceLogged ? 5000 : 1500);
   };
 
-  setTimeout(() => {
+  const schedulePoll = (delay) => setTimeout(() => {
     poll().catch((err) => {
       console.warn('[call] monitor failed', { userId, callUuid, error: err.message });
+      schedulePoll(5000);
     });
-  }, 1500);
+  }, delay);
+  schedulePoll(1500);
 };
 
 const originate = async ({ user, destination, callerId }) => {

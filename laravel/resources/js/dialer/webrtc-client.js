@@ -37,21 +37,21 @@ class DialerWebRTC {
         this.playbackBlocked = false;
     }
 
-    reportAudioStatus(message, hasError = false) {
+    reportAudioStatus(message, hasError = false, audioReady = false) {
         window.dispatchEvent(new CustomEvent("dialer:audio-status", {
-            detail: { message, hasError, playbackBlocked: this.playbackBlocked }
+            detail: { message, hasError, audioReady, playbackBlocked: this.playbackBlocked }
         }));
     }
 
     async resumeAudio() {
         const session = this.simpleUser?.session;
         if (!session) return;
+        if (!this.remoteAudio) return;
         this.remoteAudio.muted = false;
         try {
             await this.remoteAudio.play();
             if (this.mediaSession !== session) return;
             this.playbackBlocked = false;
-            this.reportAudioStatus("Audio playback enabled; checking incoming audio…");
         } catch (error) {
             if (this.mediaSession !== session) return;
             this.playbackBlocked = true;
@@ -101,7 +101,7 @@ class DialerWebRTC {
                 } else if (Date.now() - lastReceivedAt > 10000) {
                     this.reportAudioStatus("No incoming audio packets; check the media connection.", true);
                 } else if (received) {
-                    this.reportAudioStatus("Receiving browser audio");
+                    this.reportAudioStatus("Receiving browser audio", false, true);
                     void this.resumeAudio();
                 } else {
                     void this.resumeAudio();
@@ -255,6 +255,7 @@ class DialerWebRTC {
                             this.stopMediaMonitor();
                             this.connected = false;
                             this.currentConference = null;
+                            if (this.shouldReconnect) window.dispatchEvent(new CustomEvent("dialer:sip-disconnected"));
                             this.scheduleReconnect();
                         },
                         onCallReceived: () => {
@@ -320,12 +321,9 @@ class DialerWebRTC {
     }
 
     async leaveConference() {
-        this.stopMediaMonitor();
         return this.withSessionOp(async () => {
-            if (!this.simpleUser) {
-                return;
-            }
-            if (this.simpleUser.session) {
+            this.stopMediaMonitor();
+            if (this.simpleUser?.session) {
                 try {
                     await this.simpleUser.hangup();
                 } catch (error) {
@@ -333,13 +331,7 @@ class DialerWebRTC {
                 }
             }
             this.currentConference = null;
-            try {
-                await this.simpleUser.disconnect();
-            } catch (error) {
-                console.error("Unable to disconnect transport", error);
-            }
-            this.simpleUser = null;
-            this.connected = false;
+            // Keep registration/transport ready for the next call and inbound calls.
         });
     }
 
@@ -357,6 +349,9 @@ class DialerWebRTC {
             }
         }
         await this.leaveConference();
+        await this.simpleUser?.disconnect();
+        this.simpleUser = null;
+        this.connected = false;
     }
 
     async applyMuteState(muted) {

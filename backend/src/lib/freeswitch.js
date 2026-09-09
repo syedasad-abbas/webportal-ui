@@ -112,19 +112,10 @@ const originateCall = async ({ destination, callerId, gateway, recordingPath, en
 };
 
 const callExists = async (uuid) => {
-  try {
-    const response = await sendApiCommand(`uuid_exists ${uuid}`);
-    const normalized = response.trim().toLowerCase();
-    if (normalized === 'true') {
-      return true;
-    }
-    if (normalized === 'false') {
-      return false;
-    }
-    return normalized.includes('true') || normalized.includes('+ok');
-  } catch (err) {
-    return false;
-  }
+  const response = (await sendApiCommand(`uuid_exists ${uuid}`)).trim().toLowerCase();
+  if (response === 'true') return true;
+  if (response === 'false') return false;
+  throw new Error('Unable to determine FreeSWITCH call status');
 };
 
 const parseReplyValue = (response) => {
@@ -139,7 +130,7 @@ const getChannelVar = async (uuid, variable) => {
   try {
     const response = await sendApiCommand(`uuid_getvar ${uuid} ${variable}`);
     const value = response.trim();
-    if (!value || value === '_undef_') {
+    if (!value || value === '_undef_' || value.startsWith('-ERR')) {
       return null;
     }
     return value;
