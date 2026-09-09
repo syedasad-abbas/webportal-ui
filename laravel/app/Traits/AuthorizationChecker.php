@@ -77,7 +77,7 @@ trait AuthorizationChecker
 
     public function preventSuperAdminRoleModification(Role $role, string $action = 'modified'): void
     {
-        if ($role->name === 'Superadmin') {
+        if (strcasecmp((string) $role->name, 'Superadmin') === 0) {
             abort(403, "The Superadmin role can not be {$action}.");
         }
     }

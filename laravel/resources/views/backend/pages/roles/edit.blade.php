@@ -7,7 +7,7 @@
 @section('admin-content')
 
 @php
-    $isSuperadmin = isset($role) && $role->name === 'Superadmin';
+    $isSuperadmin = isset($role) && strcasecmp((string) $role->name, 'Superadmin') === 0;
 @endphp
 
 <div class="connectpro-admin-page p-4 mx-auto max-w-[var(--breakpoint-2xl)] md:p-6">

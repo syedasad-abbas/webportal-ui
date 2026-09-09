@@ -110,7 +110,7 @@
                                         class="role-checkbox form-checkbox h-4 w-4 text-primary border-gray-300 rounded focus:ring-primary dark:focus:ring-primary dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600" 
                                         value="{{ $role->id }}"
                                         x-model="selectedRoles"
-                                        {{ $role->name === 'superadmin' ? 'disabled' : '' }}
+                                         {{ strcasecmp((string) $role->name, 'superadmin') === 0 ? 'disabled' : '' }}
                                     >
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
@@ -169,7 +169,7 @@
                                 </td>
                                 <td class="px-5 py-4 sm:px-6 flex justify-center">
                                     <x-buttons.action-buttons :label="__('Actions')" :show-label="false" align="right">
-                                        @if (auth()->user()->can('role.edit') && $role->name != 'superadmin')
+                                         @if (auth()->user()->can('role.edit') && strcasecmp((string) $role->name, 'superadmin') !== 0)
                                             <x-buttons.action-item 
                                                 :href="route('admin.roles.edit', $role->id)" 
                                                 icon="pencil" 
@@ -177,7 +177,7 @@
                                             />
                                         @endif
 
-                                        @if (auth()->user()->can('role.delete') && $role->name != 'superadmin')
+                                         @if (auth()->user()->can('role.delete') && strcasecmp((string) $role->name, 'superadmin') !== 0)
                                             <div x-data="{ deleteModalOpen: false }">
                                                 <x-buttons.action-item 
                                                     type="modal-trigger"
