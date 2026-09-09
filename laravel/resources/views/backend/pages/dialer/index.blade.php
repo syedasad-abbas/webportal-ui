@@ -1673,6 +1673,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let callStateGain = null;
     let callStateOscillators = [];
     let callStateTimer = null;
+    let callStateStopped = false;
 
     const ensureCallStateContext = () => {
         if (!callStateContext) {
@@ -1682,8 +1683,6 @@ document.addEventListener('DOMContentLoaded', function () {
             callStateGain.connect(callStateContext.destination);
         }
     };
-
-    let callStateStopped = true;
 
     const stopCallStateSound = () => {
         callStateStopped = true;
@@ -1719,7 +1718,6 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const playRingback = () => {
-        if (callStateStopped) return;
         playOscillators([440, 480], 2000, 'sine');
         callStateTimer = setTimeout(() => {
             if (callStateStopped) return;
@@ -1729,7 +1727,6 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const playCallingTone = () => {
-        if (callStateStopped) return;
         playOscillators([350, 440], 1500, 'sine');
         callStateTimer = setTimeout(() => {
             if (callStateStopped) return;
@@ -1738,7 +1735,6 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const playBusyTone = () => {
-        if (callStateStopped) return;
         playOscillators([480, 620], 500, 'square');
         callStateTimer = setTimeout(() => {
             if (callStateStopped) return;
@@ -1748,7 +1744,6 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const playReorderTone = () => {
-        if (callStateStopped) return;
         playOscillators([480, 620], 250, 'square');
         callStateTimer = setTimeout(() => {
             if (callStateStopped) return;
@@ -1758,7 +1753,6 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const playIncomingRingtone = () => {
-        if (callStateStopped) return;
         playOscillators([440, 480], 2000, 'sine');
         callStateTimer = setTimeout(() => {
             if (callStateStopped) return;
