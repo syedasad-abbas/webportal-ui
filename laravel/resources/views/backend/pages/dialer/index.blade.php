@@ -75,6 +75,12 @@ html:not(.dark) .connectpro-agent-status { background: #d1fae5 !important; color
     .connectpro-dialer .connectpro-dialer-panel:first-child { grid-column: 3; grid-row: 1; }
     .connectpro-dialer .connectpro-labels-card { grid-column: 3; grid-row: 2; border-color: #20344c; background: #111c2b; box-shadow: none; }
     .connectpro-dialer .connectpro-labels-card input { border-color: #263951; background: #19283d; }
+    .connectpro-dialer #contact-comment-input,
+    .connectpro-dialer #contact-label-input,
+    .connectpro-dialer [data-compact-comment-input] { background: #ffffff !important; color: #0f172a !important; }
+    .connectpro-dialer #contact-comment-input:disabled,
+    .connectpro-dialer #contact-label-input:disabled,
+    .connectpro-dialer [data-compact-comment-input]:disabled { background: #e5e7eb !important; color: #6b7280 !important; }
     .connectpro-dialer .connectpro-customer-workspace-card > #contact-workspace-panel > [data-contact-tab-panel] { min-height: 0; overflow: hidden; }
     .connectpro-dialer #contact-comments { overflow-y: auto; }
 }
@@ -558,8 +564,67 @@ html:not(.dark) .connectpro-agent-status { background: #d1fae5 !important; color
      .connectpro-dialer-toolbar [x-show] {
          transition: opacity .2s ease, transform .2s ease;
      }
- }
-</style>
+  }
+  @media (max-width: 767px) {
+    html, body { overflow: auto !important; height: auto !important; }
+    .connectpro-dialer,
+    .connectpro-dialer > div:not(.connectpro-dialer-toolbar) {
+      height: auto !important;
+      min-height: 0 !important;
+      overflow: visible !important;
+    }
+    .connectpro-two-panel-grid {
+      display: flex !important;
+      flex-direction: column !important;
+      height: auto !important;
+      min-height: 0 !important;
+    }
+    .connectpro-dialer .connectpro-dialer-panel:first-child,
+    .connectpro-dialer .connectpro-customer-workspace-card,
+    .connectpro-dialer .connectpro-labels-card {
+      grid-column: auto !important;
+      grid-row: auto !important;
+      height: auto !important;
+      min-height: 0 !important;
+      overflow: visible !important;
+      display: block !important;
+    }
+    .connectpro-dialer .connectpro-customer-workspace-card > #customer-call-panel,
+    .connectpro-dialer .connectpro-customer-workspace-card > #contact-workspace-panel,
+    .connectpro-dialer #contact-workspace-panel > .connectpro-contact-search,
+    .connectpro-dialer #contact-workspace-panel > .contact-tabs,
+    .connectpro-dialer #contact-workspace-panel > [data-contact-tab-panel] {
+      display: block !important;
+      grid-column: auto !important;
+      grid-row: auto !important;
+      height: auto !important;
+      min-height: 0 !important;
+      overflow: visible !important;
+      position: static !important;
+    }
+    .connectpro-dialer #contact-workspace-panel > .connectpro-activity-history-card {
+      display: block !important;
+      grid-column: auto !important;
+      grid-row: auto !important;
+      height: auto !important;
+      min-height: 0 !important;
+      overflow: visible !important;
+    }
+    .connectpro-dialer #contact-workspace-panel > [data-contact-tab-panel="notes"]:last-child {
+      margin: 1rem 0 0 !important;
+      max-height: none !important;
+    }
+    .connectpro-dialer .connectpro-notes-card {
+      max-height: 65vh !important;
+      overflow-y: auto !important;
+    }
+    .connectpro-dialer .connectpro-notes-card,
+    .connectpro-dialer .connectpro-activity-history-card > [data-contact-tab-panel="activity"],
+    .connectpro-dialer .connectpro-activity-history-card > [data-contact-tab-panel="history"] {
+      margin-top: 1rem !important;
+    }
+  }
+ </style>
 @endpush
 
 @section('admin-content')
@@ -751,7 +816,7 @@ html:not(.dark) .connectpro-agent-status { background: #d1fae5 !important; color
                     <div id="contact-comments" class="max-h-72 space-y-2 overflow-y-auto p-4"><p class="text-sm text-slate-400">{{ __('Save or select a contact to view comments.') }}</p></div>
                     <div class="border-t border-[#263b50] p-3">
                         <div class="flex items-end gap-2">
-                            <textarea id="contact-comment-input" rows="2" maxlength="2000" disabled placeholder="{{ __('Add a comment…') }}" class="min-w-0 flex-1 resize-none rounded-xl border border-[#365068] bg-[#19283d] px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-400 focus:border-blue-500 disabled:opacity-50"></textarea>
+                            <textarea id="contact-comment-input" rows="2" maxlength="2000" disabled placeholder="{{ __('Add a comment…') }}" class="min-w-0 flex-1 resize-none rounded-xl border border-[#365068] bg-white px-3 py-2.5 text-sm text-[#0f172a] outline-none placeholder:text-slate-400 focus:border-blue-500 disabled:bg-gray-200 disabled:text-slate-500"></textarea>
                             <button id="contact-comment-add" type="button" disabled class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-60" title="{{ __('Add comment') }}"><i class="bi bi-send-fill"></i></button>
                         </div>
                     </div>
@@ -768,7 +833,7 @@ html:not(.dark) .connectpro-agent-status { background: #d1fae5 !important; color
                     <p class="mt-2 text-xs leading-5 text-slate-400">{{ __('Flag contacts for follow-up after a call.') }}</p>
                 </div>
                 <div class="mt-5 flex w-full gap-2">
-                    <input id="contact-label-input" type="text" maxlength="30" disabled placeholder="{{ __('Add label') }}" class="min-w-0 flex-1 rounded-lg border border-[#365068] bg-[#19283d] px-3 py-2 text-xs text-white outline-none placeholder:text-slate-400 focus:border-blue-500 disabled:opacity-50">
+                    <input id="contact-label-input" type="text" maxlength="30" disabled placeholder="{{ __('Add label') }}" class="min-w-0 flex-1 rounded-lg border border-[#365068] bg-white px-3 py-2 text-xs text-[#0f172a] outline-none placeholder:text-slate-400 focus:border-blue-500 disabled:bg-gray-200 disabled:text-slate-500">
                     <button id="contact-label-add" type="button" disabled class="rounded-lg border border-blue-500/50 bg-blue-500/10 px-3 py-2 text-xs font-semibold text-blue-300 hover:bg-blue-500/20 disabled:opacity-60">{{ __('Add') }}</button>
                 </div>
             </section>
@@ -815,7 +880,7 @@ html:not(.dark) .connectpro-agent-status { background: #d1fae5 !important; color
                 </div>
                 <button type="button" data-compact-keypad-toggle class="mt-5 flex w-full items-center gap-4 rounded-2xl border border-[#33485d] px-5 py-4 text-left"><i class="bi bi-grid-3x3-gap text-2xl text-blue-400"></i><span><strong class="block text-lg">{{ __('Keypad') }}</strong><span class="text-sm text-slate-400">{{ __('Show dialpad') }}</span></span><i class="bi bi-chevron-down ml-auto text-xl text-slate-400"></i></button>
                 <div data-compact-keypad class="mt-3 hidden grid grid-cols-3 gap-2 rounded-2xl border border-[#33485d] bg-[#071625] p-3">@foreach(['1','2','3','4','5','6','7','8','9','*','0','#'] as $compactKey)<button type="button" data-compact-key="{{ $compactKey }}" class="rounded-xl border border-[#33485d] py-2 text-lg hover:border-blue-500 hover:text-blue-400">{{ $compactKey }}</button>@endforeach</div>
-                <div class="mt-5 rounded-2xl border border-[#33485d] p-4"><div class="flex items-center gap-3"><i class="bi bi-journal-text text-xl text-blue-400"></i><strong>{{ __('Notes') }}</strong><span class="text-slate-500">• {{ __('Latest') }}</span><a href="{{ route('admin.contacts.index') }}" class="ml-auto text-blue-400"><i class="bi bi-pencil"></i></a></div><p class="mt-3 text-sm italic leading-6 text-slate-300" data-compact-note>{{ __('Call notes and contact context remain available in the workspace.') }}</p><div class="mt-3 flex items-end gap-2"><textarea data-compact-comment-input rows="2" maxlength="2000" disabled placeholder="{{ __('Write a note or comment...') }}" class="min-w-0 flex-1 resize-none rounded-xl border border-[#33485d] bg-[#19283d] px-3 py-2 text-sm text-white outline-none placeholder:text-slate-500 focus:border-blue-500 disabled:opacity-50"></textarea><button type="button" data-compact-comment-add disabled class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-60" title="{{ __('Add comment') }}"><i class="bi bi-send-fill"></i></button></div></div>
+                <div class="mt-5 rounded-2xl border border-[#33485d] p-4"><div class="flex items-center gap-3"><i class="bi bi-journal-text text-xl text-blue-400"></i><strong>{{ __('Notes') }}</strong><span class="text-slate-500">• {{ __('Latest') }}</span><a href="{{ route('admin.contacts.index') }}" class="ml-auto text-blue-400"><i class="bi bi-pencil"></i></a></div><p class="mt-3 text-sm italic leading-6 text-slate-300" data-compact-note>{{ __('Call notes and contact context remain available in the workspace.') }}</p><div class="mt-3 flex items-end gap-2"><textarea data-compact-comment-input rows="2" maxlength="2000" disabled placeholder="{{ __('Write a note or comment...') }}" class="min-w-0 flex-1 resize-none rounded-xl border border-[#33485d] bg-white px-3 py-2 text-sm text-[#0f172a] outline-none placeholder:text-slate-500 focus:border-blue-500 disabled:bg-gray-200 disabled:text-slate-500"></textarea><button type="button" data-compact-comment-add disabled class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-60" title="{{ __('Add comment') }}"><i class="bi bi-send-fill"></i></button></div></div>
                 <p class="mt-5 border-t border-[#33485d] pt-4 text-center text-sm text-slate-400">{{ __('Secure') }} <span class="mx-2">•</span> {{ __('Encrypted') }} <i class="bi bi-lock-fill ml-1 text-blue-400"></i></p>
             </div>
         </div>
