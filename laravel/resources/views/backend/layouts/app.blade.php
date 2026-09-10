@@ -74,7 +74,7 @@ x-init="
         @include('backend.layouts.partials.sidebar-logo')
 
         <!-- Content Area -->
-        <div class="relative flex min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto bg-gray-50 dark:bg-[#0b1120]">
+        <div class="relative flex min-w-0 flex-1 flex-col overflow-x-auto overflow-y-auto bg-gray-50 dark:bg-[#0b1120]">
             <!-- Small Device Overlay -->
             <div @click="sidebarToggle = false" :class="sidebarToggle ? 'block lg:hidden' : 'hidden'"
                 class="fixed w-full h-screen z-9 bg-gray-900/50"></div>
