@@ -32,7 +32,9 @@ return [
 
     'backend' => [
         'url' => env('BACKEND_URL', 'http://backend:4000'),
-        'ws_url' => env('BACKEND_WS_URL', env('BACKEND_URL', 'http://localhost:4000')),
+        // Browser events use the website's /socket.io/ proxy by default.
+        // BACKEND_URL is server-to-server and must not become a browser URL.
+        'ws_url' => env('BACKEND_WS_URL', ''),
         'internal_token' => env('BACKEND_INTERNAL_TOKEN'),
     ],
 

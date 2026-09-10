@@ -3035,9 +3035,9 @@ document.addEventListener('DOMContentLoaded', function () {
             console.warn('[inbound] invalid socket config', e);
             return;
         }
-        if (!cfg.url || !cfg.userId) return;
+        if (!cfg.userId) return;
 
-        const socket = window.io(cfg.url, {
+        const socket = window.io(cfg.url || window.location.origin, {
             transports: ['websocket', 'polling'],
             auth: { token: @json(session('admin_token')) }
         });

@@ -155,7 +155,7 @@
                 return;
             }
 
-            const wsUrl = @json(rtrim(config('services.backend.ws_url'), '/'));
+            const wsUrl = @json(rtrim((string) config('services.backend.ws_url'), '/')) || window.location.origin;
             let socket;
             try {
                 socket = io(wsUrl, {
