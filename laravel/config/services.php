@@ -42,10 +42,9 @@ return [
             $parsed = parse_url($appUrl);
             $host = $parsed['host'] ?? 'localhost';
             $scheme = $parsed['scheme'] ?? 'http';
-            $port = $parsed['port'] ?? null;
             $protocol = ($scheme === 'https') ? 'wss' : 'ws';
-            $portSuffix = $port ? ":$port" : '';
-            return "{$protocol}://{$host}{$portSuffix}:5066";
+            $port = ($scheme === 'https') ? 7443 : 5066;
+            return "{$protocol}://{$host}:{$port}";
         })(),
         'domain' => env('WEBRTC_SIP_DOMAIN') ?: (function () {
             $appUrl = env('APP_URL', 'http://localhost');
