@@ -6,6 +6,15 @@
 
 @push('styles')
     @include('backend.pages.dialer.nightwave-form-styles')
+    <style>
+        .connectpro-user-sidebar { display: grid; align-self: start; gap: 22px; min-width: 0; }
+        .connectpro-user-requirements { min-height: 0; }
+        .connectpro-user-requirements dl { margin: 20px 0 0; }
+        .connectpro-user-requirements dl > div + div { margin-top: 18px; }
+        .connectpro-user-requirements dt { color: var(--record-heading); font-size: .8rem; font-weight: 600; }
+        .connectpro-user-requirements dd { margin: 4px 0 0; color: var(--record-copy); font-size: .8rem; line-height: 1.6; }
+        @media (max-width: 480px) { .connectpro-user-sidebar { gap: 16px; } }
+    </style>
 @endpush
 
 @section('admin-content')
@@ -181,13 +190,45 @@
                     </form>
                 </div>
             </div>
-            <aside class="connectpro-record-form-context">
-                <span class="connectpro-record-context-icon"><i class="bi bi-shield-check"></i></span>
-                <h2>{{ __('Context & permissions') }}</h2>
-                <p class="mt-4">{{ __('User access is controlled by assigned roles and status.') }}</p>
-                <p class="mt-2">{{ __('SIP credentials connect this user to the calling service.') }}</p>
-                <p class="mt-2">{{ __('Sensitive account changes remain subject to your existing permissions.') }}</p>
-            </aside>
+            <div class="connectpro-user-sidebar">
+                <aside class="connectpro-record-form-context">
+                    <span class="connectpro-record-context-icon"><i class="bi bi-shield-check"></i></span>
+                    <h2>{{ __('Context & permissions') }}</h2>
+                    <p class="mt-4">{{ __('User access is controlled by assigned roles and status.') }}</p>
+                    <p class="mt-2">{{ __('SIP credentials connect this user to the calling service.') }}</p>
+                    <p class="mt-2">{{ __('Sensitive account changes remain subject to your existing permissions.') }}</p>
+                </aside>
+                <aside class="connectpro-record-form-context connectpro-user-requirements" aria-labelledby="user-requirements-title">
+                    <span class="connectpro-record-context-icon" aria-hidden="true"><i class="bi bi-info-circle"></i></span>
+                    <h2 id="user-requirements-title">{{ __('User requirements') }}</h2>
+                    <dl>
+                        <div>
+                            <dt>{{ __('Internal name') }}</dt>
+                            <dd>{{ __('Use the user’s first name for internal reference.') }}</dd>
+                        </div>
+                        <div>
+                            <dt>{{ __('External name') }}</dt>
+                            <dd>{{ __('You can use the user’s last name as their external name.') }}</dd>
+                        </div>
+                        <div>
+                            <dt>{{ __('Carrier') }}</dt>
+                            <dd>{{ __('Choose a configured carrier to make real calls.') }}</dd>
+                        </div>
+                        <div>
+                            <dt>{{ __('SIP username') }}</dt>
+                            <dd>{{ __('Use numbers only, typically 4 digits in the 1000 series (for example, 1000, 1001, 1002).') }}</dd>
+                        </div>
+                        <div>
+                            <dt>{{ __('SIP password') }}</dt>
+                            <dd>{{ __('Choose a strong, unique password with uppercase and lowercase letters, numbers, and symbols.') }}</dd>
+                        </div>
+                        <div>
+                            <dt>{{ __('User role') }}</dt>
+                            <dd>{{ __('Each role has permissions that control what a user can access and do. Choose a role for the user, then edit that role’s permissions to limit access as needed. Changes to a role’s permissions apply to all users assigned to that role.') }}</dd>
+                        </div>
+                    </dl>
+                </aside>
+            </div>
         </div>
     </div>
 @endsection
