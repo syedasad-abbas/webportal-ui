@@ -5,6 +5,7 @@ const freeswitch = require('../lib/freeswitch');
 const { normalizeGatewayName } = require('../lib/carrierUtils');
 const config = require('../config');
 const { scheduleMetricsBroadcast } = require('./metricsService');
+const { get: getAiAgentSettings } = require('./aiAgentSettingsService');
 
 const clientError = (message, statusCode = 400) => {
   const err = new Error(message);
@@ -336,7 +337,7 @@ const originate = async ({ user, destination, callerId }) => {
     channelVars.push(`sip_auth_password=${record.registration_password}`);
   }
 
-  let jobUuid = null;
+   let jobUuid = null;
   try {
     console.log('[call] originate', {
       userId: user.id,
@@ -347,6 +348,7 @@ const originate = async ({ user, destination, callerId }) => {
       sipHost: domainPart,
       transport
     });
+
     const originateResult = await freeswitch.originateCall({
       endpoint,
       callerId: callerIdSipUser,

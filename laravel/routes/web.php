@@ -158,6 +158,8 @@ Route::delete('/carrier/{carrierId}', [CarrierController::class, 'destroy'])->na
         Route::post('/dialer/calls/{uuid}/dtmf', [DialerController::class, 'dtmf'])->name('dialer.dtmf');
 
         Route::post('/dialer/calls/{uuid}/decline', [DialerController::class, 'decline'])->name('dialer.decline');
+        Route::get('/dialer/ai-agent', [DialerController::class, 'aiAgentSettings'])->name('dialer.ai-agent.show');
+        Route::put('/dialer/ai-agent', [DialerController::class, 'updateAiAgentSettings'])->name('dialer.ai-agent.update');
 
     });
 

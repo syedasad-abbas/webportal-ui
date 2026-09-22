@@ -4,8 +4,10 @@ const path = require('path');
 const jwt = require('jsonwebtoken');
 const config = require('./config');
 const { getAssignedPermissions } = require('./services/permissionService');
+const aiService = require('./services/aiService');
 
 let ioInstance = null;
+let aiNamespace = null;
 
 const userRoom = (userId) => `user:${userId}`;
 
@@ -36,8 +38,15 @@ const userRoom = (userId) => `user:${userId}`;
 
   addOrigin(process.env.FRONTEND_URL);
   addOrigin(process.env.APP_URL);
+  String(process.env.CORS_ALLOWED_ORIGINS || '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean)
+    .forEach(addOrigin);
   addOriginWithPort(process.env.FRONTEND_URL, 18080);
   addOriginWithPort(process.env.APP_URL, 18080);
+  addOriginWithPort(process.env.FRONTEND_URL, 8080);
+  addOriginWithPort(process.env.APP_URL, 8080);
 
   try {
     const laravelEnv = '/var/www/html/.env';
@@ -48,6 +57,7 @@ const userRoom = (userId) => `user:${userId}`;
         const appUrl = match[1].trim();
         addOrigin(appUrl);
         addOriginWithPort(appUrl, 18080);
+        addOriginWithPort(appUrl, 8080);
       }
     }
   } catch (err) {
@@ -56,6 +66,8 @@ const userRoom = (userId) => `user:${userId}`;
 
   addOrigin('http://localhost:18080');
   addOrigin('http://127.0.0.1:18080');
+  addOrigin('http://localhost:8080');
+  addOrigin('http://127.0.0.1:8080');
 
   try {
     const interfaces = require('os').networkInterfaces();
@@ -63,6 +75,7 @@ const userRoom = (userId) => `user:${userId}`;
       for (const addr of iface) {
         if (addr.family === 'IPv4' && !addr.internal) {
           addOrigin(`http://${addr.address}:18080`);
+          addOrigin(`http://${addr.address}:8080`);
         }
       }
     }
@@ -138,9 +151,62 @@ const emitSocketEvent = (event, payload) =>
 const emitToUser = (userId, event, payload) =>
   emitAuthorized(event, payload, 'dialer.create_call', userId);
 
+const initAiNamespace = () => {
+  if (!ioInstance) throw new Error('Socket.io instance has not been initialized');
+  aiNamespace = ioInstance.of('/ai');
+
+  aiNamespace.use((socket, next) => {
+    try {
+      const user = jwt.verify(socket.handshake.auth?.token || '', config.jwtSecret);
+      if (!user.id) return next(new Error('Unauthorized'));
+      socket.data.userId = user.id;
+      return next();
+    } catch (err) {
+      return next(new Error('Unauthorized'));
+    }
+  });
+
+  aiNamespace.on('connection', (socket) => {
+    let currentSessionId = null;
+
+    socket.on('ai:start', (data) => {
+      const session = aiService.startSession(socket, data || {});
+      currentSessionId = session.id;
+      socket.emit('ai:started', { sessionId: session.id });
+    });
+
+    socket.on('ai:audio', (data) => {
+      if (!currentSessionId) {
+        socket.emit('ai:error', { message: 'Session not started' });
+        return;
+      }
+      aiService.handleAudioChunk(currentSessionId, data);
+    });
+
+    socket.on('ai:stop', () => {
+      if (currentSessionId) {
+        aiService.stopSession(currentSessionId);
+        currentSessionId = null;
+      }
+    });
+
+    socket.on('disconnect', () => {
+      if (currentSessionId) {
+        aiService.stopSession(currentSessionId);
+      }
+    });
+  });
+
+  return aiNamespace;
+};
+
+const getAISocket = () => aiNamespace;
+
 module.exports = {
   initSocket,
   getSocket,
   emitSocketEvent,
-  emitToUser
+  emitToUser,
+  initAiNamespace,
+  getAISocket
 };

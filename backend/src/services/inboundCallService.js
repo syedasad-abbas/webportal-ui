@@ -4,6 +4,8 @@ const config = require('../config');
 const freeswitch = require('../lib/freeswitch');
 const { emitToUser } = require('../socket');
 const { scheduleMetricsBroadcast } = require('./metricsService');
+const aiSettings = require('./aiAgentSettingsService');
+const aiBridge = require('./geminiLiveBridge');
 
 const presenceMinutes = config.metrics?.presenceMinutes || 5;
 // How long to ring one agent before advancing to the next.
@@ -101,8 +103,9 @@ const orderPoolRoundRobin = (agents, lastUserId) => {
   return [...agents.slice(idx + 1), ...agents.slice(0, idx + 1)];
 };
 
-// Originate a leg to one agent's registered WebRTC contact, landing in the shared conference.
-const ringAgent = async ({ inboundUuid, agent, conferenceName }) => {
+// Originate an agent leg and park it after the browser answers. The inbound
+// caller remains unanswered until this leg is explicitly bridged.
+const ringAgent = async ({ inboundUuid, agent }) => {
   const legUuid = randomUUID();
   // Registered WebRTC users belong to FreeSWITCH's directory domain (normally
   // the host's LAN IP).  The carrier-facing/public SIP IP is not necessarily a
@@ -125,7 +128,7 @@ const ringAgent = async ({ inboundUuid, agent, conferenceName }) => {
   const response = await freeswitch.originateCall({
     endpoint: dialString,
     variables,
-    application: `&conference(${conferenceName}@default)`
+    application: '&park'
   });
   return { legUuid, response };
 };
@@ -168,9 +171,43 @@ const watchLeg = (legUuid, inboundUuid) =>
   });
 
 // Main entry: an inbound caller is parked in `conferenceName`; ring agents round-robin.
-const dispatch = async ({ uuid, did, callerIdNumber }) => {
+const dispatch = async ({ uuid, did, callerIdNumber, settings: suppliedSettings }) => {
   const conferenceName = conferenceFor(uuid);
   activeDispatches.set(uuid, { stopped: false });
+
+  const settings = suppliedSettings === undefined
+    ? await aiSettings.get().catch((err) => {
+      console.warn('[ai-agent] settings unavailable; using human routing', { error: err.message });
+      return null;
+    })
+    : suppliedSettings;
+  if (settings?.enabled && settings.ready && settings.updatedBy) {
+    try {
+      // The Lua dialplan answers immediately after its HTTP dispatch returns.
+      // Loopback channels may not expose answered_epoch on this UUID, so avoid
+      // rejecting valid media and let mod_audio_stream perform the real check.
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      const url = new URL(config.aiAgent.bridgeUrl);
+      url.searchParams.set('call_id', uuid);
+      url.searchParams.set('token', config.aiAgent.bridgeToken);
+      await freeswitch.startAudioStream(uuid, url.toString(), { callId: uuid, did, callerIdNumber });
+      const geminiReady = await aiBridge.waitUntilReady(
+        uuid,
+        config.aiAgent.connectTimeoutMs + 5000
+      );
+      if (!geminiReady) {
+        await freeswitch.stopAudioStream(uuid).catch(() => null);
+        throw new Error('Gemini Live session did not become ready');
+      }
+      await logInboundCall({ userId: settings.updatedBy, callerId: callerIdNumber, did, callUuid: uuid });
+      await markCallAnswered(uuid, settings.updatedBy);
+      activeDispatches.set(uuid, { stopped: false, ai: true });
+      console.log('[ai-agent] handling inbound call', { uuid, did, model: settings.model });
+      return { ok: true, answeredBy: 'ai', conference: conferenceName };
+    } catch (err) {
+      console.error('[ai-agent] start failed; falling back to human routing', { uuid, error: err.message });
+    }
+  }
 
   const agents = await getOnlineAgents();
   if (agents.length === 0) {
@@ -201,7 +238,7 @@ const dispatch = async ({ uuid, did, callerIdNumber }) => {
     }
     const agent = pool[i];
     try {
-      const { legUuid } = await ringAgent({ inboundUuid: uuid, agent, conferenceName });
+      const { legUuid } = await ringAgent({ inboundUuid: uuid, agent });
       state.currentLegUuid = legUuid;
       state.currentUserId = agent.id;
       emitToUser(agent.id, 'incoming.call', {
@@ -219,6 +256,7 @@ const dispatch = async ({ uuid, did, callerIdNumber }) => {
 
       const outcome = await watchLeg(legUuid, uuid);
       if (outcome === 'answered') {
+        await freeswitch.bridgeCalls(uuid, legUuid);
         console.log('[inbound] answered', { uuid, agent: agent.sip_username });
         await markCallAnswered(uuid, agent.id);
         activeDispatches.delete(uuid);
@@ -239,10 +277,18 @@ const dispatch = async ({ uuid, did, callerIdNumber }) => {
 };
 
 // Called when the caller hangs up while we are still hunting for an agent.
-const stop = (uuid) => {
+const stop = async (uuid) => {
   const state = activeDispatches.get(uuid);
   if (state) {
     state.stopped = true;
+    if (state.ai) {
+      aiBridge.closeSession(uuid);
+      await freeswitch.stopAudioStream(uuid).catch(() => {});
+      await markCallEnded(uuid, 'completed').catch(() => {});
+    } else if (state.currentLegUuid) {
+      await freeswitch.hangupCall(state.currentLegUuid).catch(() => {});
+    }
+    activeDispatches.delete(uuid);
   }
 };
 

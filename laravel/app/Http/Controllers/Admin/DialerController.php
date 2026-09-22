@@ -53,16 +53,10 @@ class DialerController extends Controller
 
         $user = $request->user();
         $sipCredential = $user?->sipCredential;
-        $sipHost = $request->getHost();
-        $wsUrl = config('services.webrtc.ws') ?: sprintf(
-            '%s://%s:%d',
-            $request->isSecure() ? 'wss' : 'ws',
-            $sipHost,
-            $request->isSecure() ? 7443 : 5066
-        );
+        $wsUrl = config('services.webrtc.ws');
         $webrtcConfig = [
             'wsUrl' => $wsUrl,
-            'domain' => config('services.webrtc.domain') ?: $sipHost,
+            'domain' => config('services.webrtc.domain'),
             'username' => $sipCredential?->sip_username,
             'password' => $sipCredential?->sip_password,
             'iceServers' => config('services.webrtc.ice_servers'),
@@ -70,6 +64,13 @@ class DialerController extends Controller
         $webrtcError = null;
         if (! $sipCredential || ! $sipCredential->sip_username || ! $sipCredential->sip_password) {
             $webrtcError = __('SIP credentials are not configured for this user.');
+        }
+
+        $aiAgentSettings = null;
+        try {
+            $aiAgentSettings = \App\Services\AiAgentSettingsService::get();
+        } catch (\Throwable $e) {
+            $aiAgentSettings = null;
         }
 
         $campaigns = collect();
@@ -85,6 +86,7 @@ class DialerController extends Controller
         return view('backend.pages.dialer.index', [
             'webrtcConfig' => $webrtcConfig,
             'webrtcError' => $webrtcError,
+            'aiAgentSettings' => $aiAgentSettings,
             'campaigns' => $campaigns,
             'run' => $run,
             'agents' => $agents,
@@ -207,6 +209,24 @@ class DialerController extends Controller
     public function decline(Request $request, string $uuid)
     {
         return $this->proxyRequest($request, 'post', "/calls/{$uuid}/decline");
+    }
+
+    public function aiAgentSettings(Request $request)
+    {
+        return $this->proxyRequest($request, 'get', '/ai-agent');
+    }
+
+    public function updateAiAgentSettings(Request $request)
+    {
+        $data = $request->validate([
+            'enabled' => ['required', 'boolean'],
+            'goal' => ['required', 'string', 'max:2000'],
+            'mode' => ['required', 'in:lead,assist,qualify'],
+            'voice' => ['required', 'in:professional,warm,confident'],
+            'autoNotes' => ['required', 'boolean'],
+            'humanHandoff' => ['required', 'boolean'],
+        ]);
+        return $this->proxyRequest($request, 'put', '/ai-agent', $data);
     }
 
     public function startCampaign(Request $request)

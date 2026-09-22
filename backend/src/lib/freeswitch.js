@@ -142,6 +142,14 @@ const getChannelVar = async (uuid, variable) => {
 const muteCall = async (uuid) => sendCommand(`bgapi uuid_audio ${uuid} start read mute`);
 const unmuteCall = async (uuid) => sendCommand(`bgapi uuid_audio ${uuid} stop read mute`);
 const hangupCall = async (uuid) => sendCommand(`bgapi uuid_kill ${uuid}`);
+const bridgeCalls = async (firstUuid, secondUuid) => {
+  if (!/^[0-9a-f-]{36}$/i.test(firstUuid || '') || !/^[0-9a-f-]{36}$/i.test(secondUuid || '')) {
+    throw new Error('Invalid call UUID');
+  }
+  const response = await sendApiCommand(`uuid_bridge ${firstUuid} ${secondUuid}`);
+  if (/^-ERR\b/i.test(response || '')) throw new Error(response);
+  return response;
+};
 const sendDtmf = async (uuid, digits) => {
   if (!digits) {
     return null;
@@ -280,6 +288,39 @@ const killGateway = async (gateway, profile = defaultProfile) => {
   return sendApiCommand(`sofia profile ${profile} killgw ${gateway}`);
 };
 
+const startAudioStream = async (uuid, websocketUrl, metadata = {}) => {
+  if (!/^[0-9a-f-]{36}$/i.test(uuid || '')) throw new Error('Invalid call UUID');
+  if (!/^wss?:\/\//i.test(websocketUrl || '') || /\s/.test(websocketUrl)) {
+    throw new Error('Invalid audio bridge URL');
+  }
+  const encodedMetadata = Buffer.from(JSON.stringify(metadata)).toString('base64');
+  const response = await sendApiCommand(
+    `uuid_audio_stream ${uuid} start ${websocketUrl} mono 16000 ${encodedMetadata}`
+  );
+  if (/^-ERR\b/i.test(response)) throw new Error(response);
+  return response;
+};
+
+const stopAudioStream = async (uuid) => {
+  if (!/^[0-9a-f-]{36}$/i.test(uuid || '')) throw new Error('Invalid call UUID');
+  return sendApiCommand(`uuid_audio_stream ${uuid} stop`);
+};
+
+const breakAudioPlayback = async (uuid) => {
+  if (!/^[0-9a-f-]{36}$/i.test(uuid || '')) throw new Error('Invalid call UUID');
+  return sendApiCommand(`uuid_audio_stream ${uuid} break`);
+};
+
+const broadcastAudio = async (uuid, filePath) => {
+  if (!/^[0-9a-f-]{36}$/i.test(uuid || '')) throw new Error('Invalid call UUID');
+  if (typeof filePath !== 'string' || !filePath.startsWith('/') || /\s/.test(filePath)) {
+    throw new Error('Invalid broadcast audio path');
+  }
+  const response = await sendApiCommand(`uuid_broadcast ${uuid} ${filePath} aleg`);
+  if (/^-ERR\b/i.test(response || '')) throw new Error(response);
+  return response;
+};
+
 module.exports = {
   originateCall,
   callExists,
@@ -287,11 +328,16 @@ module.exports = {
   muteCall,
   unmuteCall,
   hangupCall,
+  bridgeCalls,
   sendDtmf,
   getGatewayStatus,
   registerGateway,
   reloadXml,
   getGlobalVar,
   rescanProfile,
-  killGateway
+  killGateway,
+  startAudioStream,
+  stopAudioStream,
+  breakAudioPlayback,
+  broadcastAudio
 };

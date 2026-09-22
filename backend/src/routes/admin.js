@@ -13,7 +13,7 @@ const groupService = require('../services/groupService');
 const carrierService = require('../services/carrierService');
 const { authenticate, requirePermissions, requireInternalToken } = require('../middleware/auth');
 const config = require('../config');
-const { syncSipUser } = require('../lib/sipDirectoryConfig');
+const { syncAllSipUsers } = require('../lib/sipDirectoryConfig');
 const { authRateLimiter } = require('../middleware/rateLimiter');
 // End workers
 // Create router
@@ -123,12 +123,20 @@ router.post('/users/sync', requireInternalToken, async (req, res) => {
       fullName: value.fullName || value.email,
       password: value.password || null
     });
-    if (value.sipUsername && value.sipPassword) {
-      await syncSipUser({ username: value.sipUsername, password: value.sipPassword });
-    }
+    await syncAllSipUsers();
     return res.json(user);
   } catch (err) {
     return res.status(400).json({ message: err.message });
+  }
+});
+
+// Reconcile FreeSWITCH directory files with UI-managed SIP credentials.
+router.post('/sip-directory/sync', requireInternalToken, async (_req, res) => {
+  try {
+    await syncAllSipUsers();
+    return res.json({ ok: true });
+  } catch (err) {
+    return res.status(500).json({ ok: false, message: err.message });
   }
 });
 // Update user

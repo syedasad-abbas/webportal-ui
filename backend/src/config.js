@@ -151,6 +151,7 @@ const detectHostIp = () => {
 
 const baseConfig = {
   port: process.env.PORT || 4000,
+  bindHost: optionalEnv(process.env.BACKEND_BIND_HOST, '0.0.0.0'),
   db: {
     host: process.env.DB_HOST || 'db',
     port: process.env.DB_PORT || 5432,
@@ -215,6 +216,15 @@ const baseConfig = {
   },
   permissions: {
     callDial: optionalEnv(process.env.CALL_DIAL_PERMISSION, 'dial')
+  },
+  aiAgent: {
+    apiKey: optionalEnv(process.env.GEMINI_API_KEY, null),
+    model: optionalEnv(process.env.GEMINI_LIVE_MODEL, 'gemini-3.8-live'),
+    voice: optionalEnv(process.env.GEMINI_LIVE_VOICE, 'Aoede'),
+    bridgeUrl: optionalEnv(process.env.AI_AUDIO_BRIDGE_URL, 'ws://127.0.0.1:4000/ai-audio'),
+    bridgeToken: optionalEnv(process.env.AI_AUDIO_BRIDGE_TOKEN, process.env.BACKEND_INTERNAL_TOKEN),
+    maxSessions: toInt(process.env.AI_AGENT_MAX_SESSIONS, 10) || 10,
+    connectTimeoutMs: toInt(process.env.AI_AGENT_CONNECT_TIMEOUT_MS, 10000) || 10000
   }
 };
 

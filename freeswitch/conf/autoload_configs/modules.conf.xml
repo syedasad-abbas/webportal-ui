@@ -139,6 +139,7 @@
     <!-- <load module="mod_say_sv"/> -->
 
     <!-- Third party modules -->
+    <load module="mod_audio_stream"/>
     <!--<load module="mod_nibblebill"/>-->
     <!--<load module="mod_callcenter"/>-->
 

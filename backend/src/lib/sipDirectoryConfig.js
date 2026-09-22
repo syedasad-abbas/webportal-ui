@@ -68,13 +68,25 @@ const syncAllSipUsers = async () => {
         AND sip_password IS NOT NULL AND sip_password <> ''`
   );
   await fs.mkdir(directoryPath, { recursive: true });
+  const expectedFiles = new Set(
+    result.rows.map((row) => `${safeFileName(row.sip_username)}.xml`)
+  );
   await Promise.all(
     result.rows.map((row) =>
       writeSipUser({ username: row.sip_username, password: row.sip_password })
     )
   );
+  const existingFiles = await fs.readdir(directoryPath);
+  const staleFiles = existingFiles.filter(
+    (fileName) => fileName.endsWith('.xml') && !expectedFiles.has(fileName)
+  );
+  await Promise.all(
+    staleFiles.map((fileName) => fs.unlink(path.join(directoryPath, fileName)))
+  );
   await triggerReload();
-  console.log(`[sip-directory] synchronized ${result.rowCount} user(s)`);
+  console.log(
+    `[sip-directory] synchronized ${result.rowCount} user(s), removed ${staleFiles.length} stale file(s)`
+  );
 };
 
 module.exports = { syncSipUser, syncAllSipUsers };

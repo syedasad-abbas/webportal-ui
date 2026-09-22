@@ -15,6 +15,11 @@ const authRoutes = require('./routes/auth');
 const callRoutes = require('./routes/calls');
 const campaignDialerRoutes = require('./routes/campaignDialer');
 const freeswitchRoutes = require('./routes/freeswitch');
+const aiAgentRoutes = require('./routes/aiAgent');
+const aiRoutes = require('./routes/ai');
+const aiService = require('./services/aiService');
+const aiAgentSettings = require('./services/aiAgentSettingsService');
+const { initGeminiLiveBridge } = require('./services/geminiLiveBridge');
 const { csrfProtection, validateCsrfToken, CSRF_HEADER_NAME } = require('./middleware/csrf');
 
   const detectFrontendOrigins = () => {
@@ -45,10 +50,17 @@ const { csrfProtection, validateCsrfToken, CSRF_HEADER_NAME } = require('./middl
   // 1. Explicit env vars
   addOrigin(process.env.FRONTEND_URL);
   addOrigin(process.env.APP_URL);
+  String(process.env.CORS_ALLOWED_ORIGINS || '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean)
+    .forEach(addOrigin);
 
   // Also add :18080 variants if the env var is set without a port
   addOriginWithPort(process.env.FRONTEND_URL, 18080);
   addOriginWithPort(process.env.APP_URL, 18080);
+  addOriginWithPort(process.env.FRONTEND_URL, 8080);
+  addOriginWithPort(process.env.APP_URL, 8080);
 
   // 2. Read from Laravel .env (mounted at /var/www/html)
   try {
@@ -60,6 +72,7 @@ const { csrfProtection, validateCsrfToken, CSRF_HEADER_NAME } = require('./middl
         const appUrl = match[1].trim();
         addOrigin(appUrl);
         addOriginWithPort(appUrl, 18080);
+        addOriginWithPort(appUrl, 8080);
       }
     }
   } catch (err) {
@@ -69,6 +82,8 @@ const { csrfProtection, validateCsrfToken, CSRF_HEADER_NAME } = require('./middl
   // 3. Allow localhost access
   addOrigin('http://localhost:18080');
   addOrigin('http://127.0.0.1:18080');
+  addOrigin('http://localhost:8080');
+  addOrigin('http://127.0.0.1:8080');
 
   // 4. Auto-detect host LAN IPs and construct likely frontend origins
   try {
@@ -77,6 +92,7 @@ const { csrfProtection, validateCsrfToken, CSRF_HEADER_NAME } = require('./middl
       for (const addr of iface) {
         if (addr.family === 'IPv4' && !addr.internal) {
           addOrigin(`http://${addr.address}:18080`);
+          addOrigin(`http://${addr.address}:8080`);
         }
       }
     }
@@ -117,6 +133,8 @@ app.use('/auth', validateCsrfToken, authRoutes);
 app.use('/calls', validateCsrfToken, callRoutes);
 app.use('/dialer/campaign', validateCsrfToken, campaignDialerRoutes);
 app.use('/freeswitch', freeswitchRoutes);
+  app.use('/ai-agent', validateCsrfToken, aiAgentRoutes);
+  app.use('/ai', validateCsrfToken, aiRoutes);
 
 const DB_ERROR_CODES = new Set([
   '23505', '23503', '23514', '23502',
@@ -165,10 +183,12 @@ const start = async () => {
   require('./lib/callOutcomes').start();
   await ensureDefaults();
   await syncAllSipUsers();
+  initGeminiLiveBridge(httpServer, aiAgentSettings.get);
   const io = initSocket(httpServer);
+  require('./socket').initAiNamespace?.();
   io.on('connection', () => scheduleMetricsBroadcast());
-  httpServer.listen(config.port, () => {
-    console.log(`Backend listening on port ${config.port}`);
+  httpServer.listen(config.port, config.bindHost, () => {
+    console.log(`Backend listening on ${config.bindHost}:${config.port}`);
     startMetricsBroadcasting();
   });
 };

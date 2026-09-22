@@ -1,12 +1,21 @@
 FROM debian:bookworm-slim AS sngrep-builder
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends sngrep ncurses-term \
+    && apt-get install -y --no-install-recommends ca-certificates curl sngrep ncurses-term \
+    && curl -fsSL \
+      https://github.com/amigniter/mod_audio_stream/releases/download/v1.0.3/mod-audio-stream_1.0.3_amd64.deb \
+      -o /tmp/mod-audio-stream.deb \
+    && dpkg-deb -x /tmp/mod-audio-stream.deb /tmp/mod-audio-stream \
+    && module_path="$(find /tmp/mod-audio-stream -type f -name mod_audio_stream.so -print -quit)" \
+    && test -n "$module_path" \
+    && cp "$module_path" /tmp/mod_audio_stream.so \
+    && rm -f /tmp/mod-audio-stream.deb \
     && rm -rf /var/lib/apt/lists/*
 
 FROM syedasadabbas/voip-freeswitch-with-sounds:1.0.0
 
 COPY --from=sngrep-builder /usr/bin/sngrep /usr/local/bin/sngrep
+COPY --from=sngrep-builder /tmp/mod_audio_stream.so /usr/lib/freeswitch/mod/mod_audio_stream.so
 RUN mkdir -p /lib/x86_64-linux-gnu /lib64
 COPY --from=sngrep-builder /lib/x86_64-linux-gnu/libmenuw.so.6 /lib/x86_64-linux-gnu/libmenuw.so.6
 COPY --from=sngrep-builder /lib/x86_64-linux-gnu/libmenuw.so.6.4 /lib/x86_64-linux-gnu/libmenuw.so.6.4
