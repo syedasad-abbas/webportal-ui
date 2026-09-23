@@ -141,7 +141,9 @@ const sendSetup = (session) => {
       },
       systemInstruction: { parts: [{ text: `${prompt}\n\nCall continuity rules: Keep the conversation active until the caller hangs up. After greeting, listen and answer every caller turn. Never announce that you are ending the call and never stop after only one response. Keep replies concise and finish each reply with a useful question when appropriate.` }] },
       inputAudioTranscription: {
-        languageCodes: ['en-IN', 'en-GB', 'en-US'],
+        // Bias recognition toward Pakistani/South-Asian English while keeping
+        // common international English accents available as fallbacks.
+        languageCodes: ['en-PK', 'en-IN', 'en-GB', 'en-US'],
         mode: 'VERBATIM',
         customVocabulary: [
           'appointment',
@@ -191,7 +193,36 @@ const sendSetup = (session) => {
           'Qureshi',
           'Siddiqui',
           'Sheikh',
-          'Chaudhry'
+          'Chaudhry',
+          'Syed',
+          'Raza',
+          'Rizvi',
+          'Bukhari',
+          'Abbasi',
+          'Malik',
+          'Tariq',
+          'Shahzad',
+          'Shahid',
+          'Sajid',
+          'Faisal',
+          'Fahad',
+          'Farhan',
+          'Salman',
+          'Adnan',
+          'Arslan',
+          'Waqas',
+          'Waqar',
+          'Nouman',
+          'Hafsa',
+          'Hira',
+          'Iqra',
+          'Sana',
+          'Saba',
+          'Maham',
+          'Mahnoor',
+          'Laiba',
+          'Rabia',
+          'Nadia'
         ]
       },
       outputAudioTranscription: {}
