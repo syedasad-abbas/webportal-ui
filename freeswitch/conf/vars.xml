@@ -48,6 +48,9 @@
   -->
 
 
+  <!-- Updated by entrypoint from FREESWITCH_HOST/HOST_IP. This avoids binding
+       browser SIP/WebRTC to an unrelated default-route interface. -->
+  <X-PRE-PROCESS cmd="set" data="webphone_bind_ip=192.168.18.31"/>
   <X-PRE-PROCESS cmd="set" data="sound_prefix=$${sounds_dir}/en/us/callie"/>
   <!--<Z-PRE-PROCESS cmd="set" data="sound_prefix=$${sounds_dir}/en/us/allison"/> -->
 
@@ -58,7 +61,7 @@
       affect the sip authentication.  Please review conf/directory/default.xml for more
       information on this topic.
   -->
-  <X-PRE-PROCESS cmd="set" data="domain=$${local_ip_v4}"/>
+  <X-PRE-PROCESS cmd="set" data="domain=$${webphone_bind_ip}"/>
   <X-PRE-PROCESS cmd="set" data="domain_name=$${domain}"/>
   <X-PRE-PROCESS cmd="set" data="hold_music=local_stream://moh"/>
   <X-PRE-PROCESS cmd="set" data="use_profile=external"/>
@@ -283,8 +286,8 @@
 
   <!-- The external profile runs on the host network. Advertise its detected
        address for both SIP signaling and RTP/SDP without pinning an IP. -->
-  <X-PRE-PROCESS cmd="set" data="external_rtp_ip=87.99.140.75"/>
-  <X-PRE-PROCESS cmd="set" data="external_sip_ip=87.99.140.75"/>
+  <X-PRE-PROCESS cmd="set" data="external_rtp_ip=192.168.18.31"/>
+  <X-PRE-PROCESS cmd="set" data="external_sip_ip=192.168.18.31"/>
 
   <!-- unroll-loops
        Used to turn on sip loopback unrolling.

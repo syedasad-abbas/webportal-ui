@@ -13,14 +13,22 @@ if [ -n "$host_ip" ]; then
     mkdir -p "$(dirname "$host_ip_file")"
     printf '%s\n' "$host_ip" > "$host_ip_file"
     echo "[freeswitch] Published host IP $host_ip to $host_ip_file"
+
+    # local_ip_v4 follows the host's default route and may select a VPN or a
+    # second LAN interface. Keep the browser-facing SIP profile on HOST_IP.
+    vars_file="/etc/freeswitch/vars.xml"
+    if [ -f "$vars_file" ]; then
+        sed -i -E "s|data=\"webphone_bind_ip=[^\"]*\"|data=\"webphone_bind_ip=${host_ip}\"|" "$vars_file"
+        echo "[freeswitch] Internal SIP/WebSocket bind IP set to $host_ip"
+    fi
 else
     echo "[freeswitch] Warning: unable to detect the host machine IP" >&2
 fi
 
-# Optional explicit overrides. With neither set, vars.xml advertises the
-# detected host address for both SIP and RTP.
-sip_ip_override="${FREESWITCH_EXTERNAL_SIP_IP:-${EXTERNAL_IP:-}}"
-rtp_ip_override="${FREESWITCH_EXTERNAL_RTP_IP:-${EXTERNAL_IP:-}}"
+# Optional explicit public overrides. For local deployments, advertise the
+# configured HOST_IP so browser ICE does not receive a stale public address.
+sip_ip_override="${FREESWITCH_EXTERNAL_SIP_IP:-${EXTERNAL_IP:-$host_ip}}"
+rtp_ip_override="${FREESWITCH_EXTERNAL_RTP_IP:-${EXTERNAL_IP:-$host_ip}}"
 if [ -n "$sip_ip_override" ] || [ -n "$rtp_ip_override" ]; then
     vars_file="/etc/freeswitch/vars.xml"
     if [ -f "$vars_file" ]; then

@@ -293,6 +293,12 @@ const startAudioStream = async (uuid, websocketUrl, metadata = {}) => {
   if (!/^wss?:\/\//i.test(websocketUrl || '') || /\s/.test(websocketUrl)) {
     throw new Error('Invalid audio bridge URL');
   }
+  // Gemini performs best with roughly 100 ms PCM chunks. The module default
+  // is 20 ms, which is unnecessarily fragmented for telephone speech.
+  await sendApiCommand(`uuid_setvar ${uuid} STREAM_BUFFER_SIZE 100`);
+  // Required by the bidirectional mod_audio_stream build. Without this flag,
+  // streamAudio responses are parsed but are not injected into channel RTP.
+  await sendApiCommand(`uuid_setvar ${uuid} STREAM_PLAYBACK true`);
   const encodedMetadata = Buffer.from(JSON.stringify(metadata)).toString('base64');
   const response = await sendApiCommand(
     `uuid_audio_stream ${uuid} start ${websocketUrl} mono 16000 ${encodedMetadata}`
@@ -316,7 +322,7 @@ const broadcastAudio = async (uuid, filePath) => {
   if (typeof filePath !== 'string' || !filePath.startsWith('/') || /\s/.test(filePath)) {
     throw new Error('Invalid broadcast audio path');
   }
-  const response = await sendApiCommand(`uuid_broadcast ${uuid} ${filePath} aleg`);
+  const response = await sendApiCommand(`uuid_broadcast ${uuid} ${filePath} both`);
   if (/^-ERR\b/i.test(response || '')) throw new Error(response);
   return response;
 };

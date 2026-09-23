@@ -1,5 +1,6 @@
 x-backend-env: &backend-env
   PORT: 4000
+  BACKEND_BIND_HOST: 0.0.0.0
   DB_HOST: postgres
   DB_PORT: 5432
   DB_NAME: webphone
@@ -22,6 +23,13 @@ x-backend-env: &backend-env
   FREESWITCH_EXTERNAL_SIP_IP: ${FREESWITCH_EXTERNAL_SIP_IP:-}
   # FREESWITCH_DIRECTORY_DOMAIN: empty = auto-detect from FreeSWITCH domain var
   FREESWITCH_DIRECTORY_DOMAIN: ${FREESWITCH_DIRECTORY_DOMAIN:-}
+  GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+  GEMINI_LIVE_MODEL: ${GEMINI_LIVE_MODEL:-gemini-3.8-live}
+  GEMINI_LIVE_VOICE: ${GEMINI_LIVE_VOICE:-Orus}
+  AI_AUDIO_BRIDGE_URL: ${AI_AUDIO_BRIDGE_URL:-ws://127.0.0.1:4000/ai-audio}
+  AI_AUDIO_BRIDGE_TOKEN: ${AI_AUDIO_BRIDGE_TOKEN:-${BACKEND_INTERNAL_TOKEN:-dev-backend-token-9c2a7e5d}}
+  AI_AGENT_MAX_SESSIONS: ${AI_AGENT_MAX_SESSIONS:-10}
+  AI_AGENT_CONNECT_TIMEOUT_MS: ${AI_AGENT_CONNECT_TIMEOUT_MS:-30000}
 
 services:
   nginx:
@@ -70,10 +78,14 @@ services:
     network_mode: host
     volumes:
       - ./freeswitch/conf:/etc/freeswitch
+      - ./freeswitch/conf/scripts:/usr/share/freeswitch/scripts:ro
       - ./recordings:/var/recordings
       - freeswitch_gateways:/etc/freeswitch/gateways
       - freeswitch_users:/etc/freeswitch/directory/webphone
     environment:
+      # Use the same LAN address advertised to browser SIP clients instead of
+      # whichever interface happens to own the host's default route.
+      HOST_IP: ${FREESWITCH_HOST:-}
       EVENT_SOCKET_PASSWORD: ${FREESWITCH_PASSWORD:-dev-freeswitch-password-6d2b9f4a}
       FREESWITCH_HOST_IP_FILE: /etc/freeswitch/gateways/.host-ip
       # Empty defaults to this machine's primary IPv4 for SIP Via/Contact.

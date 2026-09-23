@@ -76,6 +76,7 @@ class DialerWebRTC {
         this.mediaSession = session;
         let lastPackets = 0;
         let lastReceivedAt = Date.now();
+        let hasReceivedPackets = false;
         let checking = false;
         this.reportAudioStatus("Checking browser audio…");
         void this.resumeAudio();
@@ -92,14 +93,22 @@ class DialerWebRTC {
                     }
                 });
                 const received = packets > lastPackets;
-                if (received) lastReceivedAt = Date.now();
+                if (received) {
+                    lastReceivedAt = Date.now();
+                    hasReceivedPackets = true;
+                }
                 lastPackets = packets;
                 if (["failed", "disconnected", "closed"].includes(peer.connectionState)) {
                     this.reportAudioStatus("Browser audio connection lost.", true);
                 } else if (this.playbackBlocked) {
                     this.reportAudioStatus("Click Enable audio to hear the call.", true);
-                } else if (Date.now() - lastReceivedAt > 10000) {
+                } else if (!hasReceivedPackets && Date.now() - lastReceivedAt > 10000) {
                     this.reportAudioStatus("No incoming audio packets; check the media connection.", true);
+                } else if (hasReceivedPackets && Date.now() - lastReceivedAt > 10000) {
+                    // A connected conversational call can legitimately have no
+                    // inbound RTP while the AI listens. Connection state still
+                    // reports genuine ICE/media failures above.
+                    this.reportAudioStatus("Audio connected", false, true);
                 } else if (received) {
                     this.reportAudioStatus("Receiving browser audio", false, true);
                     void this.resumeAudio();

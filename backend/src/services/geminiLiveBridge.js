@@ -10,7 +10,7 @@ const sessions = new Map();
 let server;
 
 const activeSessionCount = () => sessions.size;
-const waitUntilReady = async (callId, timeoutMs = 15000) => {
+const waitUntilReady = async (callId, timeoutMs = 35000) => {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     const session = sessions.get(callId);
@@ -25,6 +25,7 @@ const safeEqual = (a, b) => {
   return left.length === right.length && crypto.timingSafeEqual(left, right);
 };
 
+const OUTPUT_SEGMENT_MS = 900;
 const pcmWav = (pcm, sampleRate) => {
   const header = Buffer.alloc(44);
   header.write('RIFF', 0);
@@ -43,26 +44,50 @@ const pcmWav = (pcm, sampleRate) => {
   return Buffer.concat([header, pcm]);
 };
 
-const playCompletedTurn = async (session) => {
-  const chunks = session.outputTurnChunks.splice(0);
-  if (!chunks.length) return;
-
-  const sampleRate = session.outputSampleRate || 24000;
-  const pcm = Buffer.concat(chunks);
+const playAudioSegment = async (session, pcm, sampleRate, generation) => {
+  if (
+    sessions.get(session.callId) !== session ||
+    generation !== session.playbackGeneration ||
+    !pcm.length ||
+    session.freeswitch.readyState !== WebSocket.OPEN
+  ) return;
+  session.playbackSegment += 1;
+  const playbackWav = pcmWav(pcm, sampleRate);
   const directory = path.join(config.freeswitch.recordingsPath, 'ai-playback');
-  const filePath = path.join(directory, `${session.callId}-${Date.now()}.wav`);
+  const filePath = path.join(
+    directory,
+    `${session.callId}-${Date.now()}-${session.playbackSegment}.wav`
+  );
   await fs.mkdir(directory, { recursive: true });
-  await fs.writeFile(filePath, pcmWav(pcm, sampleRate));
+  await fs.writeFile(filePath, playbackWav);
   await freeswitch.broadcastAudio(session.callId, filePath);
-  console.log('[ai-agent] playback queued', {
+  console.log('[ai-agent] playback segment broadcast', {
     callId: session.callId,
-    bytes: pcm.length,
+    bytes: playbackWav.length,
     sampleRate,
-    filePath
+    format: 'wav'
   });
 
   const durationMs = Math.ceil((pcm.length / (sampleRate * 2)) * 1000);
-  setTimeout(() => fs.unlink(filePath).catch(() => {}), durationMs + 10000);
+  setTimeout(() => fs.unlink(filePath).catch(() => {}), durationMs + 5000);
+  await new Promise((resolve) => setTimeout(resolve, Math.max(1, durationMs)));
+};
+
+const queueOutputAudio = (session, flush = false) => {
+  const sampleRate = session.outputSampleRate || 24000;
+  const segmentBytes = Math.floor(sampleRate * 2 * (OUTPUT_SEGMENT_MS / 1000));
+  if (!flush && session.outputTurnBytes < segmentBytes) return;
+
+  const pcm = Buffer.concat(session.outputTurnChunks.splice(0));
+  const generation = session.playbackGeneration;
+  session.outputTurnBytes = 0;
+  if (!pcm.length) return;
+
+  session.playbackChain = session.playbackChain
+    .then(() => playAudioSegment(session, pcm, sampleRate, generation))
+    .catch((err) => {
+      console.error('[ai-agent] playback failed', { callId: session.callId, error: err.message });
+    });
 };
 
 const closeSession = (callId, code = 1000, reason = 'Call ended') => {
@@ -72,6 +97,8 @@ const closeSession = (callId, code = 1000, reason = 'Call ended') => {
   if (session.heartbeatTimer) clearInterval(session.heartbeatTimer);
   if (session.geminiTimeoutTimer) clearTimeout(session.geminiTimeoutTimer);
   if (session.silencePromptTimer) clearTimeout(session.silencePromptTimer);
+  if (session.connectTimer) clearTimeout(session.connectTimer);
+  if (session.retryTimer) clearTimeout(session.retryTimer);
   for (const socket of [session.gemini, session.freeswitch]) {
     if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
       try { socket.close(code, reason); } catch (_err) {}
@@ -80,8 +107,19 @@ const closeSession = (callId, code = 1000, reason = 'Call ended') => {
 };
 
 const sendSetup = (session) => {
-  const voiceMap = { professional: 'Charon', warm: 'Aoede', confident: 'Fenrir' };
-  const prompt = buildSalesAgentPrompt({ offerSummary: session.settings.goal });
+  // Keep every UI style on a mature male voice. The previous `warm` mapping
+  // selected Aoede, whose lighter delivery was unsuitable for this agent.
+  const voiceMap = { professional: 'Orus', warm: 'Orus', confident: 'Orus' };
+  const selectedVoice = voiceMap[session.settings.voice] || config.aiAgent.voice;
+  session.selectedVoice = selectedVoice;
+  const currentDate = new Intl.DateTimeFormat('en-GB', {
+    timeZone: config.metrics?.activityTimezone || 'Asia/Karachi',
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  }).format(new Date());
+  const prompt = buildSalesAgentPrompt({ offerSummary: session.settings.goal, currentDate });
   session.gemini.send(JSON.stringify({
     setup: {
       model: `models/${config.aiAgent.model.replace(/^models\//, '')}`,
@@ -89,20 +127,73 @@ const sendSetup = (session) => {
         responseModalities: ['AUDIO'],
         speechConfig: {
           languageCode: 'en-US',
-          voiceConfig: { prebuiltVoiceConfig: { voiceName: voiceMap[session.settings.voice] || config.aiAgent.voice } }
+          voiceConfig: { prebuiltVoiceConfig: { voiceName: selectedVoice } }
         }
       },
       realtimeInputConfig: {
         automaticActivityDetection: {
           disabled: false,
           startOfSpeechSensitivity: 'START_SENSITIVITY_HIGH',
-          endOfSpeechSensitivity: 'END_SENSITIVITY_HIGH',
-          prefixPaddingMs: 200,
-          silenceDurationMs: 700
+          endOfSpeechSensitivity: 'END_SENSITIVITY_LOW',
+          prefixPaddingMs: 300,
+          silenceDurationMs: 1500
         }
       },
       systemInstruction: { parts: [{ text: `${prompt}\n\nCall continuity rules: Keep the conversation active until the caller hangs up. After greeting, listen and answer every caller turn. Never announce that you are ending the call and never stop after only one response. Keep replies concise and finish each reply with a useful question when appropriate.` }] },
-      inputAudioTranscription: {},
+      inputAudioTranscription: {
+        languageCodes: ['en-IN', 'en-GB', 'en-US'],
+        mode: 'VERBATIM',
+        customVocabulary: [
+          'appointment',
+          'doctor',
+          'patient',
+          'consultant',
+          'cardiologist',
+          'dermatologist',
+          'pediatrician',
+          'gynecologist',
+          'zero',
+          'oh',
+          'one',
+          'two',
+          'three',
+          'four',
+          'five',
+          'six',
+          'seven',
+          'eight',
+          'nine',
+          'double',
+          'triple',
+          'country code',
+          'area code',
+          'Muhammad',
+          'Mohammad',
+          'Ahmed',
+          'Ahmad',
+          'Ali',
+          'Hassan',
+          'Hussain',
+          'Abdullah',
+          'Abdul Rehman',
+          'Usman',
+          'Umer',
+          'Omar',
+          'Hamza',
+          'Bilal',
+          'Imran',
+          'Fatima',
+          'Ayesha',
+          'Aisha',
+          'Zainab',
+          'Maryam',
+          'Khan',
+          'Qureshi',
+          'Siddiqui',
+          'Sheikh',
+          'Chaudhry'
+        ]
+      },
       outputAudioTranscription: {}
     }
   }));
@@ -130,7 +221,7 @@ const scheduleSilenceFollowUp = (session, delayMs = 12000) => {
 const sendInitialGreeting = (session) => {
   session.gemini.send(JSON.stringify({
     realtimeInput: {
-      text: 'Start the call now in English only. Briefly identify yourself as the hospital AI appointment assistant, then ask for the patient’s full name.'
+      text: 'Start the call naturally. Briefly identify yourself as the hospital appointment assistant, warmly ask for the patient’s full name, and then wait for the complete answer.'
     }
   }));
 };
@@ -155,7 +246,11 @@ const handleGeminiMessage = (session, data) => {
   }
   if (message.setupComplete) {
     session.ready = true;
-    console.log('[ai-agent] Gemini Live ready', { callId: session.callId, model: config.aiAgent.model });
+    console.log('[ai-agent] Gemini Live ready', {
+      callId: session.callId,
+      model: config.aiAgent.model,
+      voice: session.selectedVoice
+    });
     sendInitialGreeting(session);
     for (const chunk of session.queue.splice(0)) session.gemini.send(chunk);
     return;
@@ -168,8 +263,11 @@ const handleGeminiMessage = (session, data) => {
       const mimeType = audio.mimeType || audio.mime_type || 'audio/pcm;rate=24000';
       const sampleRate = Number((mimeType.match(/rate=(\d+)/i) || [])[1]) || 24000;
       session.outputSampleRate = sampleRate;
-      session.outputTurnChunks.push(Buffer.from(audio.data, 'base64'));
+      const chunk = Buffer.from(audio.data, 'base64');
+      session.outputTurnChunks.push(chunk);
+      session.outputTurnBytes += chunk.length;
       session.outputAudioChunks += 1;
+      queueOutputAudio(session);
     }
   }
   const inputText = content.inputTranscription?.text;
@@ -183,11 +281,7 @@ const handleGeminiMessage = (session, data) => {
       ` outputAudioChunks=${session.outputAudioChunks}` +
       ` transcriptEntries=${session.transcript.length}`
     );
-    session.playbackChain = session.playbackChain
-      .then(() => playCompletedTurn(session))
-      .catch((err) => {
-        console.error('[ai-agent] playback failed', { callId: session.callId, error: err.message });
-      });
+    queueOutputAudio(session, true);
     scheduleSilenceFollowUp(session);
   }
   if (content.interrupted) {
@@ -195,55 +289,49 @@ const handleGeminiMessage = (session, data) => {
     // this direct AI call. Drop only audio that has not been queued for native
     // playback yet and keep the channel parked/alive.
     session.outputTurnChunks.length = 0;
+    session.outputTurnBytes = 0;
+    session.playbackGeneration += 1;
     console.log('[ai-agent] Gemini playback interrupted', { callId: session.callId });
   }
 };
 
-const attachGemini = (freeswitchSocket, request, callId, settings) => {
+const connectGemini = (session) => {
   const endpoint = 'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent';
   const apiKey = config.aiAgent.apiKey;
   const url = `${endpoint}?key=${encodeURIComponent(apiKey)}`;
+  const { callId } = session;
+  session.geminiConnectAttempt += 1;
+  const attempt = session.geminiConnectAttempt;
   console.log('[ai-agent] creating Gemini WS', { callId, url: url.replace(/key=[^&]+/, 'key=***') });
   const gemini = new WebSocket(url, {
     perMessageDeflate: false,
-    handshakeTimeout: 15000,
+    handshakeTimeout: config.aiAgent.connectTimeoutMs,
     keepAlive: 30000,
+    family: 4,
   });
-  const session = {
-    callId,
-    settings,
-    freeswitch: freeswitchSocket,
-    gemini,
-    queue: [],
-    ready: false,
-    transcript: [],
-    heartbeatTimer: null,
-    geminiTimeoutTimer: null,
-    inputAudioChunks: 0,
-    outputAudioChunks: 0,
-    outputTurnChunks: [],
-    outputSampleRate: 24000,
-    playbackChain: Promise.resolve(),
-    silencePromptTimer: null,
-    lastCallerSpeechAt: Date.now()
-  };
-  sessions.set(callId, session);
-  const connectTimer = setTimeout(() => {
-    console.log('[ai-agent] Gemini connect timeout', { callId, queue: session.queue.length });
-    closeSession(callId, 1011, 'Gemini connection timeout');
+  session.gemini = gemini;
+  session.ready = false;
+  session.connectTimer = setTimeout(() => {
+    if (sessions.get(callId) !== session || session.gemini !== gemini) return;
+    console.log('[ai-agent] Gemini connect timeout', { callId, attempt, queue: session.queue.length });
+    gemini.terminate();
   }, config.aiAgent.connectTimeoutMs);
   session.geminiTimeoutTimer = setTimeout(() => {
     console.log('[ai-agent] Gemini inactivity timeout', { callId });
     closeSession(callId, 1011, 'Gemini inactivity timeout');
   }, 120000);
   const logPrefix = () => `[ai-agent][${new Date().toISOString()}] ${callId}`;
-  console.log(logPrefix(), 'attachGemini after WS create', { readyState: gemini.readyState });
+  console.log(logPrefix(), 'Gemini connection attempt', { attempt, readyState: gemini.readyState });
   gemini.on('open', () => {
-    console.log(logPrefix(), 'Gemini open', { readyState: gemini.readyState });
-    clearTimeout(connectTimer);
+    if (session.gemini !== gemini) return;
+    console.log(logPrefix(), 'Gemini open', { attempt, readyState: gemini.readyState });
+    clearTimeout(session.connectTimer);
+    session.connectTimer = null;
+    session.geminiConnectAttempt = 0;
     sendSetup(session);
   });
   gemini.on('message', (data) => {
+    if (session.gemini !== gemini) return;
     clearTimeout(session.geminiTimeoutTimer);
     session.geminiTimeoutTimer = setTimeout(() => {
       console.log('[ai-agent] Gemini inactivity timeout', { callId });
@@ -252,21 +340,30 @@ const attachGemini = (freeswitchSocket, request, callId, settings) => {
     handleGeminiMessage(session, data);
   });
   gemini.on('error', (err) => {
-    console.error(logPrefix(), 'Gemini error', { error: err.message, code: err.code });
-    clearTimeout(connectTimer);
-    clearTimeout(session.geminiTimeoutTimer);
+    console.error(logPrefix(), 'Gemini error', { attempt, error: err.message, code: err.code });
   });
   gemini.on('close', (code, reason) => {
+    if (sessions.get(callId) !== session || session.gemini !== gemini) return;
     console.log(logPrefix(), 'Gemini close', {
+      attempt,
       code,
       reason: reason?.toString(),
       transcript: session.transcript.length,
       inputAudioChunks: session.inputAudioChunks,
       outputAudioChunks: session.outputAudioChunks
     });
-    clearTimeout(connectTimer);
+    clearTimeout(session.connectTimer);
+    session.connectTimer = null;
     clearTimeout(session.geminiTimeoutTimer);
-    closeSession(callId, 1011, 'Gemini disconnected');
+    session.geminiTimeoutTimer = null;
+    session.ready = false;
+    if (session.freeswitch.readyState === WebSocket.OPEN && attempt < 5) {
+      const retryDelayMs = Math.min(4000, Math.max(1000, attempt * 1000));
+      console.warn('[ai-agent] retrying Gemini connection', { callId, attempt: attempt + 1, retryDelayMs });
+      session.retryTimer = setTimeout(() => connectGemini(session), retryDelayMs);
+      return;
+    }
+    closeSession(callId, 1011, 'Gemini disconnected after retries');
   });
   gemini.on('ping', () => {
     console.log(logPrefix(), 'Gemini ping received');
@@ -274,8 +371,39 @@ const attachGemini = (freeswitchSocket, request, callId, settings) => {
   gemini.on('pong', () => {
     console.log(logPrefix(), 'Gemini pong received');
   });
+};
+
+const attachGemini = (freeswitchSocket, request, callId, settings) => {
+  const session = {
+    callId,
+    settings,
+    freeswitch: freeswitchSocket,
+    gemini: null,
+    queue: [],
+    ready: false,
+    transcript: [],
+    heartbeatTimer: null,
+    geminiTimeoutTimer: null,
+    connectTimer: null,
+    retryTimer: null,
+    geminiConnectAttempt: 0,
+    inputAudioChunks: 0,
+    outputAudioChunks: 0,
+    outputTurnChunks: [],
+    outputTurnBytes: 0,
+    outputSampleRate: 24000,
+    playbackChain: Promise.resolve(),
+    playbackSegment: 0,
+    playbackGeneration: 0,
+    silencePromptTimer: null,
+    lastCallerSpeechAt: Date.now()
+  };
+  sessions.set(callId, session);
+  connectGemini(session);
+  const logPrefix = () => `[ai-agent][${new Date().toISOString()}] ${callId}`;
   session.heartbeatTimer = setInterval(() => {
-    if (gemini.readyState === WebSocket.OPEN) {
+    const gemini = session.gemini;
+    if (gemini?.readyState === WebSocket.OPEN) {
       try { gemini.ping(); } catch (_err) {
         console.error(logPrefix(), 'Failed to send ping', { error: _err.message });
       }
@@ -296,16 +424,22 @@ const attachGemini = (freeswitchSocket, request, callId, settings) => {
       closeSession(callId, 1011, 'Gemini inactivity timeout');
     }, 120000);
     const payload = JSON.stringify({ realtimeInput: { audio: { data: pcm.toString('base64'), mimeType: 'audio/pcm;rate=16000' } } });
-    if (session.ready && gemini.readyState === WebSocket.OPEN) {
-      gemini.send(payload);
-    } else if (session.queue.length < 100) {
+    if (session.ready && session.gemini?.readyState === WebSocket.OPEN) {
+      session.gemini.send(payload);
+    } else {
+      // Retain the most recent audio while a slow Gemini handshake completes.
+      // Dropping only the oldest chunk prevents an unbounded queue without
+      // discarding everything the caller says during connection setup.
+      if (session.queue.length >= 150) session.queue.shift();
       session.queue.push(payload);
-      console.log(logPrefix(), 'queue audio', { queue: session.queue.length });
+      if (session.queue.length === 1 || session.queue.length % 25 === 0) {
+        console.log(logPrefix(), 'queue audio', { queue: session.queue.length });
+      }
     }
   });
   freeswitchSocket.on('close', () => {
     console.log(logPrefix(), 'FreeSWITCH closed');
-    clearTimeout(connectTimer);
+    clearTimeout(session.connectTimer);
     clearTimeout(session.geminiTimeoutTimer);
     closeSession(callId);
   });

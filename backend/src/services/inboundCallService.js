@@ -193,7 +193,7 @@ const dispatch = async ({ uuid, did, callerIdNumber, settings: suppliedSettings 
       await freeswitch.startAudioStream(uuid, url.toString(), { callId: uuid, did, callerIdNumber });
       const geminiReady = await aiBridge.waitUntilReady(
         uuid,
-        config.aiAgent.connectTimeoutMs + 5000
+        (config.aiAgent.connectTimeoutMs * 2) + 10000
       );
       if (!geminiReady) {
         await freeswitch.stopAudioStream(uuid).catch(() => null);
