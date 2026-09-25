@@ -4,44 +4,11 @@
 # Apply the ESL password before FreeSWITCH starts.
 /usr/local/bin/configure-event-socket.sh || exit 1
 
-# FreeSWITCH uses host networking, so it is the authoritative place to detect
-# the host machine's LAN address. Publish that address through the shared
-# gateway volume for the bridged backend container to use for ESL.
-host_ip_file="${FREESWITCH_HOST_IP_FILE:-/etc/freeswitch/gateways/.host-ip}"
-host_ip="$(/usr/local/bin/detect-host-ip.sh 2>/dev/null || true)"
-if [ -n "$host_ip" ]; then
-    mkdir -p "$(dirname "$host_ip_file")"
-    printf '%s\n' "$host_ip" > "$host_ip_file"
-    echo "[freeswitch] Published host IP $host_ip to $host_ip_file"
-
-    # local_ip_v4 follows the host's default route and may select a VPN or a
-    # second LAN interface. Keep the browser-facing SIP profile on HOST_IP.
-    vars_file="/etc/freeswitch/vars.xml"
-    if [ -f "$vars_file" ]; then
-        sed -i -E "s|data=\"webphone_bind_ip=[^\"]*\"|data=\"webphone_bind_ip=${host_ip}\"|" "$vars_file"
-        echo "[freeswitch] Internal SIP/WebSocket bind IP set to $host_ip"
-    fi
-else
-    echo "[freeswitch] Warning: unable to detect the host machine IP" >&2
-fi
-
-# Optional explicit public overrides. For local deployments, advertise the
-# configured HOST_IP so browser ICE does not receive a stale public address.
-sip_ip_override="${FREESWITCH_EXTERNAL_SIP_IP:-${EXTERNAL_IP:-$host_ip}}"
-rtp_ip_override="${FREESWITCH_EXTERNAL_RTP_IP:-${EXTERNAL_IP:-$host_ip}}"
-if [ -n "$sip_ip_override" ] || [ -n "$rtp_ip_override" ]; then
-    vars_file="/etc/freeswitch/vars.xml"
-    if [ -f "$vars_file" ]; then
-        if [ -n "$sip_ip_override" ]; then
-            sed -i -E "s|data=\"external_sip_ip=[^\"]*\"|data=\"external_sip_ip=${sip_ip_override}\"|" "$vars_file"
-            echo "[freeswitch] Overrode external_sip_ip with $sip_ip_override"
-        fi
-        if [ -n "$rtp_ip_override" ]; then
-            sed -i -E "s|data=\"external_rtp_ip=[^\"]*\"|data=\"external_rtp_ip=${rtp_ip_override}\"|" "$vars_file"
-            echo "[freeswitch] Overrode external_rtp_ip with $rtp_ip_override"
-        fi
-    fi
-fi
+# SIP/RTP bind IP, external IP, and the RTP port range are all resolved
+# natively inside conf/vars.xml via FreeSWITCH's own X-PRE-PROCESS
+# cmd="exec-set" directives (using local_ip_v4, which FreeSWITCH auto-detects
+# correctly because this container always runs with network_mode: host).
+# No script-based IP detection or config patching is needed here.
 
 # Start the XML reload watcher in the background
 /usr/local/bin/reload-watcher.sh &

@@ -223,7 +223,6 @@ class DialerController extends Controller
             'goal' => ['required', 'string', 'max:2000'],
             'mode' => ['required', 'in:lead,assist,qualify'],
             'voice' => ['required', 'in:professional,warm,confident'],
-            'autoNotes' => ['required', 'boolean'],
             'humanHandoff' => ['required', 'boolean'],
         ]);
         return $this->proxyRequest($request, 'put', '/ai-agent', $data);

@@ -48,9 +48,12 @@
   -->
 
 
-  <!-- Updated by entrypoint from FREESWITCH_HOST/HOST_IP. This avoids binding
-       browser SIP/WebRTC to an unrelated default-route interface. -->
-  <X-PRE-PROCESS cmd="set" data="webphone_bind_ip=192.168.18.31"/>
+  <!-- SIP/RTP bind IP: this container always runs with network_mode: host,
+       so FreeSWITCH's own auto-detected local_ip_v4 already resolves to the
+       correct host LAN address with zero configuration. Optionally force a
+       specific interface by setting FREESWITCH_BIND_IP in the environment;
+       no .env entry is required by default. -->
+  <X-PRE-PROCESS cmd="exec-set" data="webphone_bind_ip=echo ${FREESWITCH_BIND_IP:-$${local_ip_v4}}"/>
   <X-PRE-PROCESS cmd="set" data="sound_prefix=$${sounds_dir}/en/us/callie"/>
   <!--<Z-PRE-PROCESS cmd="set" data="sound_prefix=$${sounds_dir}/en/us/allison"/> -->
 
@@ -284,10 +287,18 @@
        for external_rtp_ip and external_sip_ip
   -->
 
-  <!-- The external profile runs on the host network. Advertise its detected
-       address for both SIP signaling and RTP/SDP without pinning an IP. -->
-  <X-PRE-PROCESS cmd="set" data="external_rtp_ip=192.168.18.31"/>
-  <X-PRE-PROCESS cmd="set" data="external_sip_ip=192.168.18.31"/>
+  <!-- The external profile runs on the host network. Auto-detected via
+       local_ip_v4; override with FREESWITCH_EXTERNAL_RTP_IP /
+       FREESWITCH_EXTERNAL_SIP_IP in the environment only if you need to pin
+       a specific interface (e.g. multiple NICs). Not required by default. -->
+  <X-PRE-PROCESS cmd="exec-set" data="external_rtp_ip=echo ${FREESWITCH_EXTERNAL_RTP_IP:-$${local_ip_v4}}"/>
+  <X-PRE-PROCESS cmd="exec-set" data="external_sip_ip=echo ${FREESWITCH_EXTERNAL_SIP_IP:-$${local_ip_v4}}"/>
+
+  <!-- RTP/RTCP UDP media port range used by switch.conf.xml. Configurable
+       via RTP_START_PORT / RTP_END_PORT in the environment; falls back to
+       4000-6000 when unset. -->
+  <X-PRE-PROCESS cmd="exec-set" data="rtp_start_port=echo ${RTP_START_PORT:-4000}"/>
+  <X-PRE-PROCESS cmd="exec-set" data="rtp_end_port=echo ${RTP_END_PORT:-6000}"/>
 
   <!-- unroll-loops
        Used to turn on sip loopback unrolling.

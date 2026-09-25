@@ -10,16 +10,16 @@ x-backend-env: &backend-env
   BACKEND_INTERNAL_TOKEN: ${BACKEND_INTERNAL_TOKEN:-dev-backend-token-9c2a7e5d}
   DEFAULT_ADMIN_EMAIL: ${DEFAULT_ADMIN_EMAIL:-superadmin@example.com}
   DEFAULT_ADMIN_PASSWORD: ${DEFAULT_ADMIN_PASSWORD:-dev-admin-password-8e4c1a7b}
-  # FREESWITCH_HOST: empty = read the host LAN IP published by host-networked FreeSWITCH
+  # FREESWITCH_HOST: empty = ESL is reachable on loopback (both containers
+  # always run with network_mode: host).
   FREESWITCH_HOST: ${FREESWITCH_HOST:-}
-  FREESWITCH_HOST_IP_FILE: /mnt/gateways/.host-ip
   FREESWITCH_PORT: 8021
   FREESWITCH_PASSWORD: ${FREESWITCH_PASSWORD:-dev-freeswitch-password-6d2b9f4a}
   FREESWITCH_CONNECT_TIMEOUT_MS: 5000
   FREESWITCH_RECORDINGS_PATH: /var/recordings
   FREESWITCH_GATEWAY_PATH: /mnt/gateways
   FREESWITCH_DIRECTORY_PATH: /mnt/users
-  # FREESWITCH_EXTERNAL_SIP_IP: empty = advertise the detected host LAN IP
+  # FREESWITCH_EXTERNAL_SIP_IP: empty = advertise the auto-detected host LAN IP
   FREESWITCH_EXTERNAL_SIP_IP: ${FREESWITCH_EXTERNAL_SIP_IP:-}
   # FREESWITCH_DIRECTORY_DOMAIN: empty = auto-detect from FreeSWITCH domain var
   FREESWITCH_DIRECTORY_DOMAIN: ${FREESWITCH_DIRECTORY_DOMAIN:-}
@@ -83,15 +83,15 @@ services:
       - freeswitch_gateways:/etc/freeswitch/gateways
       - freeswitch_users:/etc/freeswitch/directory/webphone
     environment:
-      # Use the same LAN address advertised to browser SIP clients instead of
-      # whichever interface happens to own the host's default route.
-      HOST_IP: ${FREESWITCH_HOST:-}
-      EVENT_SOCKET_PASSWORD: ${FREESWITCH_PASSWORD:-dev-freeswitch-password-6d2b9f4a}
-      FREESWITCH_HOST_IP_FILE: /etc/freeswitch/gateways/.host-ip
-      # Empty defaults to this machine's primary IPv4 for SIP Via/Contact.
+      # SIP/RTP bind IP is auto-detected by FreeSWITCH itself (local_ip_v4)
+      # under network_mode: host. Optional overrides for multi-NIC setups:
+      FREESWITCH_BIND_IP: ${FREESWITCH_BIND_IP:-}
       FREESWITCH_EXTERNAL_SIP_IP: ${FREESWITCH_EXTERNAL_SIP_IP:-}
-      # Empty defaults RTP/SDP to this machine's primary IPv4.
       FREESWITCH_EXTERNAL_RTP_IP: ${FREESWITCH_EXTERNAL_RTP_IP:-}
+      # RTP/RTCP UDP media port range; defaults to 4000-6000 when unset.
+      RTP_START_PORT: ${RTP_START_PORT:-}
+      RTP_END_PORT: ${RTP_END_PORT:-}
+      EVENT_SOCKET_PASSWORD: ${FREESWITCH_PASSWORD:-dev-freeswitch-password-6d2b9f4a}
       # Backend URL for inbound.lua - FreeSWITCH uses host networking, so it
       # reaches the backend container via the host-mapped port (4000:4000)
       BACKEND_URL: http://127.0.0.1:4000

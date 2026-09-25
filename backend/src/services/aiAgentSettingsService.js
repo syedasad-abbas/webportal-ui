@@ -6,7 +6,6 @@ const defaults = {
   goal: 'Collect the patient name, phone number, preferred appointment date, and doctor name.',
   mode: 'lead',
   voice: 'professional',
-  autoNotes: true,
   humanHandoff: true
 };
 
@@ -17,12 +16,14 @@ const legacySalesGoals = new Set([
 
 const normalizeGoal = (goal) => (!goal || legacySalesGoals.has(goal) ? defaults.goal : goal);
 
+// The live model is intentionally not stored per-record. It is controlled
+// exclusively by the GEMINI_LIVE_MODEL environment variable so there is a
+// single source of truth and no hardcoded model choice anywhere in the code.
 const normalize = (row = {}) => ({
   enabled: Boolean(row.enabled),
   goal: normalizeGoal(row.goal),
   mode: row.mode || defaults.mode,
   voice: row.voice || defaults.voice,
-  autoNotes: row.auto_notes === undefined ? defaults.autoNotes : Boolean(row.auto_notes),
   humanHandoff: row.human_handoff === undefined ? defaults.humanHandoff : Boolean(row.human_handoff),
   updatedBy: row.updated_by || null,
   ready: Boolean(config.aiAgent.apiKey),
@@ -44,14 +45,15 @@ const update = async (settings, userId) => {
   }
   const result = await db.query(
     `INSERT INTO ai_agent_settings
-      (id, enabled, goal, mode, voice, auto_notes, human_handoff, updated_by, created_at, updated_at)
-     VALUES (1, $1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+      (id, enabled, goal, mode, voice, human_handoff, updated_by, created_at, updated_at)
+     VALUES (1, $1, $2, $3, $4, $5, $6, NOW(), NOW())
      ON CONFLICT (id) DO UPDATE SET
        enabled = EXCLUDED.enabled, goal = EXCLUDED.goal, mode = EXCLUDED.mode,
-       voice = EXCLUDED.voice, auto_notes = EXCLUDED.auto_notes,
-       human_handoff = EXCLUDED.human_handoff, updated_by = EXCLUDED.updated_by, updated_at = NOW()
+       voice = EXCLUDED.voice,
+       human_handoff = EXCLUDED.human_handoff,
+       updated_by = EXCLUDED.updated_by, updated_at = NOW()
      RETURNING *`,
-    [value.enabled, value.goal, value.mode, value.voice, value.autoNotes, value.humanHandoff, userId]
+    [value.enabled, value.goal, value.mode, value.voice, value.humanHandoff, userId]
   );
   return normalize(result.rows[0]);
 };

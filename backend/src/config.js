@@ -1,5 +1,4 @@
 require('dotenv').config();
-const fs = require('fs');
 
 const FORBIDDEN_DEFAULTS = [
   'change-me', 'change_me', 'changeme',
@@ -80,57 +79,6 @@ const parseCsvList = (value, fallback = []) => {
   return items.length ? items : fallback;
 };
 
-// A host-networked FreeSWITCH is reachable from the backend container at the
-// container's default Docker gateway. This avoids pinning the host's DHCP IP.
-const detectDockerGateway = () => {
-  try {
-    const routes = fs.readFileSync('/proc/net/route', 'utf8').trim().split('\n').slice(1);
-    const defaultRoute = routes.find((line) => line.trim().split(/\s+/)[1] === '00000000');
-    if (!defaultRoute) return null;
-    const gatewayHex = defaultRoute.trim().split(/\s+/)[2];
-    if (!/^[0-9A-Fa-f]{8}$/.test(gatewayHex)) return null;
-    return gatewayHex.match(/../g).reverse().map((octet) => parseInt(octet, 16)).join('.');
-  } catch (err) {
-    return null;
-  }
-};
-
-const detectFreeSwitchHost = () => {
-  const configured = optionalEnv(process.env.FREESWITCH_HOST, null);
-  if (configured) return configured;
-
-  const hostIpFile = optionalEnv(
-    process.env.FREESWITCH_HOST_IP_FILE,
-    '/mnt/gateways/.host-ip'
-  );
-  try {
-    const detected = optionalEnv(fs.readFileSync(hostIpFile, 'utf8'), null);
-    if (detected && /^(?:\d{1,3}\.){3}\d{1,3}$/.test(detected)) {
-      return detected;
-    }
-  } catch (err) {
-    // The shared file is created by the host-networked FreeSWITCH container.
-  }
-
-  return detectDockerGateway() || 'host.docker.internal';
-};
-
-const detectPublishedFreeSwitchIp = () => {
-  const hostIpFile = optionalEnv(
-    process.env.FREESWITCH_HOST_IP_FILE,
-    '/mnt/gateways/.host-ip'
-  );
-  try {
-    const detected = optionalEnv(fs.readFileSync(hostIpFile, 'utf8'), null);
-    if (detected && /^(?:\d{1,3}\.){3}\d{1,3}$/.test(detected)) {
-      return detected;
-    }
-  } catch (err) {
-    // FreeSWITCH may not have published the host address yet.
-  }
-  return null;
-};
-
 // Detect the host's primary IP address (works both in Docker and on bare metal)
 const detectHostIp = () => {
   try {
@@ -148,6 +96,12 @@ const detectHostIp = () => {
   }
   return null;
 };
+
+// Both the backend and FreeSWITCH containers always run with
+// network_mode: host, so FreeSWITCH's ESL port is reachable on loopback
+// with zero configuration. FREESWITCH_HOST remains available as an
+// optional override for non-standard deployments.
+const detectFreeSwitchHost = () => optionalEnv(process.env.FREESWITCH_HOST, '127.0.0.1');
 
 const baseConfig = {
   port: process.env.PORT || 4000,
@@ -172,7 +126,7 @@ const baseConfig = {
     ),
     advertisedSipIp: optionalEnv(
       process.env.FREESWITCH_EXTERNAL_SIP_IP,
-      detectPublishedFreeSwitchIp()
+      detectHostIp()
     ),
     directoryDomain: optionalEnv(
       process.env.FREESWITCH_DIRECTORY_DOMAIN,
@@ -250,11 +204,8 @@ const initConfig = async () => {
     } catch (err) {
       // Fall back to the configured ESL host when it is an IP address.
     }
-    if (
-      !baseConfig.freeswitch.advertisedSipIp &&
-      /^(?:\d{1,3}\.){3}\d{1,3}$/.test(baseConfig.freeswitch.host || '')
-    ) {
-      baseConfig.freeswitch.advertisedSipIp = baseConfig.freeswitch.host;
+    if (!baseConfig.freeswitch.advertisedSipIp) {
+      baseConfig.freeswitch.advertisedSipIp = detectHostIp();
     }
   }
 
@@ -283,13 +234,14 @@ const initConfig = async () => {
       }
     }
 
-    // Final fallback: use the host IP published by host-networked FreeSWITCH.
-    // Never advertise the backend container's Docker bridge gateway as SIP.
+    // Final fallback: auto-detect this machine's primary LAN IPv4 address.
+    // Both containers always run with network_mode: host, so this is the
+    // same address FreeSWITCH itself is bound to.
     if (!baseConfig.freeswitch.externalSipIp) {
-      const freeswitchHost = baseConfig.freeswitch.host;
-      if (freeswitchHost && freeswitchHost !== 'host.docker.internal') {
-        baseConfig.freeswitch.externalSipIp = freeswitchHost;
-        console.log(`[config] Using FreeSWITCH host IP as external SIP IP: ${freeswitchHost}`);
+      const hostIp = detectHostIp();
+      if (hostIp) {
+        baseConfig.freeswitch.externalSipIp = hostIp;
+        console.log(`[config] Using auto-detected host IP as external SIP IP: ${hostIp}`);
       }
     }
   }

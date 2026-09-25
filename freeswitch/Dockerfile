@@ -38,8 +38,7 @@ COPY conf /etc/freeswitch
 COPY reload-watcher.sh /usr/local/bin/reload-watcher.sh
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 COPY configure-event-socket.sh /usr/local/bin/configure-event-socket.sh
-COPY detect-host-ip.sh /usr/local/bin/detect-host-ip.sh
-RUN chmod +x /usr/local/bin/configure-event-socket.sh /usr/local/bin/reload-watcher.sh /usr/local/bin/entrypoint.sh /usr/local/bin/detect-host-ip.sh
+RUN chmod +x /usr/local/bin/configure-event-socket.sh /usr/local/bin/reload-watcher.sh /usr/local/bin/entrypoint.sh
 
 # Override the base image probe so ESL checks use the configured password.
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \

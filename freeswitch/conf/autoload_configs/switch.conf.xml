@@ -146,9 +146,11 @@
     <!-- <param name="timer-affinity" value="disabled"/> -->
     <!-- NEEDS DOCUMENTATION -->
 
-    <!-- RTP/RTCP media ports (UDP); allow this range through the host firewall -->
-    <param name="rtp-start-port" value="4000"/>
-    <param name="rtp-end-port" value="6000"/>
+    <!-- RTP/RTCP media ports (UDP); allow this range through the host firewall.
+         Configurable via RTP_START_PORT / RTP_END_PORT in the environment
+         (see vars.xml); defaults to 4000-6000 when unset. -->
+    <param name="rtp-start-port" value="$${rtp_start_port}"/>
+    <param name="rtp-end-port" value="$${rtp_end_port}"/>
 
     <!-- Test each port to make sure it is not in use by some other process before allocating it to RTP -->
     <param name="rtp-port-usage-robustness" value="true"/>

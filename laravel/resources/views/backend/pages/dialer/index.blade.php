@@ -938,7 +938,7 @@ html:not(.dark) .connectpro-agent-status { background: #d1fae5 !important; color
                     </span>
                     <span class="min-w-0 flex-1">
                         <span class="flex items-center gap-2"><strong id="ai-agent-title" class="truncate text-sm text-slate-900 dark:text-white">{{ __('Hospital Appointment AI') }}</strong><span class="rounded-full bg-violet-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-300">{{ __('Preview') }}</span></span>
-                        <span class="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">{{ __('Gemini 3.8 Live') }}</span>
+                        <span class="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">{{ __('Google Gemini Live') }}</span>
                     </span>
                     <button id="ai-agent-minimize" type="button" class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-white/5 dark:hover:text-white" aria-label="{{ __('Minimize AI agent controls') }}" aria-expanded="true" aria-controls="ai-agent-body"><i class="bi bi-dash-lg"></i></button>
                 </div>
@@ -974,11 +974,17 @@ html:not(.dark) .connectpro-agent-status { background: #d1fae5 !important; color
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-2">
-                        <label class="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 px-3 py-2.5 text-xs font-medium text-slate-700 dark:border-[#263b50] dark:text-slate-300"><input id="ai-agent-notes" type="checkbox" checked class="h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500"><span>{{ __('Auto notes') }}</span></label>
+                    <div class="grid grid-cols-1 gap-2">
                         <label class="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 px-3 py-2.5 text-xs font-medium text-slate-700 dark:border-[#263b50] dark:text-slate-300"><input id="ai-agent-handoff" type="checkbox" checked class="h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500"><span>{{ __('Human handoff') }}</span></label>
                     </div>
 
+                    <div>
+                        <label class="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{{ __('Live voice model (Google)') }}</label>
+                        <p id="ai-agent-live-model" class="w-full rounded-xl border border-slate-200 bg-slate-100 px-3 py-2.5 text-xs text-slate-600 dark:border-[#263b50] dark:bg-[#0b1c2c] dark:text-slate-300">—</p>
+                        <p class="mt-1 text-[11px] text-slate-500 dark:text-slate-400">{{ __('Set via GEMINI_LIVE_MODEL in the backend .env, then restart the backend.') }}</p>
+                    </div>
+
+                    <button id="ai-agent-save" type="button" class="flex w-full items-center justify-center rounded-xl border border-violet-500 px-4 py-2.5 text-sm font-semibold text-violet-600 dark:text-violet-300">{{ __('Save settings') }}</button>
                     <button id="ai-agent-toggle" type="button" class="flex w-full items-center justify-center gap-2 rounded-xl bg-violet-600 px-4 py-3 text-sm font-semibold text-white"><i class="bi bi-play-fill text-lg"></i><span>{{ __('Enable AI agent') }}</span></button>
                     <p id="ai-agent-feedback" class="text-center text-[11px] text-slate-500 dark:text-slate-400">{{ __('Inbound calls use normal agent routing while disabled.') }}</p>
                 </div>
@@ -1077,9 +1083,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const aiAgentGoal = document.getElementById('ai-agent-goal');
     const aiAgentMode = document.getElementById('ai-agent-mode');
     const aiAgentVoice = document.getElementById('ai-agent-voice');
-    const aiAgentNotes = document.getElementById('ai-agent-notes');
+    const aiAgentLiveModel = document.getElementById('ai-agent-live-model');
     const aiAgentHandoff = document.getElementById('ai-agent-handoff');
     const aiAgentToggle = document.getElementById('ai-agent-toggle');
+    const aiAgentSave = document.getElementById('ai-agent-save');
     const aiAgentStatusTitle = document.getElementById('ai-agent-status-title');
     const aiAgentStatusDetail = document.getElementById('ai-agent-status-detail');
     const aiAgentFeedback = document.getElementById('ai-agent-feedback');
@@ -1105,7 +1112,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (aiAgentGoal) aiAgentGoal.value = settings.goal || '';
         if (aiAgentMode) aiAgentMode.value = settings.mode || 'lead';
         if (aiAgentVoice) aiAgentVoice.value = settings.voice || 'professional';
-        if (aiAgentNotes) aiAgentNotes.checked = Boolean(settings.autoNotes);
+        if (aiAgentLiveModel) aiAgentLiveModel.textContent = settings.model || '—';
         if (aiAgentHandoff) aiAgentHandoff.checked = Boolean(settings.humanHandoff);
         renderAiAgentState();
     };
@@ -1126,7 +1133,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 goal: aiAgentGoal?.value || '',
                 mode: aiAgentMode?.value || 'lead',
                 voice: aiAgentVoice?.value || 'professional',
-                notes: Boolean(aiAgentNotes?.checked),
                 handoff: Boolean(aiAgentHandoff?.checked)
             }));
         } catch (error) {}
@@ -1138,7 +1144,6 @@ document.addEventListener('DOMContentLoaded', function () {
             if (aiAgentGoal && typeof savedSetup.goal === 'string') aiAgentGoal.value = savedSetup.goal;
             if (aiAgentMode && ['lead', 'assist', 'qualify'].includes(savedSetup.mode)) aiAgentMode.value = savedSetup.mode;
             if (aiAgentVoice && ['professional', 'warm', 'confident'].includes(savedSetup.voice)) aiAgentVoice.value = savedSetup.voice;
-            if (aiAgentNotes && typeof savedSetup.notes === 'boolean') aiAgentNotes.checked = savedSetup.notes;
             if (aiAgentHandoff && typeof savedSetup.handoff === 'boolean') aiAgentHandoff.checked = savedSetup.handoff;
             const savedCollapsedState = window.localStorage.getItem('dialer.aiAgent.collapsed');
             setAiAgentCollapsed(savedCollapsedState === '1' || (savedCollapsedState === null && window.innerWidth < 768));
@@ -1147,7 +1152,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         aiAgentMinimize?.addEventListener('click', () => setAiAgentCollapsed(true));
         aiAgentCollapsed?.addEventListener('click', () => setAiAgentCollapsed(false));
-        [aiAgentGoal, aiAgentMode, aiAgentVoice, aiAgentNotes, aiAgentHandoff].filter(Boolean).forEach((control) => {
+        [aiAgentGoal, aiAgentMode, aiAgentVoice, aiAgentHandoff].filter(Boolean).forEach((control) => {
             control.addEventListener('change', persistAiAgentSetup);
         });
         aiAgentGoal?.addEventListener('input', persistAiAgentSetup);
@@ -1155,23 +1160,26 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(async (response) => { const body = await response.json(); if (!response.ok) throw new Error(body.message || 'Unable to load AI settings'); return body; })
             .then((body) => applyAiAgentSettings(body.settings))
             .catch((error) => { if (aiAgentFeedback) aiAgentFeedback.textContent = error.message; renderAiAgentState(); });
-        aiAgentToggle?.addEventListener('click', async () => {
+        const saveAiAgentSettings = async (enabled) => {
             aiAgentToggle.disabled = true;
+            if (aiAgentSave) aiAgentSave.disabled = true;
             if (aiAgentFeedback) aiAgentFeedback.textContent = @json(__('Saving…'));
             try {
                 const response = await fetch(aiAgentSettingsUrl, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '' },
-                    body: JSON.stringify({ enabled: !aiAgentEnabled, goal: aiAgentGoal?.value || 'Collect the patient name, phone number, preferred appointment date, and doctor name.', mode: aiAgentMode?.value || 'lead', voice: aiAgentVoice?.value || 'professional', autoNotes: Boolean(aiAgentNotes?.checked), humanHandoff: Boolean(aiAgentHandoff?.checked) })
+                    body: JSON.stringify({ enabled, goal: aiAgentGoal?.value || 'Collect the patient name, phone number, preferred appointment date, and doctor name.', mode: aiAgentMode?.value || 'lead', voice: aiAgentVoice?.value || 'professional', humanHandoff: Boolean(aiAgentHandoff?.checked) })
                 });
                 const body = await response.json();
                 if (!response.ok) throw new Error(body.message || 'Unable to update AI agent');
                 applyAiAgentSettings(body.settings);
-                if (aiAgentFeedback) aiAgentFeedback.textContent = aiAgentEnabled ? @json(__('AI will answer new inbound calls.')) : @json(__('Human routing restored.'));
+                if (aiAgentFeedback) aiAgentFeedback.textContent = @json(__('Settings saved.'));
             } catch (error) {
                 if (aiAgentFeedback) aiAgentFeedback.textContent = error.message;
-            } finally { renderAiAgentState(); }
-        });
+            } finally { if (aiAgentSave) aiAgentSave.disabled = false; renderAiAgentState(); }
+        };
+        aiAgentToggle?.addEventListener('click', () => saveAiAgentSettings(!aiAgentEnabled));
+        aiAgentSave?.addEventListener('click', () => saveAiAgentSettings(aiAgentEnabled));
     }
 
     if (!form) return;

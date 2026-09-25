@@ -8,6 +8,17 @@ const ensureSchemaUpgrades = async () => {
   );
   await db.query('ALTER TABLE call_logs ALTER COLUMN caller_id DROP NOT NULL');
   await db.query('ALTER TABLE call_logs ADD COLUMN IF NOT EXISTS notes TEXT');
+  await db.query(`CREATE TABLE IF NOT EXISTS ai_agent_settings (
+    id INTEGER PRIMARY KEY,
+    enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    goal TEXT NOT NULL,
+    mode VARCHAR(20) NOT NULL,
+    voice VARCHAR(30) NOT NULL,
+    human_handoff BOOLEAN NOT NULL DEFAULT TRUE,
+    updated_by BIGINT,
+    created_at TIMESTAMP WITHOUT TIME ZONE,
+    updated_at TIMESTAMP WITHOUT TIME ZONE
+  )`);
   await db.query(
     `CREATE TABLE IF NOT EXISTS inbound_dids (
        id BIGSERIAL PRIMARY KEY,
