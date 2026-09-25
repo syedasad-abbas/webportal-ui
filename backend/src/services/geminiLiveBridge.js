@@ -28,6 +28,27 @@ const safeEqual = (a, b) => {
 const FIRST_OUTPUT_SEGMENT_MS = 1200;
 const CONTINUATION_SEGMENT_MS = 2800;
 
+// Recognition hints only: these improve common South-Asian name acoustics but
+// never act as a whitelist. The caller's actual pronunciation and confirmed
+// spelling remain authoritative for names not present here.
+const SOUTH_ASIAN_NAME_VOCABULARY = Object.freeze([
+  'Muhammad', 'Mohammad', 'Mohammed', 'Ahmed', 'Ahmad', 'Ali',
+  'Abdul', 'Abdullah', 'Abdul Hameed', 'Abdul Hamid', 'Abdul Rehman',
+  'Abdur Rahman', 'Hameed', 'Hamid', 'Rehman', 'Rahman',
+  'Hassan', 'Hasan', 'Hussain', 'Husain', 'Qasim', 'Kasim', 'Usman',
+  'Umer', 'Omer', 'Omar', 'Hamza', 'Bilal', 'Imran', 'Faisal', 'Farhan',
+  'Shahid', 'Tariq', 'Zubair', 'Ayesha', 'Aisha', 'Fatima', 'Zainab',
+  'Maryam', 'Mariam', 'Hira', 'Iqra', 'Sana', 'Mahnoor',
+  'Khan', 'Qureshi', 'Siddiqui', 'Sheikh', 'Chaudhry', 'Choudhary',
+  'Syed', 'Malik', 'Mirza', 'Abbasi',
+  'Aarav', 'Vivaan', 'Aditya', 'Arjun', 'Rahul', 'Rohit', 'Rajesh',
+  'Rakesh', 'Amit', 'Ankit', 'Akash', 'Suresh', 'Ramesh', 'Vikram',
+  'Karan', 'Deepak', 'Sanjay', 'Vijay', 'Ajay', 'Pradeep', 'Abhishek',
+  'Priya', 'Pooja', 'Neha', 'Anjali', 'Kavya', 'Divya', 'Sneha', 'Aditi',
+  'Lakshmi', 'Patel', 'Sharma', 'Verma', 'Singh', 'Gupta', 'Kumar',
+  'Iyer', 'Nair', 'Reddy', 'Rao', 'Mehta', 'Desai', 'Kulkarni'
+]);
+
 const pcmWav = (pcm, sampleRate) => {
   const header = Buffer.alloc(44);
   header.write('RIFF', 0);
@@ -109,6 +130,7 @@ const closeSession = (callId, code = 1000, reason = 'Call ended') => {
   if (session.geminiTimeoutTimer) clearTimeout(session.geminiTimeoutTimer);
   if (session.silencePromptTimer) clearTimeout(session.silencePromptTimer);
   if (session.phoneFinalizeTimer) clearTimeout(session.phoneFinalizeTimer);
+  if (session.nameSpellingTimer) clearTimeout(session.nameSpellingTimer);
   if (session.connectTimer) clearTimeout(session.connectTimer);
   if (session.retryTimer) clearTimeout(session.retryTimer);
   for (const socket of [session.gemini, session.freeswitch]) {
@@ -152,16 +174,21 @@ const sendSetup = (session) => {
       },
       systemInstruction: { parts: [{ text: `${prompt}\n\nCall continuity rules: Keep the conversation active until the caller hangs up. After greeting, listen and answer every caller turn. Never announce that you are ending the call and never stop after only one response. Keep replies concise and finish each reply with a useful question when appropriate. You receive the caller's live audio directly; transcribe carefully and preserve spelled names and digits exactly. Google Search is available only for general public hospital information when the hospital is identified. Never search for a patient or use web results to decide how the caller spells a name. Confirm uncertain names directly with the caller. Never infer doctor availability or claim a booking from search results.` }] },
       inputAudioTranscription: {
-        // Keep recognition in English. Unrestricted auto-detection was
-        // misclassifying Pakistani English as Spanish and German.
-        languageCodes: ['en-IN', 'en-GB', 'en-US'],
+        // Use one strong English hint. Supplying several locale alternatives
+        // still allowed short Pakistani-English names to be classified as
+        // unrelated French, Spanish, or German phrases in real calls.
+        // en-IN handles South-Asian English while remaining suitable for
+        // ordinary British and American English speech.
+        languageCodes: ['en-IN'],
+        // Keep proper names literal. SMART mode was rewriting Pakistani name
+        // sounds into unrelated Spanish and German phrases during real calls.
         mode: 'VERBATIM',
         customVocabulary: [
           'patient name', 'full name', 'doctor name', 'hospital appointment',
           'mobile number', 'phone number', 'appointment date', 'spell my name',
-          'Muhammad', 'Mohammad', 'Ahmed', 'Ahmad', 'Abdul', 'Rehman', 'Rahman',
-          'Hussain', 'Hassan', 'Usman', 'Umer', 'Ayesha', 'Fatima', 'Zainab',
-          'Qasim', 'Khan', 'Qureshi', 'Siddiqui', 'Sheikh', 'Chaudhry', 'Syed',
+          'first name', 'last name', 'first and last name',
+          'given name', 'middle name', 'family name', 'surname',
+          'preferred spelling', 'correct the name', 'change the name',
           'zero', 'oh', 'one', 'two', 'three', 'four', 'five', 'six', 'seven',
           'eight', 'nine', 'double zero', 'double one', 'double two',
           'double three', 'double four', 'double five', 'double six',
@@ -170,7 +197,15 @@ const sendSetup = (session) => {
           'alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot', 'golf',
           'hotel', 'india', 'juliett', 'kilo', 'lima', 'mike', 'november',
           'oscar', 'papa', 'quebec', 'romeo', 'sierra', 'tango', 'uniform',
-          'victor', 'whiskey', 'x-ray', 'yankee', 'zulu'
+          'victor', 'whiskey', 'x-ray', 'yankee', 'zulu',
+          'A as in Apple', 'B as in Ball', 'C as in Cat', 'D as in Dog',
+          'E as in Egg', 'F as in Fish', 'G as in Goat', 'H as in House',
+          'I as in Ice', 'J as in Jug', 'K as in Kite', 'L as in Lion',
+          'M as in Mango', 'N as in Nest', 'O as in Orange',
+          'P as in Pakistan', 'Q as in Queen', 'R as in Rose', 'S as in Sun',
+          'T as in Tiger', 'U as in Umbrella', 'V as in Van', 'W as in Watch',
+          'X as in X-ray', 'Y as in Yellow', 'Z as in Zebra',
+          ...SOUTH_ASIAN_NAME_VOCABULARY
         ]
       },
       outputAudioTranscription: {}
@@ -205,7 +240,10 @@ const scheduleSilenceFollowUp = (session, delayMs = 12000) => {
 };
 
 const sendInitialGreeting = (session) => {
-  sendControlText(session, 'Start the call naturally. Briefly identify yourself as the hospital appointment assistant, warmly ask for the patient’s full name, and then wait for the complete answer.');
+  sendControlText(
+    session,
+    'Start the call naturally. Briefly identify yourself as the hospital appointment assistant, then ask: “May I have the patient’s first and last name? You can pause briefly between the two names.” Wait for the complete answer.'
+  );
 };
 
 const PHONE_DIGIT_WORDS = Object.freeze({
@@ -246,9 +284,17 @@ const expectedPakistaniPhoneLength = (digits) => {
   return null;
 };
 
-const isNegativeConfirmation = (text) => /\b(no|nope|wrong|incorrect|not correct|not right|isn'?t right|isn'?t correct|heard me wrong|got it wrong|didn'?t say that)\b/i.test(text || '');
-const isPositiveConfirmation = (text) => /\b(yes|yeah|correct|right|that is right|that'?s right)\b/i.test(text || '');
+const isNegativeConfirmation = (text) => /\b(no|nope|nah|wrong|incorrect|not correct|not right|isn'?t right|isn'?t correct|heard me wrong|got it wrong|didn'?t say that|that is not it|that'?s not it|negative)\b/i.test(text || '');
+const isPositiveConfirmation = (text) => /\b(yes|yeah|yep|correct|exactly|right|that is right|that'?s right|that is correct|that'?s correct|that'?s it|you got it|perfect|confirmed|approved|okay|ok)\b/i.test(text || '');
+const isCorrectionRequest = (text) => /\b(change|correct|correction|modify|update|replace|amend|i meant|i said|should be|you heard|got it wrong)\b/i.test(text || '');
 const isPhoneRepeatRequest = (text) => /\b(repeat|say again|read back|what (?:number|digits)|what did (?:i|you) say)\b/i.test(text || '');
+const isStandalonePositiveConfirmation = (text) => (
+  /^\s*(?:yes|yeah|yep|correct|exactly|right|that(?: is|'s) (?:right|correct|it)|you got it|perfect|confirmed|approved|okay|ok)[\s.!?]*$/i
+    .test(text || '')
+);
+const isExplicitNameSpelling = (text) => (
+  /\b(spell|spelling|letter by letter|as in)\b/i.test(text || '')
+);
 
 const normalizePatientName = (text) => String(text || '')
   .replace(/^[\s"'“”]+|[\s"'“”.,!?]+$/g, '')
@@ -263,8 +309,11 @@ const correctedNameFromReply = (text) => {
     /(?:i\s+(?:said|meant)|(?:the\s+)?(?:correct\s+)?name\s+is|it\s+is|it'?s|change\s+it\s+to)\s+(.+)$/i
   )?.[1];
   if (explicitValue) return normalizePatientName(explicitValue);
-  const afterNo = source.replace(/^\s*(?:no|nope)\b[\s,.:;-]*/i, '');
-  if (/^(?:that'?s?\s+)?(?:wrong|incorrect|not\s+(?:right|correct))\b/i.test(afterNo)) return '';
+  const afterNo = source
+    .replace(/^\s*(?:no|nope|nah)\b[\s,.:;-]*/i, '')
+    .replace(/^(?:(?:that'?s?|that\s+is)\s+)?(?:wrong|incorrect|not\s+(?:right|correct))\b[\s,.:;-]*/i, '')
+    .replace(/^(?:please\s+)?(?:change|correct|update|replace|modify)\s+(?:(?:the|my|patient'?s?)\s+)?name\s+(?:to\s+)?/i, '');
+  if (!afterNo || /^(?:it|that|this)\s+(?:is|was)\s*$/i.test(afterNo)) return '';
   return normalizePatientName(afterNo);
 };
 
@@ -282,24 +331,81 @@ const PHONETIC_LETTERS = Object.freeze({
   whiskey: 'W', whisky: 'W', xray: 'X', yankee: 'Y', zulu: 'Z'
 });
 
-const extractSpelledName = (text) => {
+const SPOKEN_LETTERS = Object.freeze({
+  ay: 'A', eh: 'A', bee: 'B', be: 'B', cee: 'C', see: 'C', sea: 'C',
+  dee: 'D', ee: 'E', e: 'E', eff: 'F', gee: 'G', jee: 'G', aitch: 'H',
+  eye: 'I', jay: 'J', kay: 'K', el: 'L', ell: 'L', em: 'M', en: 'N',
+  oh: 'O', o: 'O', pee: 'P', cue: 'Q', queue: 'Q', ar: 'R', are: 'R',
+  ess: 'S', tee: 'T', you: 'U', u: 'U', vee: 'V', doubleyou: 'W',
+  ex: 'X', why: 'Y', zee: 'Z', zed: 'Z'
+});
+
+const EXAMPLE_WORD_LETTERS = Object.freeze({
+  apple: 'A', asia: 'A', ball: 'B', boy: 'B', cat: 'C', dog: 'D',
+  egg: 'E', elephant: 'E', fish: 'F', goat: 'G', house: 'H', hotel: 'H',
+  ice: 'I', india: 'I', jug: 'J', kite: 'K', king: 'K', lion: 'L',
+  mango: 'M', mother: 'M', nest: 'N', november: 'N', orange: 'O',
+  pakistan: 'P', parrot: 'P', queen: 'Q', rose: 'R', sun: 'S', sugar: 'S',
+  tiger: 'T', table: 'T', umbrella: 'U', van: 'V', watch: 'W', water: 'W',
+  xray: 'X', yellow: 'Y', zebra: 'Z'
+});
+
+const extractSpelledName = (text, allowSingleLetter = false) => {
   const tokens = String(text || '').toLowerCase().match(/[a-z]+/g) || [];
   const parts = [''];
   let letterCount = 0;
-  for (const token of tokens) {
+  let ignoredCount = 0;
+  const leadingSpace = tokens[0] === 'space';
+  const trailingSpace = tokens[tokens.length - 1] === 'space';
+  let repeat = 1;
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index];
     if (token === 'space') {
       if (parts[parts.length - 1]) parts.push('');
       continue;
     }
-    const letter = token.length === 1 ? token.toUpperCase() : PHONETIC_LETTERS[token];
-    if (!letter) continue;
-    parts[parts.length - 1] += letter;
-    letterCount += 1;
+    if (token === 'double' || token === 'triple') {
+      if (token === 'double' && tokens[index + 1] === 'you') {
+        parts[parts.length - 1] += 'W';
+        letterCount += 1;
+        index += 1;
+      } else {
+        repeat = token === 'double' ? 2 : 3;
+      }
+      continue;
+    }
+    let letter = token.length === 1
+      ? token.toUpperCase()
+      : (PHONETIC_LETTERS[token] || SPOKEN_LETTERS[token]);
+    if (tokens[index + 1] === 'as' && tokens[index + 2] === 'in') {
+      const exampleWord = tokens[index + 3] || '';
+      letter = letter || EXAMPLE_WORD_LETTERS[exampleWord] || (
+        /^[a-z]+$/.test(exampleWord) ? exampleWord.charAt(0).toUpperCase() : ''
+      );
+      index += 3;
+    } else if (allowSingleLetter && EXAMPLE_WORD_LETTERS[token]) {
+      letter = EXAMPLE_WORD_LETTERS[token];
+    }
+    if (!letter) {
+      ignoredCount += 1;
+      continue;
+    }
+    parts[parts.length - 1] += letter.repeat(repeat);
+    letterCount += repeat;
+    repeat = 1;
   }
-  if (letterCount < 2) return '';
-  return parts.filter(Boolean).map((part) => (
+  // Require a real letter sequence, not an ordinary sentence containing an
+  // isolated word such as "I", "you", or "are".
+  const literalSingleLetter = tokens.length === 1 && tokens[0].length === 1;
+  if (
+    letterCount < 1 ||
+    (letterCount < 2 && !allowSingleLetter && !literalSingleLetter) ||
+    (letterCount < 3 && ignoredCount > 0)
+  ) return '';
+  const name = parts.filter(Boolean).map((part) => (
     `${part.charAt(0)}${part.slice(1).toLowerCase()}`
   )).join(' ');
+  return `${leadingSpace ? ' ' : ''}${name}${trailingSpace ? ' ' : ''}`;
 };
 
 const sendControlText = (session, text) => {
@@ -344,6 +450,10 @@ const handleCallerAudio = (session, payload, rms, durationMs) => {
     session.callerSpeechActive = true;
     session.callerSilenceMs = 0;
     session.speechCandidateFrames = 0;
+    if (session.nameSpellingTimer) {
+      clearTimeout(session.nameSpellingTimer);
+      session.nameSpellingTimer = null;
+    }
     sendActivitySignal(session, 'activityStart');
     for (const bufferedPayload of session.audioPreRoll.splice(0)) {
       sendAudioPayload(session, bufferedPayload);
@@ -358,7 +468,13 @@ const handleCallerAudio = (session, payload, rms, durationMs) => {
   }
 
   session.callerSilenceMs += durationMs;
-  if (session.callerSilenceMs < 650) return;
+  // Names commonly contain several parts with a natural pause between them.
+  // The previous 650 ms boundary split first and last names into separate
+  // Gemini turns, causing the agent to hear only one part and ask again.
+  // Keep the user's requested maximum response pause below 1.5 seconds, and
+  // leave the faster boundary unchanged for every other appointment field.
+  const endOfTurnSilenceMs = (session.nameCollecting || session.phoneCollecting) ? 1400 : 650;
+  if (session.callerSilenceMs < endOfTurnSilenceMs) return;
 
   // Explicit manual-VAD boundaries finalize every caller utterance even when
   // the FreeSWITCH stream continues carrying background noise.
@@ -370,6 +486,10 @@ const handleCallerAudio = (session, payload, rms, durationMs) => {
 };
 
 const confirmCapturedName = (session, name) => {
+  if (session.nameSpellingTimer) clearTimeout(session.nameSpellingTimer);
+  session.nameSpellingTimer = null;
+  session.nameSpellingMode = false;
+  session.nameSpellingBuffer = '';
   session.nameCandidate = name;
   session.nameAwaitingConfirmation = true;
   session.nameControlResponse = true;
@@ -378,6 +498,32 @@ const confirmCapturedName = (session, name) => {
     `Internal verified speech capture: the caller gave the patient name as “${name}”. ` +
     'Repeat that exact name naturally and ask only whether you heard it correctly. Do not ask for the phone number yet.'
   );
+};
+
+const appendSpelledName = (session, spelledPart) => {
+  if (session.nameSpellingTimer) clearTimeout(session.nameSpellingTimer);
+  session.nameSpellingMode = true;
+  session.nameSpellingBuffer += spelledPart;
+  console.log('[ai-agent] patient name spelling buffered', {
+    callId: session.callId,
+    part: spelledPart.trim(),
+    letters: session.nameSpellingBuffer.replace(/\s+/g, ' ').trim()
+  });
+  session.nameSpellingTimer = setTimeout(() => {
+    session.nameSpellingTimer = null;
+    if (sessions.get(session.callId) !== session || !session.nameCollecting) return;
+    const completedName = session.nameSpellingBuffer
+      .replace(/\s+/g, ' ')
+      .trim()
+      .split(' ')
+      .filter(Boolean)
+      .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1).toLowerCase()}`)
+      .join(' ');
+    if (completedName.length >= 2) {
+      discardPendingOutput(session);
+      confirmCapturedName(session, completedName);
+    }
+  }, 1200);
 };
 
 const confirmCapturedPhone = (session, digits) => {
@@ -406,6 +552,62 @@ const scheduleGenericPhoneConfirmation = (session) => {
       confirmCapturedPhone(session, session.phoneDigits);
     }
   }, 1200);
+};
+
+const scheduleIncompletePhoneRetry = (session) => {
+  if (session.phoneFinalizeTimer) clearTimeout(session.phoneFinalizeTimer);
+  session.phoneFinalizeTimer = setTimeout(() => {
+    session.phoneFinalizeTimer = null;
+    if (
+      sessions.get(session.callId) !== session ||
+      !session.phoneCollecting ||
+      session.phoneAwaitingConfirmation
+    ) return;
+    session.phoneControlResponse = true;
+    discardPendingOutput(session);
+    const captured = session.phoneDigits
+      ? ` I captured only ${session.phoneDigits.split('').join(' ')}.`
+      : '';
+    sendControlText(
+      session,
+      `Tell the caller briefly that the complete phone number was not captured.${captured} ` +
+      'Ask them to repeat the complete number from the beginning in groups of two or three digits, then wait.'
+    );
+  }, 1400);
+};
+
+const acceptPhoneDigits = (session, newDigits, replace = false) => {
+  if (!newDigits) return false;
+  if (session.phoneFinalizeTimer) clearTimeout(session.phoneFinalizeTimer);
+  session.phoneFinalizeTimer = null;
+  session.phoneDigits = replace ? newDigits : `${session.phoneDigits}${newDigits}`;
+  const expectedLength = expectedPakistaniPhoneLength(session.phoneDigits);
+  console.log('[ai-agent] phone digits buffered', {
+    callId: session.callId,
+    digits: session.phoneDigits.length,
+    expected: expectedLength
+  });
+  if (expectedLength && session.phoneDigits.length === expectedLength) {
+    discardPendingOutput(session);
+    confirmCapturedPhone(session, session.phoneDigits);
+  } else if (expectedLength && session.phoneDigits.length > expectedLength) {
+    session.phoneDigits = '';
+    session.phoneControlResponse = true;
+    discardPendingOutput(session);
+    sendControlText(
+      session,
+      'The captured phone number contains too many digits. Ask the caller to repeat the complete number once from the beginning.'
+    );
+  } else if (expectedLength) {
+    scheduleIncompletePhoneRetry(session);
+  } else if (!expectedLength) {
+    if (session.phoneDigits.length >= 7) {
+      scheduleGenericPhoneConfirmation(session);
+    } else {
+      scheduleIncompletePhoneRetry(session);
+    }
+  }
+  return true;
 };
 
 const handleGeminiMessage = (session, data) => {
@@ -446,47 +648,49 @@ const handleGeminiMessage = (session, data) => {
   const content = message.serverContent || {};
   const inputText = content.inputTranscription?.text || '';
   const outputText = content.outputTranscription?.text || '';
-  // Direct-audio mode: the model hears caller audio natively, so this
-  // deterministic name/number buffer double-checks critical details before
-  // allowing playback. Final transcripts may arrive after turnComplete, so
-  // control prompts are sent immediately instead of waiting for that event.
+  // The Live model hears the original audio and is more reliable for names
+  // than its auxiliary transcript. Only use deterministic transcript parsing
+  // for explicit letter-by-letter spelling and phone digits. Normal spoken
+  // names, confirmations, and corrections stay in the native audio path.
   let suppressControlledOutput = (
-    (session.initialGreetingComplete && session.nameCollecting && !session.nameAwaitingConfirmation && !session.nameControlResponse) ||
+    (session.nameSpellingMode && !session.nameControlResponse) ||
     (session.phoneCollecting && !session.phoneAwaitingConfirmation && !session.phoneControlResponse)
   );
 
   if (inputText && session.nameCollecting) {
     const capturedName = normalizePatientName(inputText);
-    const spelledName = extractSpelledName(inputText);
-    const usableName = spelledName || capturedName;
+    const spellingRequested = session.nameSpellingMode || isExplicitNameSpelling(inputText);
+    const spelledName = spellingRequested
+      ? extractSpelledName(inputText, session.nameSpellingMode)
+      : '';
     console.log('[ai-agent] patient name transcript', {
       callId: session.callId,
-      text: capturedName
+      text: capturedName,
+      nativeAudio: !spellingRequested
     });
-    if (session.nameAwaitingConfirmation) {
-      if (isNegativeConfirmation(inputText)) {
-        const correctedName = correctedNameFromReply(inputText);
-        session.nameCandidate = '';
-        session.nameAwaitingConfirmation = false;
-        session.nameCorrectionCount += 1;
-        session.nameControlResponse = true;
-        discardPendingOutput(session);
-        if (looksLikePatientName(correctedName)) {
-          confirmCapturedName(session, correctedName);
-        } else {
-          sendControlText(
-            session,
-            'The caller said the patient name is wrong. Apologize briefly and ask: “Please spell the full patient name letter by letter, saying space between name parts.” Do not reuse the previous name.'
-          );
-        }
-      } else if (isPositiveConfirmation(inputText)) {
-        session.nameCollecting = false;
-        session.nameAwaitingConfirmation = false;
-        session.nameConfirmed = true;
-      }
-    } else if (spelledName || looksLikePatientName(usableName)) {
+    if (
+      (session.nameAwaitingConfirmation && isPositiveConfirmation(inputText)) ||
+      (!session.nameAwaitingConfirmation &&
+        session.initialGreetingComplete &&
+        isStandalonePositiveConfirmation(inputText))
+    ) {
+      session.nameCollecting = false;
+      session.nameConfirmed = true;
+      session.nameAwaitingConfirmation = false;
+      console.log('[ai-agent] patient name confirmed', { callId: session.callId });
+    } else if (
+      (session.nameAwaitingConfirmation || session.initialGreetingComplete) &&
+      (isNegativeConfirmation(inputText) || isCorrectionRequest(inputText))
+    ) {
+      // Let the native audio model hear and resolve the correction. The text
+      // transcript is deliberately not used as the corrected name.
+      session.nameAwaitingConfirmation = false;
+      session.nameConfirmed = false;
+      session.nameCorrectionCount += 1;
+    } else if (spelledName) {
+      suppressControlledOutput = true;
       discardPendingOutput(session);
-      confirmCapturedName(session, usableName);
+      appendSpelledName(session, spelledName);
     }
   }
 
@@ -495,6 +699,10 @@ const handleGeminiMessage = (session, data) => {
     // Each utterance is therefore appended in full, including repeated groups
     // such as "zero" followed by another "zero".
     const inputDelta = inputText;
+    console.log('[ai-agent] phone transcript', {
+      callId: session.callId,
+      text: inputDelta
+    });
 
     if (isPhoneRepeatRequest(inputDelta) && session.phoneDigits) {
       session.phoneControlResponse = true;
@@ -504,48 +712,37 @@ const handleGeminiMessage = (session, data) => {
         `${session.phoneDigits.split('').join(' ')}. Then ask whether they are correct.`
       );
     } else if (session.phoneAwaitingConfirmation) {
-      if (isNegativeConfirmation(inputDelta)) {
+      const replacementDigits = extractSpokenDigits(inputDelta);
+      if (isNegativeConfirmation(inputDelta) || isCorrectionRequest(inputDelta)) {
         session.phoneDigits = '';
         session.phoneAwaitingConfirmation = false;
         session.phoneControlResponse = true;
         discardPendingOutput(session);
-        sendControlText(
-          session,
-          'The caller said the phone number is wrong. Apologize briefly and ask for the complete number again from the beginning. Do not reuse previous digits.'
-        );
+        if (!acceptPhoneDigits(session, replacementDigits, true)) {
+          sendControlText(
+            session,
+            'The caller said the phone number is wrong. Apologize briefly and ask for the complete number again from the beginning. Do not reuse previous digits.'
+          );
+        }
       } else if (isPositiveConfirmation(inputDelta)) {
         session.phoneCollecting = false;
         session.phoneAwaitingConfirmation = false;
         session.phoneConfirmed = true;
+      } else if (replacementDigits) {
+        // Treat a newly spoken number during confirmation as a replacement,
+        // even when the caller omits an explicit "no".
+        session.phoneAwaitingConfirmation = false;
+        discardPendingOutput(session);
+        acceptPhoneDigits(session, replacementDigits, true);
       }
     } else {
-      if (session.phoneFinalizeTimer) clearTimeout(session.phoneFinalizeTimer);
-      session.phoneFinalizeTimer = null;
       const newDigits = extractSpokenDigits(inputDelta);
-      if (newDigits) {
-        session.phoneDigits += newDigits;
-        const expectedLength = expectedPakistaniPhoneLength(session.phoneDigits);
-        console.log('[ai-agent] phone digits buffered', {
-          callId: session.callId,
-          digits: session.phoneDigits.length,
-          expected: expectedLength
-        });
-        if (expectedLength && session.phoneDigits.length === expectedLength) {
-          discardPendingOutput(session);
-          confirmCapturedPhone(session, session.phoneDigits);
-        } else if (expectedLength && session.phoneDigits.length > expectedLength) {
-          session.phoneDigits = '';
-          session.phoneControlResponse = true;
-          discardPendingOutput(session);
-          sendControlText(
-            session,
-            'The captured phone number contains too many digits. Ask the caller to repeat the complete number once from the beginning.'
-          );
-        } else if (!expectedLength) {
-          // Unknown local/international formats are accepted at 7–15 digits.
-          // A short timer allows another spoken group to arrive before readback.
-          scheduleGenericPhoneConfirmation(session);
-        }
+      if (!acceptPhoneDigits(session, newDigits)) {
+        // Never leave the caller in silence when transcription contains no
+        // usable digits. Suppress the unrelated native reply and ask once for
+        // a complete grouped repetition.
+        suppressControlledOutput = true;
+        scheduleIncompletePhoneRetry(session);
       }
     }
   }
@@ -603,7 +800,36 @@ const handleGeminiMessage = (session, data) => {
         }
       });
     }
+    if (
+      session.nameCollecting &&
+      /\b(spell|spelling|letter by letter)\b/i.test(session.agentTranscriptWindow)
+    ) {
+      session.nameSpellingMode = true;
+      session.nameSpellingBuffer = '';
+      console.log('[ai-agent] patient name spelling mode started', { callId: session.callId });
+    }
+
+    if (
+      session.nameCollecting &&
+      /\b(?:is (?:that|this|the name) (?:correct|right)|did i (?:hear|get) (?:that|it|your name) right|have i (?:got|heard) (?:that|it|your name) right|did i pronounce (?:that|it|your name) correctly|name i (?:have|heard|got) is|i (?:heard|have|got) (?:your|the patient'?s?) name as)\b/i
+        .test(session.agentTranscriptWindow)
+    ) {
+      session.nameAwaitingConfirmation = true;
+      console.log('[ai-agent] waiting for patient name confirmation', { callId: session.callId });
+    }
+
     if (!session.phoneCollecting && !session.phoneConfirmed && /\b(phone|mobile|contact)\b[\s\S]{0,80}\b(number|reach|call)\b/i.test(session.agentTranscriptWindow)) {
+      // The native audio model may correctly hear the caller's confirmation
+      // even when the auxiliary transcript misses or distorts the word “yes”.
+      // Re-blocking the phone question here caused an endless name-confirmation
+      // loop, so reaching this question now closes name collection once.
+      session.nameCollecting = false;
+      session.nameConfirmed = true;
+      session.nameAwaitingConfirmation = false;
+      session.nameSpellingMode = false;
+      session.nameSpellingBuffer = '';
+      if (session.nameSpellingTimer) clearTimeout(session.nameSpellingTimer);
+      session.nameSpellingTimer = null;
       session.phoneCollecting = true;
       session.phoneDigits = '';
       console.log('[ai-agent] phone collection mode started', { callId: session.callId });
@@ -744,6 +970,9 @@ const attachGemini = (freeswitchSocket, request, callId, settings) => {
     nameCandidate: '',
     nameCorrectionCount: 0,
     nameControlResponse: false,
+    nameSpellingMode: false,
+    nameSpellingBuffer: '',
+    nameSpellingTimer: null,
     phoneCollecting: false,
     phoneConfirmed: false,
     phoneAwaitingConfirmation: false,
