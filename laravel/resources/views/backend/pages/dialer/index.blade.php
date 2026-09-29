@@ -3193,9 +3193,25 @@ document.addEventListener('DOMContentLoaded', function () {
         incomingBanner.classList.toggle('hidden', !show);
     };
 
+    const setIncomingAnswerReady = (ready) => {
+        if (!incomingAcceptBtn) return;
+        incomingAcceptBtn.disabled = !ready;
+        incomingAcceptBtn.classList.toggle('opacity-60', !ready);
+        incomingAcceptBtn.classList.toggle('cursor-wait', !ready);
+    };
+
+    const checkAnswerReady = () => {
+        // The SIP INVITE itself is sufficient to answer. Backend UUID details
+        // are merged when available, but manual/local SIP test calls do not
+        // have a matching socket notification and must remain answerable.
+        const ready = Boolean(inboundCall?.directSip);
+        setIncomingAnswerReady(ready);
+    };
+
     const hideIncoming = () => {
         stopCallStateSound();
         inboundCall = null;
+        setIncomingAnswerReady(false);
         showIncomingBanner(false);
     };
 
@@ -3203,12 +3219,24 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!inboundCall) return;
         const call = inboundCall;
         stopCallStateSound();
-        showIncomingBanner(false);
 
-        if (call.directSip) {
+        if (call.directSip || call.legUuid) {
+            if (!call.directSip) {
+                // The backend notification can arrive just before SIP.js gets
+                // the INVITE. Keep the card visible until it is answerable.
+                setIncomingAnswerReady(false);
+                updateBrowserAudioStatus('Connecting call details…', true);
+                showIncomingBanner(true);
+                return;
+            }
+            setIncomingAnswerReady(false);
             try {
-                ensureWebRtcClient();
-                await webRtcClient?.answerIncoming();
+                const client = ensureWebRtcClient();
+                if (!client) {
+                    throw new Error('Web phone is not configured for this user.');
+                }
+                await client.answerIncoming();
+                showIncomingBanner(false);
                 callActive = true;
                 directSipActive = true;
                 browserAudioActive = true;
@@ -3216,13 +3244,21 @@ document.addEventListener('DOMContentLoaded', function () {
                 setStatus('in_call');
                 setControls(true);
                 updateBrowserAudioStatus('Incoming browser audio connected');
+                inboundCall = null;
             } catch (error) {
                 showError(error?.message || 'Unable to answer incoming call.');
+                // A temporary browser/media error must not discard a call
+                // which is still ringing. Let the user retry Answer.
+                if (inboundCall === call) {
+                    setIncomingAnswerReady(true);
+                    showIncomingBanner(true);
+                    playIncomingRingtone();
+                }
             }
-            inboundCall = null;
             return;
         }
 
+        showIncomingBanner(false);
         callUuid = call.callUuid;
         conferenceName = call.conference || null;
         if (callIdBadge) {
@@ -3276,17 +3312,20 @@ document.addEventListener('DOMContentLoaded', function () {
     if (incomingDeclineBtn) incomingDeclineBtn.addEventListener('click', declineInbound);
 
     window.addEventListener('dialer:sip-incoming', (event) => {
-        if (callActive || inboundCall) return;
+        if (callActive) return;
         stopCallStateSound();
-        inboundCall = {
-            directSip: true,
-            callerIdNumber: event.detail?.callerIdNumber || 'Unknown',
-            did: null
-        };
+        const sipCaller = event.detail?.callerIdNumber || 'Unknown';
+        // The backend socket event and SIP INVITE describe the same call and
+        // may arrive in either order. Merge them instead of allowing one to
+        // replace the state established by the other.
+        inboundCall = inboundCall
+            ? { ...inboundCall, directSip: true, callerIdNumber: inboundCall.callerIdNumber || sipCaller }
+            : { directSip: true, callerIdNumber: sipCaller, did: null };
         if (incomingCallerEl) incomingCallerEl.textContent = inboundCall.callerIdNumber;
         if (incomingPhoneEl) incomingPhoneEl.textContent = inboundCall.callerIdNumber;
         updateIncomingContact(null, inboundCall.callerIdNumber);
         lookupContactByPhone(inboundCall.callerIdNumber);
+        checkAnswerReady();
         showIncomingBanner(true);
         playIncomingRingtone();
     });
@@ -3302,6 +3341,8 @@ document.addEventListener('DOMContentLoaded', function () {
             browserAudioRetryCount += 1;
             if (browserAudioRetryCount < 4) browserAudioRetryTimer = setTimeout(connectBrowserAudio, 1500);
         }
+        // A real SIP hangup (CANCEL/BYE) for the call currently being
+        // offered means it is genuinely gone — safe to dismiss the card.
         if (inboundCall?.directSip) hideIncoming();
         if (!callUuid && directSipActive && callActive) {
             directSipActive = false;
@@ -3314,8 +3355,36 @@ document.addEventListener('DOMContentLoaded', function () {
             refreshStartButton();
         }
     };
+    // A bare SIP transport disconnect (WebSocket blip, brief network flap,
+    // FreeSWITCH reload, etc.) is NOT proof that a still-ringing incoming
+    // call has ended — SIP.js schedules a reconnect on its own. Dismissing
+    // the incoming-call card here caused it to vanish before the agent
+    // could click Answer, even though the call was still valid server-side.
+    // Only handle the in-progress-call browser-audio reconnect logic; leave
+    // the incoming-call card alone. The backend's own `incoming.call.cancel`
+    // (scoped by callUuid) or a genuine later `dialer:sip-hangup` remain the
+    // authoritative ways to dismiss it.
+    const handleTransportDisconnect = () => {
+        browserAudioActive = false;
+        if (callUuid && callActive && !hangupInProgress) {
+            updateBrowserAudioStatus('Browser audio disconnected; reconnecting…', true);
+            clearTimeout(browserAudioRetryTimer);
+            browserAudioRetryCount += 1;
+            if (browserAudioRetryCount < 4) browserAudioRetryTimer = setTimeout(connectBrowserAudio, 1500);
+        }
+        if (!callUuid && directSipActive && callActive) {
+            directSipActive = false;
+            callActive = false;
+            browserAudioActive = false;
+            setControls(false);
+            setStatus('ended');
+            stopTimer();
+            updateBrowserAudioStatus('Browser audio idle');
+            refreshStartButton();
+        }
+    };
     window.addEventListener('dialer:sip-hangup', handleBrowserHangup);
-    window.addEventListener('dialer:sip-disconnected', handleBrowserHangup);
+    window.addEventListener('dialer:sip-disconnected', handleTransportDisconnect);
 
     const initInboundSocket = () => {
         if (!window.io || !inboundSocketEl) return;
@@ -3354,16 +3423,21 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!payload || !payload.callUuid) return;
             if (callActive) return;
             stopCallStateSound();
+            const directSipReady = Boolean(inboundCall?.directSip);
             inboundCall = {
+                ...(inboundCall || {}),
                 callUuid: payload.callUuid,
+                legUuid: payload.legUuid || inboundCall?.legUuid || null,
                 conference: payload.conference || null,
-                callerIdNumber: payload.callerIdNumber || null,
-                did: payload.did || null
+                callerIdNumber: payload.callerIdNumber || inboundCall?.callerIdNumber || null,
+                did: payload.did || null,
+                directSip: directSipReady
             };
             if (incomingCallerEl) incomingCallerEl.textContent = payload.callerIdNumber || '{{ __('Unknown caller') }}';
             if (incomingPhoneEl) incomingPhoneEl.textContent = payload.callerIdNumber || payload.did || '—';
             updateIncomingContact(null, payload.callerIdNumber || payload.did || '');
             lookupContactByPhone(payload.callerIdNumber || payload.did || '');
+            checkAnswerReady();
             showIncomingBanner(true);
             playIncomingRingtone();
         });

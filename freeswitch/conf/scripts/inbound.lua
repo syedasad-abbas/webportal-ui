@@ -54,9 +54,12 @@ if ai_mode then
   freeswitch.consoleLog("info", "[inbound.lua] parking caller for AI audio " .. uuid .. "\n")
   session:execute("park")
 else
-  session:ringReady()
-  freeswitch.consoleLog("info", "[inbound.lua] waiting for browser agent " .. uuid .. "\n")
-  session:execute("park")
+  -- Answer and join the conference immediately; the caller hears hold music
+  -- (moh-sound in conference.conf.xml) until an agent's leg is originated
+  -- straight into the same room and answers it (see inboundCallService.js).
+  session:answer()
+  freeswitch.consoleLog("info", "[inbound.lua] caller joining " .. conference .. " while agents are rung\n")
+  session:execute("conference", conference .. "@default")
 end
 
 local stop_cmd = string.format(

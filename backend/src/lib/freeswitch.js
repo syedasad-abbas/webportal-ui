@@ -81,7 +81,14 @@ const sendCommand = (command) =>
   });
 
 const originateCall = async ({ destination, callerId, gateway, recordingPath, endpoint, variables = [], application }) => {
-  const vars = ['originate_timeout=30', 'ignore_early_media=true'];
+  const suppliedVariables = Array.isArray(variables) ? variables : [];
+  const vars = [];
+  if (!suppliedVariables.some((value) => /^originate_timeout=/i.test(String(value)))) {
+    vars.push('originate_timeout=30');
+  }
+  if (!suppliedVariables.some((value) => /^ignore_early_media=/i.test(String(value)))) {
+    vars.push('ignore_early_media=true');
+  }
 
   if (callerId) {
     vars.unshift(`origination_caller_id_number=${callerId}`);
@@ -92,8 +99,8 @@ const originateCall = async ({ destination, callerId, gateway, recordingPath, en
     vars.push(`recording_path=${recordingPath}`);
   }
 
-  if (Array.isArray(variables) && variables.length > 0) {
-    vars.push(...variables);
+  if (suppliedVariables.length > 0) {
+    vars.push(...suppliedVariables);
   }
 
   let dialString = endpoint;
@@ -293,8 +300,9 @@ const startAudioStream = async (uuid, websocketUrl, metadata = {}) => {
   if (!/^wss?:\/\//i.test(websocketUrl || '') || /\s/.test(websocketUrl)) {
     throw new Error('Invalid audio bridge URL');
   }
-  // Gemini's transcription pipeline recommends roughly 100 ms PCM chunks.
-  await sendApiCommand(`uuid_setvar ${uuid} STREAM_BUFFER_SIZE 100`);
+  // Native 20 ms frames preserve consonant onsets and give Gemini's own VAD
+  // the same fine-grained audio cadence as a live microphone stream.
+  await sendApiCommand(`uuid_setvar ${uuid} STREAM_BUFFER_SIZE 20`);
   // Required by the bidirectional mod_audio_stream build. Without this flag,
   // streamAudio responses are parsed but are not injected into channel RTP.
   await sendApiCommand(`uuid_setvar ${uuid} STREAM_PLAYBACK true`);
@@ -316,7 +324,10 @@ const stopAudioStream = async (uuid) => {
 
 const breakAudioPlayback = async (uuid) => {
   if (!/^[0-9a-f-]{36}$/i.test(uuid || '')) throw new Error('Invalid call UUID');
-  return sendApiCommand(`uuid_audio_stream ${uuid} break`);
+  // AI replies are played with uuid_broadcast, so the matching FreeSWITCH
+  // command for caller barge-in is uuid_break rather than an audio-stream
+  // subcommand.
+  return sendApiCommand(`uuid_break ${uuid} all`);
 };
 
 const broadcastAudio = async (uuid, filePath) => {
@@ -324,7 +335,10 @@ const broadcastAudio = async (uuid, filePath) => {
   if (typeof filePath !== 'string' || !filePath.startsWith('/') || /\s/.test(filePath)) {
     throw new Error('Invalid broadcast audio path');
   }
-  const response = await sendApiCommand(`uuid_broadcast ${uuid} ${filePath} both`);
+  // Send the prompt only toward the caller. Broadcasting to `both` also puts
+  // the AI voice on the captured side of the channel, so the bridge can hear
+  // its own reply and falsely treat it as a caller interruption.
+  const response = await sendApiCommand(`uuid_broadcast ${uuid} ${filePath} aleg`);
   if (/^-ERR\b/i.test(response || '')) throw new Error(response);
   return response;
 };

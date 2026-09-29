@@ -9,7 +9,7 @@ const aiBridge = require('./geminiLiveBridge');
 
 const presenceMinutes = config.metrics?.presenceMinutes || 5;
 // How long to ring one agent before advancing to the next.
-const ringTimeoutSeconds = Number(process.env.INBOUND_RING_TIMEOUT_SECONDS) || 20;
+const ringTimeoutSeconds = Number(process.env.INBOUND_RING_TIMEOUT_SECONDS) || 45;
 // How many distinct agents to try before giving up on the call.
 const maxAttempts = Number(process.env.INBOUND_MAX_ATTEMPTS) || 0; // 0 = try whole pool once
 
@@ -103,9 +103,26 @@ const orderPoolRoundRobin = (agents, lastUserId) => {
   return [...agents.slice(idx + 1), ...agents.slice(0, idx + 1)];
 };
 
-// Originate an agent leg and park it after the browser answers. The inbound
-// caller remains unanswered until this leg is explicitly bridged.
-const ringAgent = async ({ inboundUuid, agent }) => {
+const waitForLegToExist = async (legUuid, timeoutMs = 8000) => {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      if (await freeswitch.callExists(legUuid)) return true;
+    } catch (_err) {
+      // FreeSWITCH may still be creating the bgapi originate channel.
+    }
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+  return false;
+};
+
+// Originate an agent leg straight into the caller's conference room. Once
+// the browser answers this leg, FreeSWITCH's `&conference()` origination
+// application joins it into the same room as the already-waiting caller —
+// no separate bridge step is needed, and there is no window where the
+// agent's UI can show "connected" before FreeSWITCH has actually joined
+// the two parties.
+const ringAgent = async ({ inboundUuid, agent, conferenceName }) => {
   const legUuid = randomUUID();
   // Registered WebRTC users belong to FreeSWITCH's directory domain (normally
   // the host's LAN IP).  The carrier-facing/public SIP IP is not necessarily a
@@ -120,7 +137,6 @@ const ringAgent = async ({ inboundUuid, agent }) => {
     `origination_uuid=${legUuid}`,
     `originate_timeout=${ringTimeoutSeconds}`,
     'ignore_early_media=true',
-    'hangup_after_bridge=false',
     `inbound_uuid=${inboundUuid}`,
     `leg_for_user=${agent.id}`
   ];
@@ -128,8 +144,14 @@ const ringAgent = async ({ inboundUuid, agent }) => {
   const response = await freeswitch.originateCall({
     endpoint: dialString,
     variables,
-    application: '&park'
+    application: `&conference(${conferenceName}@default)`
   });
+  // `bgapi originate` acknowledges the job before the SIP channel exists.
+  // Do not display a call card which may immediately be cancelled by the
+  // watcher while FreeSWITCH is still constructing the agent leg.
+  if (!(await waitForLegToExist(legUuid))) {
+    throw new Error('Agent SIP leg was not created within the startup grace period');
+  }
   return { legUuid, response };
 };
 
@@ -238,7 +260,7 @@ const dispatch = async ({ uuid, did, callerIdNumber, settings: suppliedSettings 
     }
     const agent = pool[i];
     try {
-      const { legUuid } = await ringAgent({ inboundUuid: uuid, agent });
+      const { legUuid } = await ringAgent({ inboundUuid: uuid, agent, conferenceName });
       state.currentLegUuid = legUuid;
       state.currentUserId = agent.id;
       emitToUser(agent.id, 'incoming.call', {
@@ -256,7 +278,9 @@ const dispatch = async ({ uuid, did, callerIdNumber, settings: suppliedSettings 
 
       const outcome = await watchLeg(legUuid, uuid);
       if (outcome === 'answered') {
-        await freeswitch.bridgeCalls(uuid, legUuid);
+        // The agent's leg was originated with `&conference(...)`, so
+        // FreeSWITCH already placed it in the same room as the caller the
+        // moment the browser answered — no separate bridge call needed.
         console.log('[inbound] answered', { uuid, agent: agent.sip_username });
         await markCallAnswered(uuid, agent.id);
         activeDispatches.delete(uuid);

@@ -25,30 +25,6 @@ const safeEqual = (a, b) => {
   return left.length === right.length && crypto.timingSafeEqual(left, right);
 };
 
-const FIRST_OUTPUT_SEGMENT_MS = 1200;
-const CONTINUATION_SEGMENT_MS = 2800;
-
-// Recognition hints only: these improve common South-Asian name acoustics but
-// never act as a whitelist. The caller's actual pronunciation and confirmed
-// spelling remain authoritative for names not present here.
-const SOUTH_ASIAN_NAME_VOCABULARY = Object.freeze([
-  'Muhammad', 'Mohammad', 'Mohammed', 'Ahmed', 'Ahmad', 'Ali',
-  'Abdul', 'Abdullah', 'Abdul Hameed', 'Abdul Hamid', 'Abdul Rehman',
-  'Abdur Rahman', 'Hameed', 'Hamid', 'Rehman', 'Rahman',
-  'Hassan', 'Hasan', 'Hussain', 'Husain', 'Qasim', 'Kasim', 'Usman',
-  'Umer', 'Omer', 'Omar', 'Hamza', 'Bilal', 'Imran', 'Faisal', 'Farhan',
-  'Shahid', 'Tariq', 'Zubair', 'Ayesha', 'Aisha', 'Fatima', 'Zainab',
-  'Maryam', 'Mariam', 'Hira', 'Iqra', 'Sana', 'Mahnoor',
-  'Khan', 'Qureshi', 'Siddiqui', 'Sheikh', 'Chaudhry', 'Choudhary',
-  'Syed', 'Malik', 'Mirza', 'Abbasi',
-  'Aarav', 'Vivaan', 'Aditya', 'Arjun', 'Rahul', 'Rohit', 'Rajesh',
-  'Rakesh', 'Amit', 'Ankit', 'Akash', 'Suresh', 'Ramesh', 'Vikram',
-  'Karan', 'Deepak', 'Sanjay', 'Vijay', 'Ajay', 'Pradeep', 'Abhishek',
-  'Priya', 'Pooja', 'Neha', 'Anjali', 'Kavya', 'Divya', 'Sneha', 'Aditi',
-  'Lakshmi', 'Patel', 'Sharma', 'Verma', 'Singh', 'Gupta', 'Kumar',
-  'Iyer', 'Nair', 'Reddy', 'Rao', 'Mehta', 'Desai', 'Kulkarni'
-]);
-
 const pcmWav = (pcm, sampleRate) => {
   const header = Buffer.alloc(44);
   header.write('RIFF', 0);
@@ -98,17 +74,17 @@ const playAudioSegment = async (session, pcm, sampleRate, generation) => {
 
 const queueOutputAudio = (session, flush = false) => {
   const sampleRate = session.outputSampleRate || 24000;
-  const segmentMs = session.outputTurnStarted
-    ? CONTINUATION_SEGMENT_MS
-    : FIRST_OUTPUT_SEGMENT_MS;
-  const segmentBytes = Math.floor(sampleRate * 2 * (segmentMs / 1000));
-  if (!flush && session.outputTurnBytes < segmentBytes) return;
+  // Start playback after roughly one second instead of holding the complete
+  // Gemini reply until turnComplete. Whole-turn buffering delayed the first
+  // greeting by about 11 seconds. One-second segments keep latency low while
+  // remaining large enough to avoid the broken audio caused by tiny chunks.
+  const streamingThresholdBytes = sampleRate * 2;
+  if (!flush && session.outputTurnBytes < streamingThresholdBytes) return;
 
   const pcm = Buffer.concat(session.outputTurnChunks.splice(0));
   const generation = session.playbackGeneration;
   session.outputTurnBytes = 0;
   if (!pcm.length) return;
-  session.outputTurnStarted = true;
   session.playbackQueueDepth += 1;
 
   session.playbackChain = session.playbackChain
@@ -167,10 +143,19 @@ const sendSetup = (session) => {
       tools: [{ googleSearch: {} }],
       realtimeInputConfig: {
         automaticActivityDetection: {
-          // FreeSWITCH sends continuous low-level audio, so server VAD can
-          // wait forever. Local energy VAD below supplies explicit boundaries.
-          disabled: true
-        }
+          // Let Gemini use the same server-side speech detector used by its
+          // native Live experience. The previous local energy gate discarded
+          // quiet consonants and clipped multi-part names before Gemini heard
+          // them. Prefix padding preserves the first syllable; 800 ms allows
+          // natural pauses without adding the old multi-second response delay.
+          disabled: false,
+          startOfSpeechSensitivity: 'START_SENSITIVITY_HIGH',
+          prefixPaddingMs: 300,
+          endOfSpeechSensitivity: 'END_SENSITIVITY_LOW',
+          silenceDurationMs: 800
+        },
+        activityHandling: 'START_OF_ACTIVITY_INTERRUPTS',
+        turnCoverage: 'TURN_INCLUDES_ONLY_ACTIVITY'
       },
       systemInstruction: { parts: [{ text: `${prompt}\n\nCall continuity rules: Keep the conversation active until the caller hangs up. After greeting, listen and answer every caller turn. Never announce that you are ending the call and never stop after only one response. Keep replies concise and finish each reply with a useful question when appropriate. You receive the caller's live audio directly; transcribe carefully and preserve spelled names and digits exactly. Google Search is available only for general public hospital information when the hospital is identified. Never search for a patient or use web results to decide how the caller spells a name. Confirm uncertain names directly with the caller. Never infer doctor availability or claim a booking from search results.` }] },
       inputAudioTranscription: {
@@ -179,33 +164,18 @@ const sendSetup = (session) => {
         // unrelated French, Spanish, or German phrases in real calls.
         // en-IN handles South-Asian English while remaining suitable for
         // ordinary British and American English speech.
-        languageCodes: ['en-IN'],
+        languageCodes: ['en-IN', 'en-GB', 'en-US'],
         // Keep proper names literal. SMART mode was rewriting Pakistani name
         // sounds into unrelated Spanish and German phrases during real calls.
         mode: 'VERBATIM',
+        // A fixed list of names biases unfamiliar callers toward its nearest
+        // entry. Give the recognizer field and digit context only; the Live
+        // model receives the original audio and caller confirmation is final.
         customVocabulary: [
-          'patient name', 'full name', 'doctor name', 'hospital appointment',
-          'mobile number', 'phone number', 'appointment date', 'spell my name',
-          'first name', 'last name', 'first and last name',
-          'given name', 'middle name', 'family name', 'surname',
-          'preferred spelling', 'correct the name', 'change the name',
+          'patient name', 'full name', 'first name', 'last name',
+          'first and last name', 'phone number',
           'zero', 'oh', 'one', 'two', 'three', 'four', 'five', 'six', 'seven',
-          'eight', 'nine', 'double zero', 'double one', 'double two',
-          'double three', 'double four', 'double five', 'double six',
-          'double seven', 'double eight', 'double nine', 'triple',
-          'spell', 'spelling', 'letter by letter', 'space',
-          'alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot', 'golf',
-          'hotel', 'india', 'juliett', 'kilo', 'lima', 'mike', 'november',
-          'oscar', 'papa', 'quebec', 'romeo', 'sierra', 'tango', 'uniform',
-          'victor', 'whiskey', 'x-ray', 'yankee', 'zulu',
-          'A as in Apple', 'B as in Ball', 'C as in Cat', 'D as in Dog',
-          'E as in Egg', 'F as in Fish', 'G as in Goat', 'H as in House',
-          'I as in Ice', 'J as in Jug', 'K as in Kite', 'L as in Lion',
-          'M as in Mango', 'N as in Nest', 'O as in Orange',
-          'P as in Pakistan', 'Q as in Queen', 'R as in Rose', 'S as in Sun',
-          'T as in Tiger', 'U as in Umbrella', 'V as in Van', 'W as in Watch',
-          'X as in X-ray', 'Y as in Yellow', 'Z as in Zebra',
-          ...SOUTH_ASIAN_NAME_VOCABULARY
+          'eight', 'nine', 'double', 'triple'
         ]
       },
       outputAudioTranscription: {}
@@ -303,24 +273,9 @@ const normalizePatientName = (text) => String(text || '')
   .replace(/\s+/g, ' ')
   .trim();
 
-const correctedNameFromReply = (text) => {
-  const source = String(text || '');
-  const explicitValue = source.match(
-    /(?:i\s+(?:said|meant)|(?:the\s+)?(?:correct\s+)?name\s+is|it\s+is|it'?s|change\s+it\s+to)\s+(.+)$/i
-  )?.[1];
-  if (explicitValue) return normalizePatientName(explicitValue);
-  const afterNo = source
-    .replace(/^\s*(?:no|nope|nah)\b[\s,.:;-]*/i, '')
-    .replace(/^(?:(?:that'?s?|that\s+is)\s+)?(?:wrong|incorrect|not\s+(?:right|correct))\b[\s,.:;-]*/i, '')
-    .replace(/^(?:please\s+)?(?:change|correct|update|replace|modify)\s+(?:(?:the|my|patient'?s?)\s+)?name\s+(?:to\s+)?/i, '');
-  if (!afterNo || /^(?:it|that|this)\s+(?:is|was)\s*$/i.test(afterNo)) return '';
-  return normalizePatientName(afterNo);
-};
-
-const looksLikePatientName = (text) => (
-  /[a-z][a-z'-]+/i.test(text || '') &&
-  !isNegativeConfirmation(text) &&
-  !isPositiveConfirmation(text)
+const looksLikeForeignLanguageHypothesis = (text) => (
+  /[^\x00-\x7F]/.test(text || '') ||
+  /^\s*\d+(?:\s+\d+)*\s*$/.test(text || '')
 );
 
 const PHONETIC_LETTERS = Object.freeze({
@@ -418,11 +373,6 @@ const sendControlText = (session, text) => {
   session.gemini.send(JSON.stringify({ realtimeInput: { text } }));
 };
 
-const sendActivitySignal = (session, signal) => {
-  if (!session.ready || session.gemini?.readyState !== WebSocket.OPEN) return;
-  session.gemini.send(JSON.stringify({ realtimeInput: { [signal]: {} } }));
-};
-
 const discardPendingOutput = (session) => {
   session.outputTurnChunks.length = 0;
   session.outputTurnBytes = 0;
@@ -433,56 +383,6 @@ const sendAudioPayload = (session, payload) => {
   if (!session.ready || session.gemini?.readyState !== WebSocket.OPEN) return false;
   session.gemini.send(payload);
   return true;
-};
-
-const handleCallerAudio = (session, payload, rms, durationMs) => {
-  const speechStartThreshold = 420;
-  const speechContinueThreshold = 260;
-
-  if (!session.callerSpeechActive) {
-    session.audioPreRoll.push(payload);
-    if (session.audioPreRoll.length > 5) session.audioPreRoll.shift();
-    session.speechCandidateFrames = rms >= speechStartThreshold
-      ? session.speechCandidateFrames + 1
-      : 0;
-    if (session.speechCandidateFrames < 2) return;
-
-    session.callerSpeechActive = true;
-    session.callerSilenceMs = 0;
-    session.speechCandidateFrames = 0;
-    if (session.nameSpellingTimer) {
-      clearTimeout(session.nameSpellingTimer);
-      session.nameSpellingTimer = null;
-    }
-    sendActivitySignal(session, 'activityStart');
-    for (const bufferedPayload of session.audioPreRoll.splice(0)) {
-      sendAudioPayload(session, bufferedPayload);
-    }
-    return;
-  }
-
-  sendAudioPayload(session, payload);
-  if (rms >= speechContinueThreshold) {
-    session.callerSilenceMs = 0;
-    return;
-  }
-
-  session.callerSilenceMs += durationMs;
-  // Names commonly contain several parts with a natural pause between them.
-  // The previous 650 ms boundary split first and last names into separate
-  // Gemini turns, causing the agent to hear only one part and ask again.
-  // Keep the user's requested maximum response pause below 1.5 seconds, and
-  // leave the faster boundary unchanged for every other appointment field.
-  const endOfTurnSilenceMs = (session.nameCollecting || session.phoneCollecting) ? 1400 : 650;
-  if (session.callerSilenceMs < endOfTurnSilenceMs) return;
-
-  // Explicit manual-VAD boundaries finalize every caller utterance even when
-  // the FreeSWITCH stream continues carrying background noise.
-  sendActivitySignal(session, 'activityEnd');
-  session.callerSpeechActive = false;
-  session.callerSilenceMs = 0;
-  session.audioPreRoll.length = 0;
-  console.log('[ai-agent] caller audio turn ended', { callId: session.callId });
 };
 
 const confirmCapturedName = (session, name) => {
@@ -646,15 +546,16 @@ const handleGeminiMessage = (session, data) => {
     return;
   }
   const content = message.serverContent || {};
-  const inputText = content.inputTranscription?.text || '';
+  const inputTranscription = content.inputTranscription || {};
+  const inputText = inputTranscription.text || '';
+  const inputLanguageCode = inputTranscription.languageCode || inputTranscription.language_code || '';
+  const inputIsEnglish = !inputLanguageCode || /^en(?:-|$)/i.test(inputLanguageCode);
   const outputText = content.outputTranscription?.text || '';
-  // The Live model hears the original audio and is more reliable for names
-  // than its auxiliary transcript. Only use deterministic transcript parsing
-  // for explicit letter-by-letter spelling and phone digits. Normal spoken
-  // names, confirmations, and corrections stay in the native audio path.
+  // The Live model hears the original audio. Use deterministic transcription
+  // parsing only for explicit spelling and phone digits; multilingual ASR can
+  // otherwise turn Pakistani names into unrelated foreign-language phrases.
   let suppressControlledOutput = (
-    (session.nameSpellingMode && !session.nameControlResponse) ||
-    (session.phoneCollecting && !session.phoneAwaitingConfirmation && !session.phoneControlResponse)
+    session.nameSpellingMode && !session.nameControlResponse
   );
 
   if (inputText && session.nameCollecting) {
@@ -666,8 +567,14 @@ const handleGeminiMessage = (session, data) => {
     console.log('[ai-agent] patient name transcript', {
       callId: session.callId,
       text: capturedName,
+      languageCode: inputLanguageCode || 'unknown',
       nativeAudio: !spellingRequested
     });
+    // A normal spoken name stays entirely on Gemini's native audio path. The
+    // auxiliary transcript frequently renders Pakistani names as unrelated
+    // German, Spanish, or English phrases; it must never override the audio
+    // model's own understanding. Text parsing remains limited to explicit
+    // confirmation, correction, and spelling control words below.
     if (
       (session.nameAwaitingConfirmation && isPositiveConfirmation(inputText)) ||
       (!session.nameAwaitingConfirmation &&
@@ -682,11 +589,11 @@ const handleGeminiMessage = (session, data) => {
       (session.nameAwaitingConfirmation || session.initialGreetingComplete) &&
       (isNegativeConfirmation(inputText) || isCorrectionRequest(inputText))
     ) {
-      // Let the native audio model hear and resolve the correction. The text
-      // transcript is deliberately not used as the corrected name.
+      session.nameCorrectionCount += 1;
+      // Corrections remain in the native audio path; using the auxiliary text
+      // here would reintroduce the same foreign-language substitution.
       session.nameAwaitingConfirmation = false;
       session.nameConfirmed = false;
-      session.nameCorrectionCount += 1;
     } else if (spelledName) {
       suppressControlledOutput = true;
       discardPendingOutput(session);
@@ -705,6 +612,7 @@ const handleGeminiMessage = (session, data) => {
     });
 
     if (isPhoneRepeatRequest(inputDelta) && session.phoneDigits) {
+      suppressControlledOutput = true;
       session.phoneControlResponse = true;
       sendControlText(
         session,
@@ -714,6 +622,7 @@ const handleGeminiMessage = (session, data) => {
     } else if (session.phoneAwaitingConfirmation) {
       const replacementDigits = extractSpokenDigits(inputDelta);
       if (isNegativeConfirmation(inputDelta) || isCorrectionRequest(inputDelta)) {
+        suppressControlledOutput = true;
         session.phoneDigits = '';
         session.phoneAwaitingConfirmation = false;
         session.phoneControlResponse = true;
@@ -731,18 +640,26 @@ const handleGeminiMessage = (session, data) => {
       } else if (replacementDigits) {
         // Treat a newly spoken number during confirmation as a replacement,
         // even when the caller omits an explicit "no".
+        suppressControlledOutput = true;
         session.phoneAwaitingConfirmation = false;
         discardPendingOutput(session);
         acceptPhoneDigits(session, replacementDigits, true);
       }
     } else {
       const newDigits = extractSpokenDigits(inputDelta);
-      if (!acceptPhoneDigits(session, newDigits)) {
-        // Never leave the caller in silence when transcription contains no
-        // usable digits. Suppress the unrelated native reply and ask once for
-        // a complete grouped repetition.
+      if (acceptPhoneDigits(session, newDigits)) {
+        // Exact recognized digits use the deterministic accumulation and
+        // confirmation path. Suppress only the competing native reply.
         suppressControlledOutput = true;
-        scheduleIncompletePhoneRetry(session);
+      } else {
+        // The auxiliary transcript sometimes renders spoken digits as ordinary
+        // words (for example "You see the"). In that case do not silence the
+        // native audio-to-audio model, which still hears the original caller
+        // audio and can respond naturally.
+        if (session.phoneFinalizeTimer) {
+          clearTimeout(session.phoneFinalizeTimer);
+          session.phoneFinalizeTimer = null;
+        }
       }
     }
   }
@@ -751,6 +668,12 @@ const handleGeminiMessage = (session, data) => {
     session.outputTurnBytes = 0;
     session.playbackGeneration += 1;
     session.modelGenerating = false;
+    freeswitch.breakAudioPlayback(session.callId).catch((err) => {
+      console.warn('[ai-agent] unable to stop interrupted playback', {
+        callId: session.callId,
+        error: err.message
+      });
+    });
     console.log('[ai-agent] Gemini playback interrupted', { callId: session.callId });
   }
   const parts = content.modelTurn?.parts || [];
@@ -1010,17 +933,14 @@ const attachGemini = (freeswitchSocket, request, callId, settings) => {
       sampleCount += 1;
     }
     const rms = sampleCount ? Math.sqrt(sumSquares / sampleCount) : 0;
-    const durationMs = sampleCount ? (sampleCount / 16000) * 1000 : 0;
     session.inputPeakMaximum = Math.max(session.inputPeakMaximum, peak);
     session.inputRmsMaximum = Math.max(session.inputRmsMaximum, rms);
     if (peak >= 500) {
       session.lastCallerSpeechAt = Date.now();
-      // A new spoken number group cancels generic-format readback until that
-      // group has also been finalized and appended.
-      if (session.phoneFinalizeTimer) {
-        clearTimeout(session.phoneFinalizeTimer);
-        session.phoneFinalizeTimer = null;
-      }
+      // Do not cancel phone finalization from raw audio energy. Residual voice
+      // frames commonly arrive after Gemini has finalized the digit transcript
+      // and previously removed the only timer that could answer the caller.
+      // A later finalized transcription clears and reschedules it safely.
     }
     if (peak >= 1200) {
       session.silenceFollowUpSent = false;
@@ -1047,8 +967,17 @@ const attachGemini = (freeswitchSocket, request, callId, settings) => {
     }, 120000);
     const payload = JSON.stringify({ realtimeInput: { audio: { data: pcm.toString('base64'), mimeType: 'audio/pcm;rate=16000' } } });
     if (session.ready && session.gemini?.readyState === WebSocket.OPEN) {
-      if (session.initialGreetingComplete) {
-        handleCallerAudio(session, payload, rms, durationMs);
+      if (
+        session.initialGreetingComplete &&
+        !session.modelGenerating &&
+        session.playbackQueueDepth === 0
+      ) {
+        // Stream every caller frame. Gemini's server-side VAD now decides
+        // speech boundaries, matching the native Live application and
+        // preventing local thresholds from removing name syllables/digits.
+        // Do not stream while AI audio is being generated or played: streamed
+        // uuid_broadcast audio otherwise leaks back as fake caller names.
+        sendAudioPayload(session, payload);
       }
     } else {
       // Retain the most recent audio while a slow Gemini handshake completes.

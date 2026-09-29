@@ -1,0 +1,12 @@
+<include>
+  <user id="1010">
+    <params>
+      <param name="a1-hash" value="281e1c02b79a8cd2141549c8b874eb88"/>
+    </params>
+    <variables>
+      <variable name="user_context" value="default"/>
+      <variable name="effective_caller_id_name" value="1010"/>
+      <variable name="effective_caller_id_number" value="1010"/>
+    </variables>
+  </user>
+</include>

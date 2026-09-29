@@ -1,5 +1,51 @@
 import { SimpleUser } from "sip.js/lib/platform/web";
 
+// Ask the browser to clean the microphone before WebRTC encodes it. Keep
+// these as "ideal" constraints so devices which cannot provide one of them
+// still connect instead of failing the entire call.
+export const CLEAN_AUDIO_CONSTRAINTS = Object.freeze({
+    audio: {
+        echoCancellation: { ideal: true },
+        noiseSuppression: { ideal: true },
+        autoGainControl: { ideal: true },
+        channelCount: { ideal: 1 },
+        sampleRate: { ideal: 48000 },
+        sampleSize: { ideal: 16 }
+    },
+    video: false
+});
+
+// Prefer Opus for browser calls because it preserves names and spoken digits
+// much better than an 8 kHz telephone codec. All offered fallback codecs stay
+// in the SDP, so calls can still connect to endpoints that do not support it.
+export const preferOpus = async (description) => {
+    if (!description?.sdp) return description;
+
+    const opusPayloads = Array.from(
+        description.sdp.matchAll(/^a=rtpmap:(\d+)\s+opus\/48000(?:\/\d+)?\s*$/gim),
+        (match) => match[1]
+    );
+    if (opusPayloads.length === 0) return description;
+
+    const separator = description.sdp.includes("\r\n") ? "\r\n" : "\n";
+    const lines = description.sdp.split(separator).map((line) => {
+        if (!line.startsWith("m=audio ")) return line;
+        const parts = line.trim().split(/\s+/);
+        if (parts.length < 4) return line;
+        const offeredPayloads = parts.slice(3);
+        const preferred = opusPayloads.filter((payload) => offeredPayloads.includes(payload));
+        if (preferred.length === 0) return line;
+        const fallbacks = offeredPayloads.filter((payload) => !preferred.includes(payload));
+        return [...parts.slice(0, 3), ...preferred, ...fallbacks].join(" ");
+    });
+
+    return { ...description, sdp: lines.join(separator) };
+};
+
+const cleanMediaOptions = Object.freeze({
+    sessionDescriptionHandlerModifiers: [preferOpus]
+});
+
 const buildIceServers = (servers) => {
     if (!servers || servers.length === 0) {
         return [];
@@ -196,7 +242,7 @@ class DialerWebRTC {
         }
 
         try {
-            await client.call(target);
+            await client.call(target, cleanMediaOptions);
             this.currentConference = conferenceName;
             if (this.pendingMute) {
                 await this.applyMuteState(this.pendingMute);
@@ -210,7 +256,7 @@ class DialerWebRTC {
 
         await this.resetClient();
         client = await this.ensureClient();
-        await client.call(target);
+        await client.call(target, cleanMediaOptions);
         this.currentConference = conferenceName;
         if (this.pendingMute) {
             await this.applyMuteState(this.pendingMute);
@@ -235,7 +281,7 @@ class DialerWebRTC {
                     // This wrapper owns reconnects; avoid a competing SIP.js retry loop.
                     reconnectionAttempts: 0,
                     media: {
-                        constraints: { audio: true, video: false },
+                        constraints: CLEAN_AUDIO_CONSTRAINTS,
                         remote: { audio: this.remoteAudio }
                     },
                     userAgentOptions: {
@@ -319,6 +365,11 @@ class DialerWebRTC {
         if (!this.simpleUser?.session || typeof this.simpleUser.answer !== "function") {
             throw new Error("No incoming SIP call is available");
         }
+        // The remote FreeSWITCH offer already lists Opus first. Passing an SDP
+        // modifier while accepting an Invitation can leave some browsers in
+        // the ringing state without ever sending the SIP 200 response. Keep
+        // the microphone-cleanup constraints configured on SimpleUser, but
+        // let SIP.js generate the incoming answer without rewriting its SDP.
         await this.simpleUser.answer();
     }
 
