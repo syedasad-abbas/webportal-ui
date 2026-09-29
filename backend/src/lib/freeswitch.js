@@ -1,6 +1,9 @@
 const net = require('net');
 const config = require('../config');
 
+// Gemini Live's native input format is mono signed 16-bit PCM at 16 kHz.
+const AI_INPUT_SAMPLE_RATE = 16000;
+
 const attachSocketFailureHandlers = (client, reject) => {
   client.setTimeout(config.freeswitch.connectTimeoutMs || 5000);
   client.on('timeout', () => {
@@ -311,7 +314,7 @@ const startAudioStream = async (uuid, websocketUrl, metadata = {}) => {
   await sendApiCommand(`uuid_setvar ${uuid} send_silence_when_idle -1`);
   const encodedMetadata = Buffer.from(JSON.stringify(metadata)).toString('base64');
   const response = await sendApiCommand(
-    `uuid_audio_stream ${uuid} start ${websocketUrl} mono 16000 ${encodedMetadata}`
+    `uuid_audio_stream ${uuid} start ${websocketUrl} mono ${AI_INPUT_SAMPLE_RATE} ${encodedMetadata}`
   );
   if (/^-ERR\b/i.test(response)) throw new Error(response);
   return response;

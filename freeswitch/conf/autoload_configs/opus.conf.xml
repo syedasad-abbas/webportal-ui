@@ -30,6 +30,6 @@
 	<!-- Enable automatic bitrate variation during the call based on RTCP feedback -->
 	<!--<param name="adjust-bitrate" value="1"/>-->
 	<!-- will enforce mono even if the remote party wants stereo. must be used in conjunction with param "max-audio-channels" set to 1 in switch.conf.xml. -->
-		<param name="mono" value="0"/>
+		<param name="mono" value="1"/>
     </settings>
 </configuration>

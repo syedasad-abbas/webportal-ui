@@ -9,6 +9,9 @@ const freeswitch = require('../lib/freeswitch');
 const sessions = new Map();
 let server;
 
+// Must match the sampling rate requested from mod_audio_stream.
+const AI_INPUT_SAMPLE_RATE = 16000;
+
 const activeSessionCount = () => sessions.size;
 const waitUntilReady = async (callId, timeoutMs = 35000) => {
   const deadline = Date.now() + timeoutMs;
@@ -158,26 +161,11 @@ const sendSetup = (session) => {
         turnCoverage: 'TURN_INCLUDES_ONLY_ACTIVITY'
       },
       systemInstruction: { parts: [{ text: `${prompt}\n\nCall continuity rules: Keep the conversation active until the caller hangs up. After greeting, listen and answer every caller turn. Never announce that you are ending the call and never stop after only one response. Keep replies concise and finish each reply with a useful question when appropriate. You receive the caller's live audio directly; transcribe carefully and preserve spelled names and digits exactly. Google Search is available only for general public hospital information when the hospital is identified. Never search for a patient or use web results to decide how the caller spells a name. Confirm uncertain names directly with the caller. Never infer doctor availability or claim a booking from search results.` }] },
-      inputAudioTranscription: {
-        // Use one strong English hint. Supplying several locale alternatives
-        // still allowed short Pakistani-English names to be classified as
-        // unrelated French, Spanish, or German phrases in real calls.
-        // en-IN handles South-Asian English while remaining suitable for
-        // ordinary British and American English speech.
-        languageCodes: ['en-IN', 'en-GB', 'en-US'],
-        // Keep proper names literal. SMART mode was rewriting Pakistani name
-        // sounds into unrelated Spanish and German phrases during real calls.
-        mode: 'VERBATIM',
-        // A fixed list of names biases unfamiliar callers toward its nearest
-        // entry. Give the recognizer field and digit context only; the Live
-        // model receives the original audio and caller confirmation is final.
-        customVocabulary: [
-          'patient name', 'full name', 'first name', 'last name',
-          'first and last name', 'phone number',
-          'zero', 'oh', 'one', 'two', 'three', 'four', 'five', 'six', 'seven',
-          'eight', 'nine', 'double', 'triple'
-        ]
-      },
+      // Keep this session genuinely audio-to-audio. The optional input
+      // transcription layer repeatedly converted Pakistani names into
+      // unrelated foreign sentences and then drove the correction logic with
+      // those guesses. Gemini's native Live audio model receives the PCM
+      // directly and handles the conversation without that intermediary.
       outputAudioTranscription: {}
     }
   }));
@@ -212,7 +200,7 @@ const scheduleSilenceFollowUp = (session, delayMs = 12000) => {
 const sendInitialGreeting = (session) => {
   sendControlText(
     session,
-    'Start the call naturally. Briefly identify yourself as the hospital appointment assistant, then ask: “May I have the patient’s first and last name? You can pause briefly between the two names.” Wait for the complete answer.'
+    'Start the call naturally. Briefly identify yourself as the hospital appointment assistant, then ask only: “May I have the patient’s first name?” Wait for the answer. After hearing it, retain your closest hearing and ask only for the last name. Then repeat the combined full name once for confirmation.'
   );
 };
 
@@ -965,7 +953,14 @@ const attachGemini = (freeswitchSocket, request, callId, settings) => {
       console.log('[ai-agent] Gemini inactivity timeout', { callId });
       closeSession(callId, 1011, 'Gemini inactivity timeout');
     }, 120000);
-    const payload = JSON.stringify({ realtimeInput: { audio: { data: pcm.toString('base64'), mimeType: 'audio/pcm;rate=16000' } } });
+    const payload = JSON.stringify({
+      realtimeInput: {
+        audio: {
+          data: pcm.toString('base64'),
+          mimeType: `audio/pcm;rate=${AI_INPUT_SAMPLE_RATE}`
+        }
+      }
+    });
     if (session.ready && session.gemini?.readyState === WebSocket.OPEN) {
       if (
         session.initialGreetingComplete &&
