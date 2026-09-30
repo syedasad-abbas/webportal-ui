@@ -325,6 +325,17 @@ const stopAudioStream = async (uuid) => {
   return sendApiCommand(`uuid_audio_stream ${uuid} stop`);
 };
 
+const startRecording = async (uuid, recordingPath) => {
+  if (!/^[0-9a-f-]{36}$/i.test(uuid || '')) throw new Error('Invalid call UUID');
+  if (typeof recordingPath !== 'string' || !recordingPath.startsWith('/') || /[\s'"\\]/.test(recordingPath)) {
+    throw new Error('Invalid recording path');
+  }
+  // The session recorder captures read/write audio and closes on channel hangup.
+  const response = await sendApiCommand(`uuid_record ${uuid} start ${recordingPath}`);
+  if (!/^\+OK\b/i.test(response || '')) throw new Error(response || 'Unable to start recording');
+  return response;
+};
+
 const breakAudioPlayback = async (uuid) => {
   if (!/^[0-9a-f-]{36}$/i.test(uuid || '')) throw new Error('Invalid call UUID');
   // AI replies are played with uuid_broadcast, so the matching FreeSWITCH
@@ -363,6 +374,7 @@ module.exports = {
   killGateway,
   startAudioStream,
   stopAudioStream,
+  startRecording,
   breakAudioPlayback,
   broadcastAudio
 };

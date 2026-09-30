@@ -3,7 +3,7 @@ import { SimpleUser } from "sip.js/lib/platform/web";
 // Ask the browser to clean the microphone before WebRTC encodes it. Keep
 // these as "ideal" constraints so devices which cannot provide one of them
 // still connect instead of failing the entire call.
-export const CLEAN_AUDIO_CONSTRAINTS = Object.freeze({
+export const CLEAN_AUDIO_CONSTRAINTS = {
     audio: {
         echoCancellation: { ideal: true },
         noiseSuppression: { ideal: true },
@@ -13,7 +13,7 @@ export const CLEAN_AUDIO_CONSTRAINTS = Object.freeze({
         sampleSize: { ideal: 16 }
     },
     video: false
-});
+};
 
 // Prefer Opus for browser calls because it preserves names and spoken digits
 // much better than an 8 kHz telephone codec. All offered fallback codecs stay
@@ -42,9 +42,9 @@ export const preferOpus = async (description) => {
     return { ...description, sdp: lines.join(separator) };
 };
 
-const cleanMediaOptions = Object.freeze({
+const cleanMediaOptions = {
     sessionDescriptionHandlerModifiers: [preferOpus]
-});
+};
 
 const buildIceServers = (servers) => {
     if (!servers || servers.length === 0) {

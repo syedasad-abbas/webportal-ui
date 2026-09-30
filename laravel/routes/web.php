@@ -96,6 +96,7 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['auth']], 
     Route::get('/recordings/search', [RecordingController::class, 'search'])->name('recordings.search');
     Route::get('/recordings/{callLog}/play', [RecordingController::class, 'play'])->name('recordings.play');
     Route::get('/recordings/{callLog}/download', [RecordingController::class, 'download'])->name('recordings.download');
+    Route::delete('/recordings/bulk-delete', [RecordingController::class, 'bulkDelete'])->name('recordings.bulk-delete');
     Route::delete('/recordings/{callLog}', [RecordingController::class, 'destroy'])->name('recordings.destroy');
 
 

@@ -1,7 +1,31 @@
+<div x-data="{ selectedRecordings: [], pageIds: @js($recordings->pluck('id')->map(fn ($id) => (string) $id)->values()), deleting: false }">
+@can('recording.delete')
+    <form action="{{ route('admin.recordings.bulk-delete') }}" method="POST" class="mb-4 flex flex-wrap items-center gap-4"
+        @submit="if (deleting || selectedRecordings.length === 0 || !confirm(@js(__('Delete the selected recordings and their call log entries? This cannot be undone.')))) { $event.preventDefault(); } else { deleting = true; }">
+        @csrf
+        @method('DELETE')
+        <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+            <input type="checkbox" :disabled="pageIds.length === 0 || deleting"
+                :checked="pageIds.length > 0 && selectedRecordings.length === pageIds.length"
+                x-effect="$el.indeterminate = selectedRecordings.length > 0 && selectedRecordings.length < pageIds.length"
+                @change="selectedRecordings = $event.target.checked ? [...pageIds] : []">
+            {{ __('Select all on this page') }}
+        </label>
+        <template x-for="id in selectedRecordings" :key="id">
+            <input type="hidden" name="ids[]" :value="id">
+        </template>
+        <button type="submit" class="btn btn-danger" :disabled="selectedRecordings.length === 0 || deleting" disabled>
+            {{ __('Delete selected') }} (<span x-text="selectedRecordings.length">0</span>)
+        </button>
+    </form>
+@endcan
 <div class="hidden md:block">
     <table class="w-full text-sm text-gray-700 dark:text-gray-300">
         <thead class="bg-gray-50 dark:bg-gray-800 text-left">
             <tr class="border-b border-gray-100 dark:border-gray-700">
+                @can('recording.delete')
+                    <th class="px-5 py-3 font-semibold"><span class="sr-only">{{ __('Select') }}</span></th>
+                @endcan
                 <th class="px-5 py-3 font-semibold">{{ __('Caller ID') }}</th>
                 <th class="px-5 py-3 font-semibold">{{ __('Destination') }}</th>
                 <th class="px-5 py-3 font-semibold">{{ __('User') }}</th>
@@ -14,6 +38,12 @@
         <tbody>
             @forelse($recordings as $recording)
                 <tr class="border-b border-gray-100 dark:border-gray-800">
+                    @can('recording.delete')
+                        <td class="px-5 py-4">
+                            <input type="checkbox" value="{{ $recording->id }}" x-model="selectedRecordings" :disabled="deleting"
+                                aria-label="{{ __('Select recording :id', ['id' => $recording->id]) }}">
+                        </td>
+                    @endcan
                     <td class="px-5 py-4">{{ $recording->caller_id ?? '—' }}</td>
                     <td class="px-5 py-4">{{ $recording->destination ?? '—' }}</td>
                     <td class="px-5 py-4">{{ $recording->user->external_name ?? $recording->user->name ?? '—' }}</td>
@@ -69,7 +99,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="7" class="px-5 py-6 text-center text-gray-500 dark:text-gray-400">
+                    <td colspan="{{ auth()->user()->can('recording.delete') ? 8 : 7 }}" class="px-5 py-6 text-center text-gray-500 dark:text-gray-400">
                         {{ __('No recordings found.') }}
                     </td>
                 </tr>
@@ -81,6 +111,12 @@
 <div class="md:hidden space-y-4">
     @forelse($recordings as $recording)
         <div class="rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900 p-4">
+            @can('recording.delete')
+                <label class="mb-3 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                    <input type="checkbox" value="{{ $recording->id }}" x-model="selectedRecordings" :disabled="deleting">
+                    {{ __('Select recording :id', ['id' => $recording->id]) }}
+                </label>
+            @endcan
             <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0">
                     <p class="text-sm font-semibold text-gray-900 dark:text-white truncate">
@@ -148,4 +184,5 @@
             {{ __('No recordings found.') }}
         </div>
     @endforelse
+</div>
 </div>

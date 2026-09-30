@@ -10,9 +10,12 @@
 **/vendor
 laravel/public/build
 laravel/public/hot
+laravel/bootstrap/cache/*.php
+laravel/storage/framework/cache/**
+laravel/storage/framework/sessions/**
+laravel/storage/framework/views/**
 recordings
 docker/nginx/letsencrypt
 *.dump
 *.sql
 *.log
-

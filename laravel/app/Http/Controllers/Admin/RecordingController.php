@@ -8,9 +8,11 @@ use App\Models\CallLog;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class RecordingController extends Controller
@@ -96,6 +98,36 @@ class RecordingController extends Controller
         return redirect()
             ->route('admin.recordings.index')
             ->with('status', __('Recording deleted successfully.'));
+    }
+
+    public function bulkDelete(Request $request): JsonResponse|RedirectResponse
+    {
+        Gate::authorize('recording.delete');
+
+        $validated = $request->validate([
+            'ids' => ['required', 'array', 'min:1', 'max:100'],
+            'ids.*' => ['required', 'integer', 'distinct', Rule::exists('call_logs', 'id')->whereNotNull('recording_path')],
+        ]);
+
+        $disk = Storage::disk($this->recordingsDisk());
+        $recordings = CallLog::withRecording()->whereIn('id', $validated['ids'])->get();
+        $deleted = 0;
+        foreach ($recordings as $recording) {
+            $path = $recording->recordingStoragePath();
+            if ($path && $disk->exists($path)) {
+                abort_unless($disk->delete($path), 500, __('Unable to delete a recording file. Remaining recordings were not deleted.'));
+            }
+            // Match the existing single-recording delete behavior.
+            $recording->delete();
+            $deleted++;
+        }
+
+        $message = __(':count recordings deleted successfully.', ['count' => $deleted]);
+        if ($request->wantsJson()) {
+            return response()->json(['message' => $message, 'deleted' => $deleted]);
+        }
+
+        return redirect()->route('admin.recordings.index')->with('status', $message);
     }
 
     /**

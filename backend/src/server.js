@@ -13,7 +13,6 @@ const { scheduleMetricsBroadcast, startMetricsBroadcasting } = require('./servic
 const adminRoutes = require('./routes/admin');
 const authRoutes = require('./routes/auth');
 const callRoutes = require('./routes/calls');
-const campaignDialerRoutes = require('./routes/campaignDialer');
 const freeswitchRoutes = require('./routes/freeswitch');
 const aiAgentRoutes = require('./routes/aiAgent');
 const aiRoutes = require('./routes/ai');
@@ -131,7 +130,6 @@ app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 app.use('/admin', validateCsrfToken, adminRoutes);
 app.use('/auth', validateCsrfToken, authRoutes);
 app.use('/calls', validateCsrfToken, callRoutes);
-app.use('/dialer/campaign', validateCsrfToken, campaignDialerRoutes);
 app.use('/freeswitch', freeswitchRoutes);
   app.use('/ai-agent', validateCsrfToken, aiAgentRoutes);
   app.use('/ai', validateCsrfToken, aiRoutes);

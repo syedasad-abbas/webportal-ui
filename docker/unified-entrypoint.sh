@@ -39,8 +39,8 @@ fi
 chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
-# Set up cron jobs
-echo "* * * * * su -s /bin/sh www-data -c 'cd /var/www/html && /usr/local/bin/php artisan app:campaign-stats-update' >> /proc/1/fd/1 2>> /proc/1/fd/2" | crontab -
+# Clean up any stale Apache PID/lock files from unclean stops
+rm -f /var/run/apache2/apache2.pid /run/apache2/apache2.pid /var/run/apache2/*.pid
 
 # Start supervisord
 echo "Starting services..."

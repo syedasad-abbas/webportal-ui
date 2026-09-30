@@ -15,7 +15,6 @@ class Kernel extends ConsoleKernel
     protected $commands = [
         Commands\SetupStorage::class,
         Commands\CreatePlaceholderImages::class,
-     \App\Console\Commands\CampaignStatsUpdate::class,
     ];
 
     /**

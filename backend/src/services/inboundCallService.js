@@ -38,6 +38,21 @@ const markCallAnswered = async (callUuid, userId) => {
     [callUuid, userId]
   );
   scheduleMetricsBroadcast();
+  // Record the caller's channel so both sides are captured for human and AI calls.
+  // A recording failure must not send an answered call back through agent failover.
+  try {
+    const result = await db.query('SELECT recording_enabled FROM users WHERE id = $1', [userId]);
+    if (result.rows[0]?.recording_enabled) {
+      const recordingPath = `${config.freeswitch.recordingsPath}/${userId}-inbound-${callUuid}.wav`;
+      await freeswitch.startRecording(callUuid, recordingPath);
+      await db.query(
+        'UPDATE call_logs SET recording_path = $2, updated_at = NOW() WHERE call_uuid = $1',
+        [callUuid, recordingPath]
+      );
+    }
+  } catch (err) {
+    console.error('[inbound] recording failed', { uuid: callUuid, error: err.message });
+  }
 };
 
 const markCallEnded = async (callUuid, finalStatus) => {
