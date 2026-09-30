@@ -122,7 +122,15 @@ const closeSession = (callId, code = 1000, reason = 'Call ended') => {
 const sendSetup = (session) => {
   // Keep every UI style on a mature male voice. The previous `warm` mapping
   // selected Aoede, whose lighter delivery was unsuitable for this agent.
-  const voiceMap = { professional: 'Orus', warm: 'Orus', confident: 'Orus' };
+  const voiceMap = {
+    man: 'Orus',
+    woman: 'Aoede',
+    male: 'Orus',
+    female: 'Aoede',
+    professional: 'Orus',
+    warm: 'Aoede',
+    confident: 'Orus'
+  };
   const selectedVoice = voiceMap[session.settings.voice] || config.aiAgent.voice;
   session.selectedVoice = selectedVoice;
   const currentDate = new Intl.DateTimeFormat('en-GB', {

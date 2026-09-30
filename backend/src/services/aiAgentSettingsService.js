@@ -5,7 +5,7 @@ const defaults = {
   enabled: false,
   goal: 'Collect the patient name, phone number, preferred appointment date, and doctor name.',
   mode: 'lead',
-  voice: 'professional',
+  voice: 'man',
   humanHandoff: true
 };
 

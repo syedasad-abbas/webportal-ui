@@ -967,9 +967,8 @@ html:not(.dark) .connectpro-agent-status { background: #d1fae5 !important; color
                         <div>
                             <label for="ai-agent-voice" class="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{{ __('Voice style') }}</label>
                             <select id="ai-agent-voice" class="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2.5 text-xs text-slate-900 outline-none focus:border-violet-500 dark:border-[#365068] dark:bg-[#071625] dark:text-white">
-                                <option value="professional">{{ __('Professional') }}</option>
-                                <option value="warm">{{ __('Warm') }}</option>
-                                <option value="confident">{{ __('Confident') }}</option>
+                                <option value="man">{{ __('Man') }}</option>
+                                <option value="woman">{{ __('Woman') }}</option>
                             </select>
                         </div>
                     </div>
@@ -1111,7 +1110,7 @@ document.addEventListener('DOMContentLoaded', function () {
         aiAgentReady = Boolean(settings.ready);
         if (aiAgentGoal) aiAgentGoal.value = settings.goal || '';
         if (aiAgentMode) aiAgentMode.value = settings.mode || 'lead';
-        if (aiAgentVoice) aiAgentVoice.value = settings.voice || 'professional';
+        if (aiAgentVoice) aiAgentVoice.value = settings.voice || 'man';
         if (aiAgentLiveModel) aiAgentLiveModel.textContent = settings.model || '—';
         if (aiAgentHandoff) aiAgentHandoff.checked = Boolean(settings.humanHandoff);
         renderAiAgentState();
@@ -1132,7 +1131,7 @@ document.addEventListener('DOMContentLoaded', function () {
             window.localStorage.setItem('dialer.aiAgent.setup', JSON.stringify({
                 goal: aiAgentGoal?.value || '',
                 mode: aiAgentMode?.value || 'lead',
-                voice: aiAgentVoice?.value || 'professional',
+                voice: aiAgentVoice?.value || 'man',
                 handoff: Boolean(aiAgentHandoff?.checked)
             }));
         } catch (error) {}
@@ -1143,7 +1142,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const savedSetup = JSON.parse(window.localStorage.getItem('dialer.aiAgent.setup') || '{}');
             if (aiAgentGoal && typeof savedSetup.goal === 'string') aiAgentGoal.value = savedSetup.goal;
             if (aiAgentMode && ['lead', 'assist', 'qualify'].includes(savedSetup.mode)) aiAgentMode.value = savedSetup.mode;
-            if (aiAgentVoice && ['professional', 'warm', 'confident'].includes(savedSetup.voice)) aiAgentVoice.value = savedSetup.voice;
+            if (aiAgentVoice && ['man', 'woman', 'male', 'female', 'professional', 'warm', 'confident'].includes(savedSetup.voice)) aiAgentVoice.value = savedSetup.voice;
             if (aiAgentHandoff && typeof savedSetup.handoff === 'boolean') aiAgentHandoff.checked = savedSetup.handoff;
             const savedCollapsedState = window.localStorage.getItem('dialer.aiAgent.collapsed');
             setAiAgentCollapsed(savedCollapsedState === '1' || (savedCollapsedState === null && window.innerWidth < 768));
@@ -1168,7 +1167,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const response = await fetch(aiAgentSettingsUrl, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '' },
-                    body: JSON.stringify({ enabled, goal: aiAgentGoal?.value || 'Collect the patient name, phone number, preferred appointment date, and doctor name.', mode: aiAgentMode?.value || 'lead', voice: aiAgentVoice?.value || 'professional', humanHandoff: Boolean(aiAgentHandoff?.checked) })
+                    body: JSON.stringify({ enabled, goal: aiAgentGoal?.value || 'Collect the patient name, phone number, preferred appointment date, and doctor name.', mode: aiAgentMode?.value || 'lead', voice: aiAgentVoice?.value || 'man', humanHandoff: Boolean(aiAgentHandoff?.checked) })
                 });
                 const body = await response.json();
                 if (!response.ok) throw new Error(body.message || 'Unable to update AI agent');

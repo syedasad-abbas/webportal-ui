@@ -15,7 +15,7 @@ router.put('/', ...guard, async (req, res, next) => {
     enabled: Joi.boolean().required(),
     goal: Joi.string().trim().max(2000).required(),
     mode: Joi.string().valid('lead', 'assist', 'qualify').required(),
-    voice: Joi.string().valid('professional', 'warm', 'confident').required(),
+    voice: Joi.string().valid('man', 'woman', 'male', 'female', 'professional', 'warm', 'confident').required(),
     humanHandoff: Joi.boolean().required()
   });
   const { error, value } = schema.validate(req.body);
