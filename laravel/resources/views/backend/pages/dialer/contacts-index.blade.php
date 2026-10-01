@@ -73,6 +73,11 @@
                     </div>
                     <div class="flex items-center justify-end gap-2">
                         <a href="{{ route('admin.contacts.edit', $contact) }}" class="flex h-10 w-10 items-center justify-center rounded-full border border-[#365068] text-slate-300 hover:border-blue-500 hover:text-blue-400" title="{{ __('Edit contact') }}"><i class="bi bi-pencil"></i></a>
+                        <form action="{{ route('admin.contacts.destroy', $contact) }}" method="POST" onsubmit="return confirm('{{ __('Are you sure you want to delete this contact?') }}');" class="inline">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="flex h-10 w-10 items-center justify-center rounded-full border border-[#365068] text-slate-300 hover:border-red-500 hover:text-red-400" title="{{ __('Delete contact') }}"><i class="bi bi-trash"></i></button>
+                        </form>
                         <a href="{{ route('admin.dialer.index', ['contact' => $contact->id, 'destination' => $contact->phone]) }}" class="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-600 text-xl text-white shadow-lg shadow-emerald-600/20 transition hover:bg-emerald-500" title="{{ __('Call') }}"><i class="bi bi-telephone-fill"></i></a>
                     </div>
                 </article>

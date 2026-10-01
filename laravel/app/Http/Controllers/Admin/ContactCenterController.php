@@ -9,6 +9,7 @@ use App\Models\DialerContactActivity;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class ContactCenterController extends Controller
@@ -129,6 +130,13 @@ class ContactCenterController extends Controller
         return redirect()->route('admin.contacts.show', $contact)->with('success', __('Contact updated successfully.'));
     }
 
+    public function destroy(Request $request, DialerContact $contact): RedirectResponse
+    {
+        $this->authorizeContactPermission($request, 'contacts.delete');
+        $contact->delete();
+        return redirect()->route('admin.contacts.index')->with('success', __('Contact deleted successfully.'));
+    }
+
     public function activity(Request $request): View|JsonResponse
     {
         $this->authorizeContacts($request);
@@ -167,6 +175,25 @@ class ContactCenterController extends Controller
         }
 
         return view('backend.pages.dialer.contacts-call-history', compact('calls'));
+    }
+
+    public function destroyCallHistory(Request $request, CallLog $callLog): RedirectResponse|JsonResponse
+    {
+        abort_unless($request->user()?->can('recording.delete') || $request->user()?->can('contacts.delete'), 403);
+
+        $disk = Storage::disk(config('filesystems.default', 'public'));
+        $path = $callLog->recordingStoragePath();
+        if ($path && $disk->exists($path)) {
+            $disk->delete($path);
+        }
+
+        $callLog->delete();
+
+        if ($request->wantsJson()) {
+            return response()->json(['message' => __('Call history deleted successfully.')]);
+        }
+
+        return redirect()->route('admin.contacts.call-history')->with('success', __('Call history deleted successfully.'));
     }
 
     private function authorizeContacts(Request $request): void

@@ -24,7 +24,15 @@
                         <span class="text-sm capitalize text-slate-300">{{ str_replace('_', ' ', $call->direction ?: 'outbound') }}</span>
                         <span class="text-sm {{ $isMissed ? 'text-red-400' : 'text-emerald-400' }}">{{ ucfirst(str_replace('_', ' ', (string) $call->status)) }}</span>
                         <span class="text-sm text-slate-400">{{ gmdate('i:s', max(0, (int) $call->duration_seconds)) }}</span>
-                        <div class="flex items-center justify-end gap-2"><span class="hidden text-xs text-slate-500 xl:inline">{{ $call->created_at?->format('M j, g:i A') }}</span><a href="{{ route('admin.dialer.index', ['destination' => $number]) }}" class="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-600 text-white hover:bg-emerald-500"><i class="bi bi-telephone-fill"></i></a></div>
+                        <div class="flex items-center justify-end gap-2">
+                            <span class="hidden text-xs text-slate-500 xl:inline">{{ $call->created_at?->format('M j, g:i A') }}</span>
+                            <form action="{{ route('admin.contacts.call-history.destroy', $call) }}" method="POST" onsubmit="return confirm('{{ __('Are you sure you want to delete this call record?') }}');" class="inline">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="flex h-10 w-10 items-center justify-center rounded-full border border-[#365068] text-slate-300 hover:border-red-500 hover:text-red-400" title="{{ __('Delete call record') }}"><i class="bi bi-trash"></i></button>
+                            </form>
+                            <a href="{{ route('admin.dialer.index', ['destination' => $number]) }}" class="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-600 text-white hover:bg-emerald-500" title="{{ __('Call') }}"><i class="bi bi-telephone-fill"></i></a>
+                        </div>
                     </article>
                 @empty
                     <div class="px-6 py-16 text-center text-sm text-slate-400">{{ __('No calls have been recorded yet.') }}</div>

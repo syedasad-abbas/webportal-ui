@@ -49,7 +49,14 @@
             <section class="rounded-2xl border border-[#294158] bg-[#091827] p-4 shadow-2xl shadow-black/20 sm:p-5">
                 <div class="flex items-center justify-between">
                     <h2 class="flex items-center gap-2 text-xl font-semibold"><i class="bi bi-person-fill text-blue-400"></i>{{ __('Customer Details') }}</h2>
-                    <a href="{{ route('admin.contacts.edit', $contact) }}" class="text-xl text-slate-400 hover:text-blue-400" title="{{ __('Edit contact') }}"><i class="bi bi-pencil"></i></a>
+                    <div class="flex items-center gap-3">
+                        <a href="{{ route('admin.contacts.edit', $contact) }}" class="text-xl text-slate-400 hover:text-blue-400" title="{{ __('Edit contact') }}"><i class="bi bi-pencil"></i></a>
+                        <form action="{{ route('admin.contacts.destroy', $contact) }}" method="POST" onsubmit="return confirm('{{ __('Are you sure you want to delete this contact?') }}');" class="inline">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="text-xl text-slate-400 hover:text-red-400" title="{{ __('Delete contact') }}"><i class="bi bi-trash"></i></button>
+                        </form>
+                    </div>
                 </div>
                 <div class="mt-4 grid gap-0 overflow-hidden rounded-xl border border-[#294158] sm:grid-cols-2">
                     @foreach([

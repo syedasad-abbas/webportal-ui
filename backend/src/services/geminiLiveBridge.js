@@ -208,7 +208,7 @@ const scheduleSilenceFollowUp = (session, delayMs = 12000) => {
 const sendInitialGreeting = (session) => {
   sendControlText(
     session,
-    'Start the call naturally. Briefly identify yourself as the hospital appointment assistant, then ask only: “May I have the patient’s first name?” Wait for the answer. After hearing it, retain your closest hearing and ask only for the last name. Then repeat the combined full name once for confirmation.'
+    'Start the call naturally by saying: “Hello, this is Adam for hospital appointment assistance. May I have the patient’s first name?” Do not use any other greeting and never mention AI.'
   );
 };
 

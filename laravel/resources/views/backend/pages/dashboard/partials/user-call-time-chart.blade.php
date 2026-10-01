@@ -219,6 +219,31 @@
                 chart.updateOptions(createOptions(payload, this.selectedUser, this.selectedPeriod), false, true);
             }
         };
+
+        document.querySelectorAll('[data-filter-trigger]').forEach((trigger) => {
+            trigger.addEventListener('click', function(event) {
+                event.preventDefault();
+                const formId = this.getAttribute('data-form');
+                const inputName = this.getAttribute('data-input');
+                const value = this.getAttribute('data-value');
+                if (!formId || !inputName) {
+                    return;
+                }
+                const form = document.getElementById(formId);
+                if (!form) {
+                    return;
+                }
+                let input = form.querySelector(`input[name="${inputName}"]`);
+                if (!input) {
+                    input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = inputName;
+                    form.appendChild(input);
+                }
+                input.value = value;
+                form.submit();
+            });
+        });
     });
 </script>
 @endpush

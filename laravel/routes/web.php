@@ -146,8 +146,10 @@ Route::delete('/carrier/{carrierId}', [CarrierController::class, 'destroy'])->na
         Route::post('/contacts', [ContactCenterController::class, 'store'])->name('contacts.store');
         Route::get('/contacts/activity', [ContactCenterController::class, 'activity'])->name('contacts.activity');
         Route::get('/contacts/call-history', [ContactCenterController::class, 'callHistory'])->name('contacts.call-history');
+        Route::delete('/contacts/call-history/{callLog}', [ContactCenterController::class, 'destroyCallHistory'])->name('contacts.call-history.destroy');
         Route::get('/contacts/{contact}/edit', [ContactCenterController::class, 'edit'])->name('contacts.edit');
         Route::put('/contacts/{contact}', [ContactCenterController::class, 'update'])->name('contacts.update');
+        Route::delete('/contacts/{contact}', [ContactCenterController::class, 'destroy'])->name('contacts.destroy');
         Route::get('/contacts/{contact}', [ContactCenterController::class, 'show'])->name('contacts.show');
 
         Route::get('/dialer/calls/{uuid}/status', [DialerController::class, 'status'])->name('dialer.status');
