@@ -2,13 +2,6 @@
 
 @section('title', __('Contacts') . ' | ' . config('app.name'))
 
-@push('styles')
-<style>
-    .connectpro-reference-nav { display: flex !important; }
-    .connectpro-reference-nav a { display: inline-flex; align-items: center; min-height: 32px; padding: 0 .9rem; border-radius: 8px; color: #8ea0b8; font-size: .65rem; font-weight: 600; }
-    .connectpro-reference-nav a:hover, .connectpro-reference-nav .connectpro-reference-nav-active { background: #1b3154; color: #f8fafc; }
-</style>
-@endpush
 
 @section('admin-content')
 <div class="connectpro-communication-page min-h-full bg-[#06111f] text-white">
