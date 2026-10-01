@@ -45,8 +45,8 @@ class RolePermissionSeeder extends Seeder
         );
 
         // Ensure Admin role can access recordings.
-        if (isset($roles['Admin'])) {
-            $roles['Admin']->givePermissionTo([
+        if (isset($roles['admin'])) {
+            $roles['admin']->givePermissionTo([
                 'recording.view',
                 'recording.download',
                 'recording.delete',
@@ -58,19 +58,6 @@ class RolePermissionSeeder extends Seeder
         if ($user) {
             $this->command->info('Assigning Superadmin role to superadmin user...');
             $user->assignRole($roles['superadmin']);
-        }
-
-        // Assign random roles to other users
-        $this->command->info('Assigning random roles to other users...');
-        $availableRoles = ['Admin', 'Editor', 'Subscriber']; // Exclude Superadmin from random assignment
-        $users = User::all();
-
-        foreach ($users as $user) {
-            if (! $user->hasRole('Superadmin')) {
-                // Get a random role from the available roles
-                $randomRole = $availableRoles[array_rand($availableRoles)];
-                $user->assignRole($randomRole);
-            }
         }
 
         $this->command->info('Roles and Permissions created successfully!');

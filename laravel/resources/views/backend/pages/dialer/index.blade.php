@@ -583,7 +583,7 @@ html:not(.dark) .connectpro-dialer-toolbar input { background: #ffffff !importan
     .connectpro-dialer .connectpro-customer-workspace-card > #contact-workspace-panel,
     .connectpro-dialer #contact-workspace-panel > .connectpro-contact-search,
     .connectpro-dialer #contact-workspace-panel > .contact-tabs,
-    .connectpro-dialer #contact-workspace-panel > [data-contact-tab-panel] {
+    .connectpro-dialer #contact-workspace-panel > [data-contact-tab-panel]:not(.hidden) {
       display: block !important;
       grid-column: auto !important;
       grid-row: auto !important;
@@ -1678,6 +1678,25 @@ document.addEventListener('DOMContentLoaded', function () {
         loadFullActivity();
     };
 
+    const showFullHistory = (activeLink) => {
+        if (!dialerMainContent || !dialerHistoryPanel || !dialerActivityPanel) return;
+        dialerMainContent.classList.add('hidden');
+        dialerHistoryPanel.classList.remove('hidden');
+        dialerActivityPanel.classList.add('hidden');
+        topBarLinks.forEach((link) => {
+            link.classList.toggle('connectpro-reference-nav-active', link.hasAttribute('data-dialer-history'));
+        });
+        activeLink?.setAttribute('aria-current', 'page');
+        loadFullCallHistory();
+    };
+
+    document.querySelectorAll('[data-dialer-history]').forEach((link) => {
+        link.addEventListener('click', (event) => {
+            event.preventDefault();
+            showFullHistory(link);
+        });
+    });
+
     document.querySelectorAll('[data-dialer-activity]').forEach((link) => {
         link.addEventListener('click', (event) => {
             event.preventDefault();
@@ -1696,21 +1715,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     topBarLinks.forEach((link) => {
-        const tabText = link.textContent.trim();
-        if (tabText === '{{ __('History') }}') {
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                if (dialerMainContent && dialerHistoryPanel && dialerActivityPanel) {
-                    dialerMainContent.classList.add('hidden');
-                    dialerHistoryPanel.classList.remove('hidden');
-                    dialerActivityPanel.classList.add('hidden');
-                    // Update active tab highlighting
-                    topBarLinks.forEach(l => l.classList.remove('connectpro-reference-nav-active'));
-                    link.classList.add('connectpro-reference-nav-active');
-                    loadFullCallHistory();
-                }
-            });
-        } else if (tabText === '{{ __('Dialpad') }}') {
+        if (link.textContent.trim() === '{{ __('Dialpad') }}') {
             // Only Dialpad restores the dialer; other links use their own routes.
             link.addEventListener('click', (e) => {
                 if (dialerMainContent && dialerHistoryPanel && dialerActivityPanel) {

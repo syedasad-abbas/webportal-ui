@@ -210,33 +210,6 @@ class RolesService
         $adminPermissions = array_diff($adminPermissions, $adminExcludedPermissions);
         $roles['admin'] = $this->createRole('Admin', $adminPermissions);
 
-        // 3. Editor role - can manage content but not users/settings
-        $editorPermissions = [
-            'dashboard.view',
-            // Blog permissions
-            'blog.create',
-            'blog.view',
-            'blog.edit',
-            // Profile permissions
-            'profile.view',
-            'profile.edit',
-            'profile.update',
-            // Translations
-            'translations.view',
-        ];
-
-        $roles['editor'] = $this->createRole('Editor', $editorPermissions);
-
-        // 4. Subscriber role - basic user role
-        $subscriberPermissions = [
-            'dashboard.view',
-            'profile.view',
-            'profile.edit',
-            'profile.update',
-        ];
-
-        $roles['subscriber'] = $this->createRole('Subscriber', $subscriberPermissions);
-
         return $roles;
     }
 
