@@ -220,6 +220,15 @@ html:not(.dark) .connectpro-dialer-toolbar input { background: #ffffff !importan
         padding: 0;
         box-shadow: none;
     }
+    /* Only the wide layout renders the list as a permanent panel, so the
+       heading is scoped to it and hidden in the dropdown layout. */
+    .connectpro-dialer #contact-workspace-panel > .connectpro-contact-search .connectpro-contact-list-heading {
+        display: block;
+        margin-top: 16px;
+    }
+    .connectpro-dialer #contact-workspace-panel > .connectpro-contact-search #contact-search-results {
+        margin-top: 6px;
+    }
     .connectpro-dialer .connectpro-customer-workspace-card > #customer-call-panel {
         grid-column: 2 / span 2;
         grid-row: 1;
@@ -654,7 +663,7 @@ html:not(.dark) .connectpro-dialer-toolbar input { background: #ffffff !importan
                         <h2 class="text-xl font-semibold text-white">{{ __('Keypad') }}</h2>
                         <p class="mt-1 flex items-center gap-2 text-xs text-slate-400"><span class="h-2 w-2 rounded-full bg-emerald-500"></span>{{ __('Ready') }}<span class="text-slate-600">•</span>{{ __('SIP') }}: {{ $webrtcConfig['username'] ?? '—' }}@<span>{{ $webrtcConfig['domain'] ?? '—' }}</span></p>
                     </div>
-                    <div id="call-status" class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#365068] text-slate-300"><i class="bi bi-arrow-clockwise"></i></div>
+                    <div id="call-status" class="inline-flex h-9 min-w-9 max-w-[9rem] items-center justify-center gap-1 overflow-hidden whitespace-nowrap rounded-full border border-[#365068] px-2 text-slate-300 transition-shadow duration-150 hover:border-[#4a6a86]"><i class="bi bi-arrow-clockwise"></i></div>
                 </div>
 
                 <form id="dialer-form" method="POST" action="{{ route('admin.dialer.dial') }}">
@@ -721,6 +730,7 @@ html:not(.dark) .connectpro-dialer-toolbar input { background: #ffffff !importan
                           <option value="">{{ __('All labels') }}</option>
                       </select>
                     </div>
+                    <p class="connectpro-contact-list-heading mt-4 hidden text-[11px] font-semibold uppercase tracking-wider text-slate-500">{{ __('Saved contacts') }}</p>
                     <div id="contact-search-results" class="absolute inset-x-0 top-full z-20 mt-2 hidden max-h-64 overflow-y-auto rounded-xl border border-[#365068] bg-[#0b1b2c] p-2 shadow-2xl"></div>
                 </div>
 
@@ -819,7 +829,7 @@ html:not(.dark) .connectpro-dialer-toolbar input { background: #ffffff !importan
                     </div>
                     <div class="connectpro-incoming-context mt-3 grid gap-3 rounded-[20px] border border-[#263d54] bg-[#091827]/85 p-4 text-left sm:px-5">
                         <div class="rounded-xl border border-[#294158] bg-[#071625] p-4"><p class="flex items-center gap-3 text-sm font-semibold text-slate-200"><i class="bi bi-calendar3 text-2xl text-blue-400"></i>{{ __('Last contact') }}</p><p class="mt-2 pl-9 text-sm text-slate-300">{{ __('No recent conversation') }}</p></div>
-                        <div class="rounded-xl border border-[#294158] bg-[#071625] p-4"><p class="flex items-center gap-3 text-sm font-semibold text-slate-200"><i class="bi bi-file-earmark-text text-2xl text-blue-400"></i>{{ __('Last note') }}</p><p class="mt-2 pl-9 text-sm leading-5 text-slate-300">{{ __('Call notes and contact context remain available in the workspace.') }}</p></div>
+                        <div class="rounded-xl border border-[#294158] bg-[#071625] p-4"><p class="flex items-center gap-3 text-sm font-semibold text-slate-200"><i class="bi bi-file-earmark-text text-2xl text-blue-400"></i>{{ __('Last note') }}</p><p class="mt-2 pl-9 text-sm leading-5 text-slate-300" data-incoming-last-note>{{ __('No notes yet for this caller.') }}</p></div>
                         <p class="flex items-center justify-center gap-3 text-sm text-slate-300 sm:col-span-2"><i class="bi bi-shield-check text-xl"></i>{{ __('Secure encrypted call') }}</p>
                     </div>
                 </div>
@@ -841,7 +851,25 @@ html:not(.dark) .connectpro-dialer-toolbar input { background: #ffffff !importan
                 </div>
                 <button type="button" data-compact-keypad-toggle class="mt-5 flex w-full items-center gap-4 rounded-2xl border border-[#33485d] px-5 py-4 text-left"><i class="bi bi-grid-3x3-gap text-2xl text-blue-400"></i><span><strong class="block text-lg">{{ __('Keypad') }}</strong><span class="text-sm text-slate-400">{{ __('Show dialpad') }}</span></span><i class="bi bi-chevron-down ml-auto text-xl text-slate-400"></i></button>
                 <div data-compact-keypad class="mt-3 hidden grid grid-cols-3 gap-2 rounded-2xl border border-[#33485d] bg-[#071625] p-3">@foreach(['1','2','3','4','5','6','7','8','9','*','0','#'] as $compactKey)<button type="button" data-compact-key="{{ $compactKey }}" class="rounded-xl border border-[#33485d] py-2 text-lg hover:border-blue-500 hover:text-blue-400">{{ $compactKey }}</button>@endforeach</div>
-                <div class="mt-5 rounded-2xl border border-[#33485d] p-4"><div class="flex items-center gap-3"><i class="bi bi-journal-text text-xl text-blue-400"></i><strong>{{ __('Notes') }}</strong><span class="text-slate-500">• {{ __('Latest') }}</span><a href="{{ route('admin.contacts.index') }}" class="ml-auto text-blue-400"><i class="bi bi-pencil"></i></a></div><p class="mt-3 text-sm italic leading-6 text-slate-300" data-compact-note>{{ __('Call notes and contact context remain available in the workspace.') }}</p><div class="mt-3 flex items-end gap-2"><textarea data-compact-comment-input rows="2" maxlength="2000" disabled placeholder="{{ __('Write a note or comment...') }}" class="min-w-0 flex-1 resize-none rounded-xl border border-[#33485d] bg-white px-3 py-2 text-sm text-[#0f172a] outline-none placeholder:text-slate-500 focus:border-blue-500 disabled:bg-gray-200 disabled:text-slate-500"></textarea><button type="button" data-compact-comment-add disabled class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-60" title="{{ __('Add comment') }}"><i class="bi bi-send-fill"></i></button></div></div>
+                <div class="mt-5 rounded-2xl border border-[#33485d] p-4">
+                    <div class="flex flex-wrap items-center gap-3">
+                        <i class="bi bi-journal-text text-xl text-blue-400"></i>
+                        <strong>{{ __('Notes') }}</strong>
+                        <span class="text-slate-500">• <span data-compact-note-count>{{ __('Live') }}</span></span>
+                        <button type="button" data-compact-flag disabled class="ml-auto flex h-8 w-8 items-center justify-center rounded-full border border-[#46596e] text-slate-300 transition hover:border-amber-400 hover:text-amber-400 disabled:cursor-not-allowed disabled:opacity-40" title="{{ __('Flag contact') }}" aria-label="{{ __('Flag contact') }}" aria-pressed="false"><i class="bi bi-flag"></i></button>
+                        <button type="button" data-compact-open-contacts class="text-blue-400" title="{{ __('Open contacts in a new tab') }}" aria-label="{{ __('Open contacts in a new tab') }}"><i class="bi bi-pencil"></i></button>
+                    </div>
+                    <p class="mt-2 text-xs text-slate-400" data-compact-note-status>{{ __('Notes are saved to the caller record and stay available during the call.') }}</p>
+                    <div data-compact-comment-list class="mt-3 max-h-40 space-y-2 overflow-y-auto"><p class="text-sm italic leading-6 text-slate-400">{{ __('No notes yet. Add the first one below.') }}</p></div>
+                    <div class="mt-3 flex items-end gap-2">
+                        <textarea data-compact-comment-input rows="2" maxlength="2000" disabled placeholder="{{ __('Write a note or comment...') }}" class="min-w-0 flex-1 resize-none rounded-xl border border-[#33485d] bg-white px-3 py-2 text-sm text-[#0f172a] outline-none placeholder:text-slate-500 focus:border-blue-500 disabled:bg-gray-200 disabled:text-slate-500"></textarea>
+                        <button type="button" data-compact-comment-add disabled class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-60" title="{{ __('Add comment') }}"><i class="bi bi-send-fill"></i></button>
+                    </div>
+                    <div class="mt-2 flex flex-wrap items-center gap-2">
+                        <button type="button" data-compact-flagged-chip disabled class="inline-flex items-center gap-1.5 rounded-full border border-[#46596e] px-2.5 py-1 text-xs font-semibold text-slate-300 transition hover:border-amber-400 hover:text-amber-400 disabled:cursor-not-allowed disabled:opacity-40" aria-pressed="false"><i class="bi bi-flag-fill"></i><span>{{ __('Flagged') }}</span></button>
+                        <button type="button" data-compact-save-contact class="inline-flex items-center gap-1.5 rounded-full border border-blue-500/40 bg-blue-500/10 px-2.5 py-1 text-xs font-semibold text-blue-300"><i class="bi bi-person-plus"></i><span>{{ __('Save caller as contact') }}</span></button>
+                    </div>
+                </div>
                 <p class="mt-5 border-t border-[#33485d] pt-4 text-center text-sm text-slate-400">{{ __('Secure') }} <span class="mx-2">•</span> {{ __('Encrypted') }} <i class="bi bi-lock-fill ml-1 text-blue-400"></i></p>
             </div>
         </div>
@@ -1021,11 +1049,58 @@ document.addEventListener('DOMContentLoaded', function () {
     const compactMuteIcon = compactCallWindow?.querySelector('[data-compact-mute-icon]');
     const compactMuteLabel = compactCallWindow?.querySelector('[data-compact-mute-label]');
     const compactNoteEl = compactCallWindow?.querySelector('[data-compact-note]');
+    const compactNoteCountEl = compactCallWindow?.querySelector('[data-compact-note-count]');
+    const compactNoteStatusEl = compactCallWindow?.querySelector('[data-compact-note-status]');
+    const compactCommentListEl = compactCallWindow?.querySelector('[data-compact-comment-list]');
     const compactCommentInput = compactCallWindow?.querySelector('[data-compact-comment-input]');
     const compactCommentAddBtn = compactCallWindow?.querySelector('[data-compact-comment-add]');
+    const compactFlagBtn = compactCallWindow?.querySelector('[data-compact-flag]');
+    const compactFlagChip = compactCallWindow?.querySelector('[data-compact-flagged-chip]');
+    const compactSaveContactBtn = compactCallWindow?.querySelector('[data-compact-save-contact]');
+    const compactOpenContactsBtn = compactCallWindow?.querySelector('[data-compact-open-contacts]');
+    const contactsIndexUrl = @json(route('admin.contacts.index'));
+    const callStatusToggle = document.getElementById('call-status');
+
+    // The in-call status circle doubles as the restore control while the call
+    // card is minimized, so the timer and mute/hang-up controls stay reachable.
+    // Declared as hoisted functions because setStatus() below runs before the
+    // bottom of this script and resets the affordance on call teardown.
+    function restoreCompactCallWindow() {
+        if (!compactCallWindow || !callCardMinimized) return false;
+        callCardMinimized = false;
+        compactCallWindow.classList.remove('hidden');
+        updateCallStatusAffordance();
+        return true;
+    }
+
+    function updateCallStatusAffordance() {
+        if (!callStatusToggle) return;
+        const restorable = callCardMinimized && !!compactCallWindow && compactCallWindow.classList.contains('hidden');
+        callStatusToggle.classList.toggle('cursor-pointer', restorable);
+        callStatusToggle.classList.toggle('ring-2', restorable);
+        callStatusToggle.classList.toggle('ring-emerald-400', restorable);
+        callStatusToggle.classList.toggle('ring-offset-2', restorable);
+        const restoreLabel = @json(__('Show call controls'));
+        callStatusToggle.setAttribute('role', restorable ? 'button' : 'img');
+        callStatusToggle.setAttribute('tabindex', restorable ? '0' : '-1');
+        callStatusToggle.setAttribute('title', restorable ? restoreLabel : '');
+        callStatusToggle.setAttribute('aria-label', restorable ? restoreLabel : '');
+    }
+
     const toolbarSearchEl = document.querySelector('[data-dialer-toolbar-search]');
     const contactSearchEl = document.getElementById('contact-search');
     const contactSearchResultsEl = document.getElementById('contact-search-results');
+
+    // Mirrors the CSS breakpoint at which the contact results stop being a
+    // dropdown and become a permanent list in the sidebar. Below it the list
+    // must be dismissed on outside click; at or above it the list is a panel
+    // and hiding it would leave the operator with no contacts at all.
+    const contactListLayoutQuery = window.matchMedia('(min-width: 1101px) and (orientation: landscape)');
+    const isContactListPersistent = () => contactListLayoutQuery.matches;
+    const setContactListVisible = (visible) => {
+        if (!contactSearchResultsEl) return;
+        contactSearchResultsEl.classList.toggle('hidden', !visible && !isContactListPersistent());
+    };
     const contactLabelFilterEl = document.getElementById('contact-label-filter');
     const contactFlagBtn = document.getElementById('contact-flag-toggle');
     const contactLabelsEl = document.getElementById('contact-labels');
@@ -1218,6 +1293,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (avatarContainer) avatarContainer.style.display = 'none';
             }
         }
+        const lastNoteEl = document.querySelector('[data-incoming-last-note]');
+        if (lastNoteEl) {
+            const comments = contact?.comments || [];
+            lastNoteEl.textContent = comments.length
+                ? comments[0].body
+                : '{{ __('No notes yet for this caller.') }}';
+        }
     };
 
     const setContactFeedback = (message = '', error = false) => {
@@ -1228,8 +1310,32 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const renderContactComments = (comments = []) => {
-        if (!contactCommentsEl) return;
         if (compactNoteEl) compactNoteEl.textContent = comments[0]?.body || '{{ __('No notes yet.') }}';
+        if (compactNoteCountEl) {
+            compactNoteCountEl.textContent = comments.length
+                ? String(comments.length)
+                : '{{ __('Live') }}';
+        }
+        if (compactCommentListEl) {
+            if (!comments.length) {
+                compactCommentListEl.innerHTML = `<p class="text-sm italic leading-6 text-slate-400">{{ __('No notes yet. Add the first one below.') }}</p>`;
+            } else {
+                // Newest first, matching the order the API returns.
+                compactCommentListEl.innerHTML = comments.map((comment) => {
+                    const author = comment.user?.external_name || comment.user?.email || '{{ __('User') }}';
+                    const timestamp = comment.created_at ? new Date(comment.created_at).toLocaleString() : '';
+                    return `<article class="rounded-xl border border-[#263b50] bg-[#071625] px-3 py-2">
+                        <div class="flex items-center justify-between gap-2 text-[11px]">
+                            <strong class="truncate text-slate-200">${escapeContactText(author)}</strong>
+                            <time class="shrink-0 text-slate-500">${escapeContactText(timestamp)}</time>
+                        </div>
+                        <p class="mt-1 whitespace-pre-wrap break-words text-sm leading-5 text-slate-300">${escapeContactText(comment.body)}</p>
+                    </article>`;
+                }).join('');
+            }
+            compactCommentListEl.scrollTop = 0;
+        }
+        if (!contactCommentsEl) return;
         if (!comments.length) {
             contactCommentsEl.innerHTML = `<p class="text-sm text-slate-400">${activeContact ? '{{ __('No comments yet.') }}' : '{{ __('Save or select a contact to view comments.') }}'}</p>`;
             return;
@@ -1247,20 +1353,73 @@ document.addEventListener('DOMContentLoaded', function () {
         }).join('');
     };
 
+    // Notes and flags are stored against the caller record. During a live call
+    // the caller does not have to exist yet: saveContactForCaller() creates it
+    // on demand so an operator can still write notes or flag the caller mid
+    // call instead of being blocked by a disabled input.
+    const saveContactForCaller = async () => {
+        if (activeContact) return activeContact;
+        const phone = (compactPhoneEl?.textContent?.trim() || displayInput?.value?.trim() || '').trim();
+        if (!phone || !normalizeContactPhone(phone)) {
+            throw new Error('{{ __('A caller phone number is required to save notes.') }}');
+        }
+        if (!contactPermissions.create) {
+            throw new Error('{{ __('You do not have permission to create contacts.') }}');
+        }
+        const payload = {
+            name: compactNameEl?.textContent?.trim() || phone,
+            phone,
+            is_flagged: false
+        };
+        if (contactPermissions.labels) payload.labels = [];
+        const data = await contactRequest(contactsUrl, { method: 'POST', body: JSON.stringify(payload) });
+        lastContactLookupPhone = data.contact.phone_normalized;
+        renderContact(data.contact);
+        return data.contact;
+    };
+
+    // renderContact() runs during page bootstrap, before the `let` block that
+    // declares callActive/callUuid. Reading them directly would throw a
+    // temporal-dead-zone ReferenceError and abort the rest of the script,
+    // which is what left the contact list empty. typeof on a let binding in
+    // TDZ still throws, so the flags are mirrored onto a var that is hoisted.
+    var isCallInProgress = false;
+    const hasOngoingCall = () => isCallInProgress;
+
     const syncCommentInputs = () => {
         const enabled = Boolean(activeContact && contactPermissions.comment);
         if (contactCommentInput) contactCommentInput.disabled = !enabled;
         if (contactCommentAddBtn) contactCommentAddBtn.disabled = !enabled;
-        if (compactCommentInput) compactCommentInput.disabled = !enabled;
-        if (compactCommentAddBtn) compactCommentAddBtn.disabled = !enabled;
+
+        // The call card stays usable during an active call even when the caller
+        // is not a saved contact; the record is created on first write.
+        const canWriteDuringCall = contactPermissions.comment && (Boolean(activeContact) || hasOngoingCall());
+        if (compactCommentInput) compactCommentInput.disabled = !canWriteDuringCall;
+        if (compactCommentAddBtn) compactCommentAddBtn.disabled = !canWriteDuringCall;
+        if (compactSaveContactBtn) {
+            compactSaveContactBtn.classList.toggle('hidden', Boolean(activeContact));
+            compactSaveContactBtn.disabled = !hasOngoingCall();
+        }
+        if (compactNoteStatusEl) {
+            compactNoteStatusEl.textContent = activeContact
+                ? '{{ __('Notes are saved to the caller record and stay available during the call.') }}'
+                : '{{ __('No saved contact yet. Notes will create the caller record automatically.') }}';
+        }
     };
 
     const addContactComment = async (input, button) => {
         const body = input?.value.trim();
-        if (!activeContact || !body || !contactPermissions.comment) return;
+        if (!body || !contactPermissions.comment) return;
         try {
             if (button) button.disabled = true;
-            const data = await contactRequest(`${contactsUrl}/${activeContact.id}/comments`, {
+            // Resolve the caller record first; during a call this may create it
+            // so a note can always be captured.
+            const contact = await saveContactForCaller();
+            if (!contact) {
+                setContactFeedback('{{ __('Select a contact to add a comment.') }}', true);
+                return;
+            }
+            const data = await contactRequest(`${contactsUrl}/${contact.id}/comments`, {
                 method: 'POST',
                 body: JSON.stringify({ body })
             });
@@ -1269,8 +1428,10 @@ document.addEventListener('DOMContentLoaded', function () {
             activeContact.comments = [data.comment, ...(activeContact.comments || [])];
             renderContactComments(activeContact.comments);
             setContactFeedback('{{ __('Comment added') }}');
+            if (compactNoteStatusEl) compactNoteStatusEl.textContent = '{{ __('Note saved.') }}';
         } catch (error) {
             setContactFeedback(error.message || '{{ __('Unable to add comment') }}', true);
+            if (compactNoteStatusEl) compactNoteStatusEl.textContent = error.message || '{{ __('Unable to add comment') }}';
         } finally {
             syncCommentInputs();
         }
@@ -1300,14 +1461,20 @@ document.addEventListener('DOMContentLoaded', function () {
         if (contactPhoneInput) contactPhoneInput.value = phone;
         if (contactEmailInput) contactEmailInput.value = contact?.email || '';
         if (contactAvatarInput) contactAvatarInput.value = contact?.avatar_url || '';
-        if (contactFlagBtn) {
-            contactFlagBtn.disabled = !contact || !contactPermissions.edit;
-            contactFlagBtn.classList.toggle('border-amber-400', Boolean(contact?.is_flagged));
-            contactFlagBtn.classList.toggle('bg-amber-400/10', Boolean(contact?.is_flagged));
-            contactFlagBtn.classList.toggle('text-amber-400', Boolean(contact?.is_flagged));
-            const icon = contactFlagBtn.querySelector('i');
-            if (icon) icon.className = contact?.is_flagged ? 'bi bi-flag-fill' : 'bi bi-flag';
-        }
+        const flagToggle = (button, flagged, enabled) => {
+            if (!button) return;
+            button.disabled = !enabled;
+            button.classList.toggle('border-amber-400', flagged);
+            button.classList.toggle('bg-amber-400/10', flagged);
+            button.classList.toggle('text-amber-400', flagged);
+            button.setAttribute('aria-pressed', flagged ? 'true' : 'false');
+            const icon = button.querySelector('i');
+            if (icon) icon.className = flagged ? 'bi bi-flag-fill' : 'bi bi-flag';
+        };
+        flagToggle(contactFlagBtn, Boolean(contact?.is_flagged), Boolean(contact) && contactPermissions.edit);
+        // Keep the in-call card's flag controls in sync with the same record.
+        flagToggle(compactFlagBtn, Boolean(contact?.is_flagged), Boolean(contact) && contactPermissions.edit);
+        flagToggle(compactFlagChip, Boolean(contact?.is_flagged), Boolean(contact) && contactPermissions.edit);
         if (contactLabelInput) contactLabelInput.disabled = !contact || !contactPermissions.labels;
         if (contactLabelAddBtn) contactLabelAddBtn.disabled = !contact || !contactPermissions.labels;
         syncCommentInputs();
@@ -1544,8 +1711,25 @@ document.addEventListener('DOMContentLoaded', function () {
     historyDeleteSelected?.addEventListener('click', () => deleteHistory([...dialerHistoryList.querySelectorAll('[data-history-select]:checked')].map((box) => box.value)));
     dialerHistoryList?.addEventListener('change', updateHistoryControls);
     dialerHistoryList?.addEventListener('click', (event) => {
-        const button = event.target.closest('[data-history-delete]');
-        if (button) deleteHistory([button.dataset.historyDelete]);
+        const deleteButton = event.target.closest('[data-history-delete]');
+        if (deleteButton) {
+            deleteHistory([deleteButton.dataset.historyDelete]);
+            return;
+        }
+        // Redial fills the dialpad in place; navigating to a new page would
+        // tear down an in-progress call.
+        const redialButton = event.target.closest('[data-history-redial]');
+        if (redialButton) {
+            if (hasLiveCall()) {
+                setContactFeedback('{{ __('Finish the current call before starting another.') }}', true);
+                return;
+            }
+            const number = redialButton.dataset.historyRedial || '';
+            if (displayInput) displayInput.value = number;
+            if (hiddenInput) hiddenInput.value = number;
+            lookupContactByPhone(number, true);
+            refreshStartButton();
+        }
     });
     historyPrev?.addEventListener('click', () => { if (!historyBusy && historyPage > 1) { historyPage--; loadFullCallHistory(); } });
     historyNext?.addEventListener('click', () => { if (!historyBusy && historyPage < historyLastPage) { historyPage++; loadFullCallHistory(); } });
@@ -1579,7 +1763,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         <span class="text-sm capitalize text-slate-300">${escapeContactText((call.direction || 'outbound').replace('_', ' '))}</span>
                         <span class="text-sm ${statusColor}">${escapeContactText((call.status || 'unknown').replace('_', ' '))}</span>
                         <span class="text-sm text-slate-400">${duration}</span>
-                        <div class="flex items-center justify-end gap-2"><span class="hidden text-xs text-slate-500 xl:inline">${escapeContactText(date)}</span>${canDeleteHistory ? `<button type="button" data-history-delete="${escapeContactText(call.id)}" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-red-500 text-red-400 disabled:opacity-40" aria-label="${escapeContactText(@json(__('Delete call record')))}" title="${escapeContactText(@json(__('Delete call record')))}"><i class="bi bi-trash"></i></button>` : ''}<a href="{{ route('admin.dialer.index') }}?destination=${escapeContactText(encodeURIComponent(number || ''))}" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white hover:bg-emerald-500"><i class="bi bi-telephone-fill"></i></a></div>
+                        <div class="flex items-center justify-end gap-2"><span class="hidden text-xs text-slate-500 xl:inline">${escapeContactText(date)}</span>${canDeleteHistory ? `<button type="button" data-history-delete="${escapeContactText(call.id)}" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-red-500 text-red-400 disabled:opacity-40" aria-label="${escapeContactText(@json(__('Delete call record')))}" title="${escapeContactText(@json(__('Delete call record')))}"><i class="bi bi-trash"></i></button>` : ''}<button type="button" data-history-redial="${escapeContactText(number || '')}" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white hover:bg-emerald-500" title="{{ __('Call this number') }}" aria-label="{{ __('Call this number') }}"><i class="bi bi-telephone-fill"></i></button></div>
                     </article>`;
                 }).join('');
             } else {
@@ -1802,7 +1986,9 @@ document.addEventListener('DOMContentLoaded', function () {
                         if (displayInput && !callActive) displayInput.value = contact.phone;
                         if (hiddenInput && !callActive) hiddenInput.value = contact.phone;
                     }
-                    contactSearchResultsEl.classList.add('hidden');
+                    // In the persistent sidebar layout the list must stay put;
+                    // only the dropdown layout collapses after a selection.
+                    setContactListVisible(false);
                     contactSearchEl.value = '';
                 });
             });
@@ -1868,7 +2054,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.addEventListener('click', (event) => {
         if (!contactSearchEl?.contains(event.target) && !contactSearchResultsEl?.contains(event.target)) {
-            contactSearchResultsEl?.classList.add('hidden');
+            // Never dismiss the persistent sidebar list, otherwise a single
+            // stray click leaves the contact box permanently empty.
+            setContactListVisible(false);
         }
     });
 
@@ -1897,6 +2085,47 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     contactFlagBtn?.addEventListener('click', () => updateActiveContact({ is_flagged: !activeContact?.is_flagged }));
+    // The in-call card toggles the same caller flag, creating the record first
+    // when the caller is not yet a saved contact.
+    const toggleCompactFlag = async () => {
+        if (!contactPermissions.edit) return;
+        const wasFlagged = Boolean(activeContact?.is_flagged);
+        if (!activeContact) {
+            try {
+                await saveContactForCaller();
+            } catch (error) {
+                setContactFeedback(error.message || '{{ __('Unable to flag caller') }}', true);
+                if (compactNoteStatusEl) compactNoteStatusEl.textContent = error.message || '{{ __('Unable to flag caller') }}';
+                return;
+            }
+        }
+        if (!activeContact) return;
+        await updateActiveContact({ is_flagged: !wasFlagged });
+        if (compactNoteStatusEl) {
+            compactNoteStatusEl.textContent = activeContact?.is_flagged
+                ? '{{ __('Caller flagged.') }}'
+                : '{{ __('Caller flag removed.') }}';
+        }
+    };
+    compactFlagBtn?.addEventListener('click', toggleCompactFlag);
+    compactFlagChip?.addEventListener('click', toggleCompactFlag);
+    compactOpenContactsBtn?.addEventListener('click', () => {
+        // Opened in a new tab on purpose: navigating this page would tear down
+        // the WebRTC conference and the status poll, dropping the live call.
+        window.open(contactsIndexUrl, '_blank', 'noopener');
+    });
+    compactSaveContactBtn?.addEventListener('click', async () => {
+        try {
+            compactSaveContactBtn.disabled = true;
+            await saveContactForCaller();
+            setContactFeedback('{{ __('Contact saved') }}');
+        } catch (error) {
+            setContactFeedback(error.message || '{{ __('Unable to save contact') }}', true);
+            if (compactNoteStatusEl) compactNoteStatusEl.textContent = error.message || '{{ __('Unable to save contact') }}';
+        } finally {
+            syncCommentInputs();
+        }
+    });
     contactLabelAddBtn?.addEventListener('click', () => {
         const label = contactLabelInput?.value.trim();
         if (!activeContact || !label) return;
@@ -1968,6 +2197,55 @@ document.addEventListener('DOMContentLoaded', function () {
     let isMuted = false;
     let callControlsEnabled = false;
     let directSipActive = false;
+    // Tracks that the user explicitly minimized the in-call card. The status
+    // poll runs every second and would otherwise re-open the card immediately.
+    let callCardMinimized = false;
+
+    // A live call lives entirely in this page: the WebRTC conference and the
+    // 1s status poll both die on navigation. Warn before any in-app link can
+    // unload the page mid-call, and steer the operator to hang up first.
+    const hasLiveCall = () => Boolean(callUuid) || callActive || directSipActive || Boolean(inboundCall);
+    const isSamePageAnchor = (href) => {
+        if (!href) return false;
+        try {
+            const target = new URL(href, window.location.href);
+            return target.pathname === window.location.pathname
+                && target.search === window.location.search
+                && target.hash !== '';
+        } catch (error) {
+            return false;
+        }
+    };
+    const confirmNavigateDuringCall = (href) => {
+        if (!hasLiveCall()) return true;
+        if (isSamePageAnchor(href)) return true;
+        const leave = window.confirm(
+            '{{ __('A call is currently active. Leaving this page will disconnect it. Hang up first, or continue and drop the call.') }}'
+        );
+        if (leave) {
+            // Best effort so the far end hears a clean end rather than a drop.
+            const hangupButton = document.querySelector('[data-action="hangup"]');
+            if (hangupButton && !hangupButton.disabled) hangupButton.click();
+        }
+        return leave;
+    };
+    document.addEventListener('click', (event) => {
+        const link = event.target.closest?.('a[href]');
+        if (!link) return;
+        if (link.target && link.target !== '_self') return;
+        if (link.hasAttribute('download') || link.dataset.noCallGuard !== undefined) return;
+        if (!confirmNavigateDuringCall(link.getAttribute('href'))) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+    }, true);
+    // Covers keyboard navigation and address-bar changes too.
+    window.addEventListener('beforeunload', (event) => {
+        if (!hasLiveCall()) return undefined;
+        event.preventDefault();
+        event.returnValue = '';
+        return '';
+    });
 
     let callConnectedAt = null;
     let timerHandle = null;
@@ -2307,6 +2585,10 @@ document.addEventListener('DOMContentLoaded', function () {
             ? Number(sipStatus)
             : null;
 
+        // Mirror the call state onto the hoisted flag that bootstrap-time code
+        // (renderContact -> syncCommentInputs) is allowed to read.
+        isCallInProgress = isConnectedStatus(normalized) || !isTerminalStatus(normalized);
+
         callFeedback.update(normalized, sipStatus, hangupCause, Boolean(callConnectedAt));
         if (isConnectedStatus(normalized)) {
             stopCallStateSound();
@@ -2374,8 +2656,11 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         if (isConnectedStatus(normalized)) {
-            compactCallWindow?.classList.remove('hidden');
+            // Never fight the user's choice: the poll calls setStatus roughly
+            // once a second, so re-showing here would make minimize impossible.
+            if (!callCardMinimized) compactCallWindow?.classList.remove('hidden');
             startTimer(durationSeconds);
+            syncCommentInputs();
             if (conferenceName && webRtcClient && !browserAudioActive && !browserAudioConnecting && !hangupInProgress) {
                 connectBrowserAudio();
             }
@@ -2383,6 +2668,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (isTerminalStatus(normalized)) {
             callGeneration += 1;
+            callCardMinimized = false;
+            updateCallStatusAffordance();
             compactCallWindow?.classList.add('hidden');
             stopTimer();
             disconnectBrowserAudio();
@@ -2392,6 +2679,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             conferenceName = null;
             callUuid = null;
+            syncCommentInputs();
         }
     };
 
@@ -3501,6 +3789,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 did: payload.did || null,
                 directSip: directSipReady
             };
+            isCallInProgress = true;
             if (incomingCallerEl) incomingCallerEl.textContent = payload.callerIdNumber || '{{ __('Unknown caller') }}';
             if (incomingPhoneEl) incomingPhoneEl.textContent = payload.callerIdNumber || payload.did || '—';
             updateIncomingContact(null, payload.callerIdNumber || payload.did || '');
@@ -3525,7 +3814,17 @@ document.addEventListener('DOMContentLoaded', function () {
     [customerNameEl, customerPhoneEl, customerAvatarEl, callTimerEl].filter(Boolean).forEach((element) => new MutationObserver(syncCompactCall).observe(element, {childList: true, subtree: true, characterData: true}));
     syncCompactCall();
     compactCallWindow?.querySelector('[data-compact-close]')?.addEventListener('click', () => compactCallWindow.classList.add('hidden'));
-    compactCallWindow?.querySelector('[data-compact-minimize]')?.addEventListener('click', () => compactCallWindow.classList.add('hidden'));
+    compactCallWindow?.querySelector('[data-compact-minimize]')?.addEventListener('click', () => {
+        callCardMinimized = true;
+        compactCallWindow.classList.add('hidden');
+        updateCallStatusAffordance();
+        callStatusToggle?.focus();
+    });
+    callStatusToggle?.addEventListener('click', () => { restoreCompactCallWindow(); });
+    callStatusToggle?.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        if (restoreCompactCallWindow()) event.preventDefault();
+    });
     compactCallWindow?.querySelector('[data-compact-keypad-toggle]')?.addEventListener('click', () => compactCallWindow.querySelector('[data-compact-keypad]')?.classList.toggle('hidden'));
     compactCallWindow?.querySelectorAll('[data-call-proxy]').forEach((button) => button.addEventListener('click', () => document.querySelector(`[data-action="${button.dataset.callProxy}"]`)?.click()));
     compactMuteButton?.addEventListener('click', () => applyMuteState(!isMuted));

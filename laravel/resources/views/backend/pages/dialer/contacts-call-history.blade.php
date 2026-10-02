@@ -5,10 +5,10 @@
 @section('admin-content')
 <div class="connectpro-communication-page min-h-full bg-[#06111f] text-white">
     @include('backend.pages.dialer.contacts-header', ['title' => __('Call History'), 'subtitle' => __('Review recent inbound and outbound conversations')])
-    <div class="mx-auto max-w-[1180px] p-4 sm:p-6">
+    <div class="w-full p-4 sm:p-6">
         <section class="overflow-hidden rounded-2xl border border-[#294158] bg-[#091827] shadow-2xl shadow-black/20">
             <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#294158] p-4 sm:px-5">
-                <div><h2 class="text-lg font-semibold">{{ __('Recent Calls') }}</h2><p class="mt-1 text-xs text-slate-400">{{ __('All call activity from your connected lines') }}</p></div>
+                <div><h2 class="text-lg font-semibold">{{ __('Call History') }}</h2><p class="mt-1 text-xs text-slate-400">{{ __('All call activity from your connected lines') }}</p></div>
                 <span class="rounded-full border border-[#365068] px-3 py-1 text-xs text-slate-300">{{ $calls->total() }} {{ __('calls') }}</span>
             </div>
             @canany(['recording.delete', 'contacts.delete'])

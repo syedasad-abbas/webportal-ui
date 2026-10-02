@@ -7,7 +7,7 @@
 <div class="connectpro-communication-page min-h-full bg-[#06111f] text-white">
     @include('backend.pages.dialer.contacts-header')
 
-    <div class="mx-auto max-w-[1240px] p-4 sm:p-6">
+    <div class="w-full p-4 sm:p-6">
         <form method="GET" class="grid gap-3 lg:grid-cols-[1fr_auto]">
             <div class="relative">
                 <i class="bi bi-search absolute left-4 top-1/2 -translate-y-1/2 text-lg text-slate-400"></i>
