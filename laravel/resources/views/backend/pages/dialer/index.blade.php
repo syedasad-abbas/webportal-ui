@@ -899,7 +899,7 @@ html:not(.dark) .connectpro-dialer-toolbar input { background: #ffffff !importan
         <aside id="ai-agent-control" x-data="aiAgentBox()" class="fixed bottom-4 right-4 z-[70] w-[calc(100vw-2rem)] max-w-[360px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_80px_rgba(2,9,20,.35)] dark:border-[#2a4055] dark:bg-[#091827]" aria-labelledby="ai-agent-title">
             <button id="ai-agent-collapsed" type="button" class="hidden w-full items-center gap-3 px-4 py-3 text-left" aria-expanded="false" aria-controls="ai-agent-body">
                 <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-500/15 text-violet-500 ring-1 ring-inset ring-violet-500/25 dark:text-violet-300"><i class="bi bi-stars text-xl"></i></span>
-                <span class="min-w-0 flex-1"><strong class="block truncate text-sm text-slate-900 dark:text-white">{{ __('Hospital Appointment AI') }}</strong><span class="block truncate text-xs text-slate-500 dark:text-slate-400">{{ __('Gemini Live · Setup required') }}</span></span>
+                <span class="min-w-0 flex-1"><strong class="block truncate text-sm text-slate-900 dark:text-white">{{ $aiAgentBoxTitle }}</strong><span class="block truncate text-xs text-slate-500 dark:text-slate-400">{{ __('Gemini Live · Setup required') }}</span></span>
                 <i class="bi bi-chevron-up text-slate-500" aria-hidden="true"></i>
             </button>
 
@@ -910,8 +910,8 @@ html:not(.dark) .connectpro-dialer-toolbar input { background: #ffffff !importan
                         <span class="absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-white bg-amber-400 dark:border-[#091827]"></span>
                     </span>
                     <span class="min-w-0 flex-1">
-                        <span class="flex items-center gap-2"><strong id="ai-agent-title" class="truncate text-sm text-slate-900 dark:text-white">{{ __('Hospital Appointment AI') }}</strong><span class="rounded-full bg-violet-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-300">{{ __('Preview') }}</span></span>
-                        <span class="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">{{ __('Google Gemini Live') }}</span>
+                        <span class="flex items-center gap-2"><strong id="ai-agent-title" class="truncate text-sm text-slate-900 dark:text-white">{{ $aiAgentBoxTitle }}</strong><span class="rounded-full bg-violet-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-300">{{ __('Preview') }}</span></span>
+                        <span class="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">{{ $aiAgentBoxSubtitle }}</span>
                     </span>
                     <button id="ai-agent-minimize" type="button" class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-white/5 dark:hover:text-white" aria-label="{{ __('Minimize AI agent controls') }}" aria-expanded="true" aria-controls="ai-agent-body"><i class="bi bi-dash-lg"></i></button>
                 </div>
@@ -925,7 +925,7 @@ html:not(.dark) .connectpro-dialer-toolbar input { background: #ffffff !importan
 
                     <div>
                         <label for="ai-agent-goal" class="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{{ __('Conversation goal') }}</label>
-                        <textarea id="ai-agent-goal" rows="2" maxlength="240" placeholder="{{ __('Collect patient and appointment details…') }}" class="w-full resize-none rounded-xl border border-slate-300 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10 dark:border-[#365068] dark:bg-[#071625] dark:text-white"></textarea>
+                        <textarea id="ai-agent-goal" rows="2" maxlength="2000" placeholder="{{ __('Collect patient and appointment details…') }}" class="w-full resize-none rounded-xl border border-slate-300 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10 dark:border-[#365068] dark:bg-[#071625] dark:text-white"></textarea>
                     </div>
 
                     <div class="grid grid-cols-2 gap-3">
@@ -1833,9 +1833,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 contacts = [
                     {
                         id: 'ai-agent',
-                        name: 'Hospital Appointment AI',
+                        name: @json($aiAgentBoxTitle),
                         phone: 'ai-agent',
-                        company: 'Gemini Live',
+                        company: @json($aiAgentBoxSubtitle),
                         labels: ['AI'],
                         is_flagged: false
                     },

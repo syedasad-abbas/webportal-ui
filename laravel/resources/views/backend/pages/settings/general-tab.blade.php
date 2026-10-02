@@ -23,6 +23,44 @@
             </div>
         </div>
 
+        <div class="flex">
+            <div class="md:basis-1/2 relative">
+                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
+                    {{ __('AI Configuration Box Title') }}
+                </label>
+                <input type="text" name="ai_box_title" maxlength="60"
+                    placeholder="{{ config('aiagent.box_title') }}"
+                    value="{{ config('settings.ai_box_title') ?? '' }}"
+                    @error('ai_box_title') aria-invalid="true" @enderror
+                    class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-dark-900 dark:text-white/90 dark:placeholder:text-white/30">
+                @error('ai_box_title')
+                    <p class="mt-1.5 text-sm text-red-500 dark:text-red-400">{{ $message }}</p>
+                @enderror
+                <p class="mt-1.5 text-sm text-gray-500 dark:text-gray-400">
+                    {{ __('Shown as the heading of the AI box on the Dialer page. Leave blank to use the default "AI Configuration".') }}
+                </p>
+            </div>
+        </div>
+
+        <div class="flex">
+            <div class="md:basis-1/2 relative">
+                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
+                    {{ __('AI Configuration Box Subtitle') }}
+                </label>
+                <input type="text" name="ai_box_subtitle" maxlength="60"
+                    placeholder="{{ config('aiagent.box_subtitle') }}"
+                    value="{{ config('settings.ai_box_subtitle') ?? '' }}"
+                    @error('ai_box_subtitle') aria-invalid="true" @enderror
+                    class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-dark-900 dark:text-white/90 dark:placeholder:text-white/30">
+                @error('ai_box_subtitle')
+                    <p class="mt-1.5 text-sm text-red-500 dark:text-red-400">{{ $message }}</p>
+                @enderror
+                <p class="mt-1.5 text-sm text-gray-500 dark:text-gray-400">
+                    {{ __('Secondary line under the AI box heading. Leave blank to use the default.') }}
+                </p>
+            </div>
+        </div>
+
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <!-- Column 1: Site Logo Full Lite and Dark -->
             <div>

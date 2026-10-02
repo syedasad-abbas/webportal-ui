@@ -87,6 +87,8 @@ class DialerController extends Controller
             'webrtcConfig' => $webrtcConfig,
             'webrtcError' => $webrtcError,
             'aiAgentSettings' => $aiAgentSettings,
+            'aiAgentBoxTitle' => $this->aiAgentBoxText('ai_box_title', 'box_title'),
+            'aiAgentBoxSubtitle' => $this->aiAgentBoxText('ai_box_subtitle', 'box_subtitle'),
             'campaigns' => $campaigns,
             'run' => $run,
             'agents' => $agents,
@@ -103,6 +105,26 @@ class DialerController extends Controller
                 'userId' => $user?->id,
             ],
         ]);
+    }
+
+    /**
+     * Resolve a label for the floating AI configuration box, preferring the
+     * administrator override stored in Settings and falling back to the
+     * shipped default when it is unset or blank.
+     */
+    protected function aiAgentBoxText(string $settingKey, string $defaultKey): string
+    {
+        $configured = config('settings.'.$settingKey);
+
+        if (is_string($configured)) {
+            $configured = trim($configured);
+
+            if ($configured !== '') {
+                return $configured;
+            }
+        }
+
+        return (string) config('aiagent.'.$defaultKey);
     }
 
     public function dial(Request $request)

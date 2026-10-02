@@ -39,12 +39,29 @@ class SettingsController extends Controller
 
     public function store(Request $request)
     {
+        // The AI agent box title is free text that is rendered straight into the
+        // dialer page, so it is length limited and stripped of markup here.
+        // Blank input falls back to the default rather than persisting an empty
+        // heading.
+        $validated = $request->validate([
+            'ai_box_title' => ['nullable', 'string', 'max:60'],
+            'ai_box_subtitle' => ['nullable', 'string', 'max:60'],
+        ]);
+
         // Restrict specific fields in demo mode.
         if (config('app.demo_mode', false)) {
             $restrictedFields = ld_apply_filters('settings_restricted_fields', ['app_name', 'google_analytics_script']);
             $fields = $request->except($restrictedFields);
         } else {
             $fields = $request->all();
+        }
+
+        foreach (['ai_box_title', 'ai_box_subtitle'] as $fieldName) {
+            if (! array_key_exists($fieldName, $validated)) {
+                continue;
+            }
+
+            $fields[$fieldName] = trim(strip_tags((string) $validated[$fieldName]));
         }
 
         $this->checkAuthorization(Auth::user(), ['settings.edit']);
