@@ -2,10 +2,10 @@
     $editing = isset($inboundDid);
     $selectedCarrier = old('carrier_id', $editing ? $inboundDid->carrier_id : '');
     $active = old('is_active', $editing ? (int) $inboundDid->is_active : 1);
-    $inputClass = 'shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90';
+    $inputClass = 'h-11 w-full rounded-lg px-4 py-2.5 text-sm';
 @endphp
 
-<div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+<div class="connectpro-record-form-fields grid grid-cols-1 gap-6 sm:grid-cols-2">
     <div>
         <label for="carrier_id" class="block text-sm font-medium text-gray-700 dark:text-gray-400">
             {{ __('Carrier') }} *
@@ -54,7 +54,7 @@
     </div>
 </div>
 
-<div class="mt-6 flex gap-4">
+<div class="connectpro-record-form-actions mt-6 flex gap-4">
     <button type="submit" class="btn-primary">
         {{ $editing ? __('Save DID') : __('Add DID') }}
     </button>

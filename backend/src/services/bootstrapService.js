@@ -11,6 +11,8 @@ const ensureSchemaUpgrades = async () => {
   await db.query(`CREATE TABLE IF NOT EXISTS ai_agent_settings (
     id INTEGER PRIMARY KEY,
     enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    role TEXT NOT NULL DEFAULT '',
+    greeting TEXT NOT NULL DEFAULT '',
     goal TEXT NOT NULL,
     mode VARCHAR(20) NOT NULL,
     voice VARCHAR(30) NOT NULL,
@@ -19,6 +21,15 @@ const ensureSchemaUpgrades = async () => {
     created_at TIMESTAMP WITHOUT TIME ZONE,
     updated_at TIMESTAMP WITHOUT TIME ZONE
   )`);
+  // The agent is now role driven: `role` and `greeting` are free text chosen by
+  // the administrator, and `goal` is the conversational objective. Add the two
+  // columns to databases created before that change.
+  await db.query(
+    "ALTER TABLE ai_agent_settings ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT ''"
+  );
+  await db.query(
+    "ALTER TABLE ai_agent_settings ADD COLUMN IF NOT EXISTS greeting TEXT NOT NULL DEFAULT ''"
+  );
   await db.query(
     `CREATE TABLE IF NOT EXISTS inbound_dids (
        id BIGSERIAL PRIMARY KEY,
@@ -32,6 +43,25 @@ const ensureSchemaUpgrades = async () => {
   );
   await db.query(
     'CREATE INDEX IF NOT EXISTS inbound_dids_carrier_active_index ON inbound_dids (carrier_id, is_active)'
+  );
+  // Expected questions with the answers the agent is allowed to give. These are
+  // administrator supplied ground truth: when a caller asks something one of
+  // these entries covers, the prompt builder makes the agent answer from the
+  // stored answer instead of improvising. Kept as its own table rather than a
+  // column on the singleton settings row because it is an ordered, repeatable
+  // list with its own lifecycle.
+  await db.query(`CREATE TABLE IF NOT EXISTS ai_agent_faqs (
+    id BIGSERIAL PRIMARY KEY,
+    question TEXT NOT NULL,
+    answer TEXT NOT NULL,
+    is_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_by BIGINT,
+    created_at TIMESTAMP WITHOUT TIME ZONE,
+    updated_at TIMESTAMP WITHOUT TIME ZONE
+  )`);
+  await db.query(
+    'CREATE INDEX IF NOT EXISTS ai_agent_faqs_order_index ON ai_agent_faqs (is_enabled, sort_order, id)'
   );
 };
 

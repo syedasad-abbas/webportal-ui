@@ -10,7 +10,14 @@
 
     <script>
         (() => {
-            const savedTheme = localStorage.getItem('darkMode');
+            const rawTheme = localStorage.getItem('darkMode');
+            // applyTheme() used to write JSON.stringify(value), which stores
+            // "true" with the quotes still attached, while this check compares
+            // against a bare 'true'. A session that had toggled dark mode
+            // therefore failed this test on the next page load and silently
+            // reverted to light. Accept both spellings so a preference saved by
+            // either writer is honoured instead of being discarded.
+            const savedTheme = rawTheme === null ? null : String(rawTheme).replace(/^"|"$/g, '');
             const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
             document.documentElement.classList.toggle('dark', savedTheme === null ? prefersDark : savedTheme === 'true');
         })();
@@ -28,6 +35,8 @@
         @vite(['resources/js/app.js', 'resources/css/app.css'], 'build')
     @endif
     @stack('styles')
+    @include('backend.partials.admin-input-theme')
+    @include('backend.partials.violet-accent')
     @yield('before_head')
 
     @if (!empty(config('settings.global_custom_css')))
@@ -53,7 +62,9 @@
     },
     applyTheme(value) {
         document.documentElement.classList.toggle('dark', value);
-        localStorage.setItem('darkMode', JSON.stringify(value));
+        // Store a bare 'true'/'false'. JSON.stringify would add quotes and the
+        // reader above compares against a bare string.
+        localStorage.setItem('darkMode', value ? 'true' : 'false');
     }
 }" 
 x-init="

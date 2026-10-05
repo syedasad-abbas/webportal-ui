@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Admin\Concerns\ResolvesAiAgentLabels;
 use App\Http\Controllers\Controller;
 use App\Models\Campaign;
 use App\Models\CampaignRun;
@@ -10,7 +11,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 
 class DialerController extends Controller
-{    
+{
+    use ResolvesAiAgentLabels;
+
     protected function assertCampaignPermission(Request $request): void
 {
     if (! $request->user() || ! $request->user()->can('campaign.play')) {
@@ -105,26 +108,6 @@ class DialerController extends Controller
                 'userId' => $user?->id,
             ],
         ]);
-    }
-
-    /**
-     * Resolve a label for the floating AI configuration box, preferring the
-     * administrator override stored in Settings and falling back to the
-     * shipped default when it is unset or blank.
-     */
-    protected function aiAgentBoxText(string $settingKey, string $defaultKey): string
-    {
-        $configured = config('settings.'.$settingKey);
-
-        if (is_string($configured)) {
-            $configured = trim($configured);
-
-            if ($configured !== '') {
-                return $configured;
-            }
-        }
-
-        return (string) config('aiagent.'.$defaultKey);
     }
 
     public function dial(Request $request)
@@ -242,7 +225,11 @@ class DialerController extends Controller
     {
         $data = $request->validate([
             'enabled' => ['required', 'boolean'],
-            'goal' => ['required', 'string', 'max:2000'],
+            // Free text on purpose: the duty, greeting, and objective may be
+            // anything the administrator needs, so only length is bounded.
+            'role' => ['nullable', 'string', 'max:200'],
+            'greeting' => ['nullable', 'string', 'max:1000'],
+            'goal' => ['nullable', 'string', 'max:2000'],
             'mode' => ['required', 'in:lead,assist,qualify'],
             'voice' => ['required', 'in:man,woman,male,female,professional,warm,confident'],
             'humanHandoff' => ['required', 'boolean'],

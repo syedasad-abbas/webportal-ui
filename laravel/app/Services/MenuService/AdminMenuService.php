@@ -171,6 +171,19 @@ $this->addMenuItem([
     'permissions' => ['dialer.create_call'],
 ]);
 
+// AI agent configuration, on its own page. Uses the same permission the backend
+// enforces on the /ai-agent API so the item never appears for a user who would
+// get a 403. Priority 11 places it directly beneath the Dialer.
+$this->addMenuItem([
+    'label' => __('AI Agent'),
+    'iconClass' => 'bi bi-stars',
+    'id' => 'ai-agent',
+    'route' => route('admin.ai-agent.index'),
+    'active' => Route::is('admin.ai-agent.*'),
+    'priority' => 11,
+    'permissions' => ['dialer.create_call'],
+]);
+
 //recording menu
 
 $this->addMenuItem([

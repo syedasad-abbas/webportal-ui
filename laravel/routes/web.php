@@ -21,6 +21,7 @@ use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\CarrierController;
 use App\Http\Controllers\Admin\InboundDidController;
 
+use App\Http\Controllers\Admin\AiAgentController;
 use App\Http\Controllers\Admin\DialerController;
 use App\Http\Controllers\Admin\DialerContactController;
 use App\Http\Controllers\Admin\ContactCenterController;
@@ -126,6 +127,13 @@ Route::get('/carrier/{carrierId}/edit', [CarrierController::class, 'edit'])->nam
 Route::put('/carrier/{carrierId}', [CarrierController::class, 'update'])->name('carrier.update');
 Route::delete('/carrier/{carrierId}', [CarrierController::class, 'destroy'])->name('carrier.destroy');
  Route::get('/dialer', [DialerController::class, 'index'])->name('dialer.index');
+ // Deliberately not named admin.dialer.* : the Dialer sidebar entry stays
+ // highlighted for every admin.dialer.* route, so the AI agent page needs its
+ // own prefix to light up only its own menu item.
+ Route::get('/ai-agent', [AiAgentController::class, 'index'])->name('ai-agent.index');
+    // The expected questions are saved as one ordered list, so a single PUT
+    // replaces the set instead of one request per row.
+    Route::put('/ai-agent/faqs', [AiAgentController::class, 'updateFaqs'])->name('ai-agent.faqs.update');
  Route::get('/calls/dialing', [DialerController::class, 'index'])->name('calls.dialing');
  Route::get('/calls/in-call', [DialerController::class, 'index'])->name('calls.in_call');
 

@@ -3,7 +3,7 @@ const fs = require('fs/promises');
 const path = require('path');
 const { WebSocket, WebSocketServer } = require('ws');
 const config = require('../config');
-const { buildSalesAgentPrompt } = require('../aiSalesAgentProfile');
+const { buildAgentPrompt } = require('../aiSalesAgentProfile');
 const freeswitch = require('../lib/freeswitch');
 
 const sessions = new Map();
@@ -140,7 +140,15 @@ const sendSetup = (session) => {
     month: 'long',
     year: 'numeric'
   }).format(new Date());
-  const prompt = buildSalesAgentPrompt({ offerSummary: session.settings.goal, currentDate });
+  const prompt = buildAgentPrompt({
+    role: session.settings.role,
+    greeting: session.settings.greeting,
+    goal: session.settings.goal,
+    // Only the enabled pairs reach the prompt. `settings.get()` already trims
+    // each entry, so anything without a question or an answer is gone by here.
+    faqs: Array.isArray(session.settings.faqs) ? session.settings.faqs : [],
+    currentDate
+  });
   session.gemini.send(JSON.stringify({
     setup: {
       model: `models/${config.aiAgent.model.replace(/^models\//, '')}`,
@@ -168,7 +176,7 @@ const sendSetup = (session) => {
         activityHandling: 'START_OF_ACTIVITY_INTERRUPTS',
         turnCoverage: 'TURN_INCLUDES_ONLY_ACTIVITY'
       },
-      systemInstruction: { parts: [{ text: `${prompt}\n\nCall continuity rules: Keep the conversation active until the caller hangs up. After greeting, listen and answer every caller turn. Never announce that you are ending the call and never stop after only one response. Keep replies concise and finish each reply with a useful question when appropriate. You receive the caller's live audio directly; transcribe carefully and preserve spelled names and digits exactly. Google Search is available only for general public hospital information when the hospital is identified. Never search for a patient or use web results to decide how the caller spells a name. Confirm uncertain names directly with the caller. Never infer doctor availability or claim a booking from search results.` }] },
+      systemInstruction: { parts: [{ text: `${prompt}\n\nCall continuity rules: Keep the conversation active until the caller hangs up. After the opening, listen and answer every caller turn. Never announce that you are ending the call and never stop after only one response. Keep replies concise and finish each reply with a useful question when appropriate. You receive the caller's live audio directly; transcribe carefully and preserve spelled names and digits exactly. Use Google Search only for general public information when it genuinely helps you answer the caller's question. Never search for a caller, and never use web results to guess how a caller spells a name or to decide what the caller said. Never present a search result as a confirmed booking, price, availability, or commitment.` }] },
       // Keep this session genuinely audio-to-audio. The optional input
       // transcription layer repeatedly converted Pakistani names into
       // unrelated foreign sentences and then drove the correction logic with
@@ -200,15 +208,28 @@ const scheduleSilenceFollowUp = (session, delayMs = 12000) => {
       return;
     }
     session.silenceFollowUpSent = true;
-    sendControlText(session, 'The caller is still connected but has been quiet. Ask one brief, natural follow-up question for the current missing appointment detail. Do not repeat the greeting and do not end the call.');
+    sendControlText(session, 'The caller is still connected but has been quiet. Ask one brief, natural follow-up question that moves the conversation objective forward. Do not repeat the opening and do not end the call.');
     console.log('[ai-agent] requested silence follow-up', { callId: session.callId });
   }, delayMs);
 };
 
 const sendInitialGreeting = (session) => {
+  // The opening line is administrator controlled. When one is configured it is
+  // sent verbatim so the call opens exactly as typed; otherwise the model is
+  // told to introduce itself using the configured duty instead of a fixed
+  // hospital script.
+  const greeting = String(session.settings?.greeting || '').trim();
+  if (greeting) {
+    sendControlText(
+      session,
+      `Start the call naturally by saying: “${greeting}” Do not use any other opening and never mention AI.`
+    );
+    return;
+  }
+  const role = String(session.settings?.role || '').trim();
   sendControlText(
     session,
-    'Start the call naturally by saying: “Hello, this is Adam for hospital appointment assistance. May I have the patient’s first name?” Do not use any other greeting and never mention AI.'
+    `Start the call naturally by greeting the caller and stating that you are${role ? ` ${role}` : ' here to help'} in one short sentence, then ask the first question the conversation objective requires. Do not mention AI.`
   );
 };
 

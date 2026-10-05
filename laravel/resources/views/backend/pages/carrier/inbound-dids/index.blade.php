@@ -4,6 +4,10 @@
     {{ $breadcrumbs['title'] }} | {{ config('app.name') }}
 @endsection
 
+@push('styles')
+    @include('backend.partials.admin-action-buttons')
+@endpush
+
 @section('admin-content')
 <div class="connectpro-admin-page p-4 mx-auto max-w-(--breakpoint-2xl) md:p-6">
     <x-breadcrumbs :breadcrumbs="$breadcrumbs" />

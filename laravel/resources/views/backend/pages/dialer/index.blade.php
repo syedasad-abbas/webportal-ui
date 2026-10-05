@@ -39,7 +39,7 @@ html:not(.dark) .connectpro-dialer-toolbar input { background: #ffffff !importan
     .connectpro-dialer .connectpro-call-actions { margin-top: 1rem; }
     .connectpro-dialer .connectpro-call-actions { grid-template-columns: 1fr !important; }
     .connectpro-dialer .connectpro-call-actions button[type="button"] { display: none; }
-    .connectpro-dialer .connectpro-call-actions button[type="submit"] { background: #4f83f1 !important; box-shadow: none; }
+    .connectpro-dialer .connectpro-call-actions button[type="submit"] { background: #7c3aed !important; box-shadow: none; }
     .connectpro-dialer .connectpro-call-actions button { min-height: 38px; border-radius: 8px; padding-top: .5rem; padding-bottom: .5rem; font-size: .75rem; }
     .connectpro-dialer .connectpro-customer-workspace-card { grid-column: 1; grid-row: 1; min-height: 100%; border-radius: 12px; border-color: #20344c; background: #111c2b; box-shadow: none; }
     .connectpro-dialer .connectpro-customer-workspace-card > #customer-call-panel { border-bottom: 1px solid #20344c; padding: 1.125rem; }
@@ -359,15 +359,54 @@ html:not(.dark) .connectpro-dialer-toolbar input { background: #ffffff !importan
     .connectpro-dialer .connectpro-call-actions .connectpro-call-button {
         display: flex !important;
         width: 100%;
-        background: #2563eb !important;
+        background: #7c3aed !important;
         color: #fff !important;
-        box-shadow: 0 12px 28px -18px rgba(79, 131, 241, .95);
+        box-shadow: 0 12px 28px -18px rgba(124, 58, 237, .95);
     }
     .connectpro-dialer .connectpro-call-actions button.connectpro-call-button[type="submit"] {
-        background: #2563eb !important;
+        background: #7c3aed !important;
     }
-    .connectpro-dialer .connectpro-call-actions .connectpro-call-button:hover {
-        background: #1d4ed8 !important;
+    /* The [type=submit] selector below is more specific than the plain
+       :hover rule, so the hover pair has to match it or the violet base
+       colour wins and the button never darkens on hover. */
+    .connectpro-dialer .connectpro-call-actions .connectpro-call-button:hover,
+    .connectpro-dialer .connectpro-call-actions button.connectpro-call-button[type="submit"]:hover {
+        background: #6d28d9 !important;
+    }
+    /* Record-action buttons reuse the violet palette from
+       nightwave-form-styles so every save/add action in the app matches the
+       Carrier, Users and AI forms. The call CTA keeps its blue treatment: it
+       is a call-state control, not a record form action. */
+    .connectpro-dialer #contact-save,
+    .connectpro-dialer #contact-comment-add,
+    .connectpro-dialer [data-compact-comment-add],
+    .connectpro-dialer #dialer-enable-audio {
+        background: #7c3aed !important;
+        border-color: #7c3aed !important;
+        color: #fff !important;
+        box-shadow: 0 12px 26px -18px rgba(124, 58, 237, .95);
+    }
+    .connectpro-dialer #contact-save:hover:not(:disabled),
+    .connectpro-dialer #contact-comment-add:hover:not(:disabled),
+    .connectpro-dialer [data-compact-comment-add]:hover:not(:disabled),
+    .connectpro-dialer #dialer-enable-audio:hover:not(:disabled) {
+        background: #6d28d9 !important;
+        border-color: #6d28d9 !important;
+    }
+    .connectpro-dialer [data-compact-save-contact] {
+        background: rgba(139, 92, 246, .1) !important;
+        border-color: #8b5cf6 !important;
+        color: #c4b5fd !important;
+    }
+    .connectpro-dialer [data-compact-save-contact]:hover:not(:disabled) {
+        background: rgba(139, 92, 246, .2) !important;
+    }
+    html:not(.dark) .connectpro-dialer [data-compact-save-contact] {
+        background: #fff !important;
+        color: #7c3aed !important;
+    }
+    html:not(.dark) .connectpro-dialer [data-compact-save-contact]:hover:not(:disabled) {
+        background: #f5f3ff !important;
     }
     html:not(.dark) .connectpro-dialer #contact-workspace-panel > .connectpro-contact-search,
     html:not(.dark) .connectpro-dialer #contact-workspace-panel > .connectpro-activity-history-card {
@@ -436,7 +475,7 @@ html:not(.dark) .connectpro-dialer-toolbar input { background: #ffffff !importan
         color: #0f172a !important;
     }
     html:not(.dark) #dialer-full-activity .text-blue-400 {
-        color: #2563eb !important;
+        color: #7c3aed !important;
     }
     html:not(.dark) #dialer-full-activity .text-purple-300 {
         color: #9333ea !important;
@@ -458,7 +497,7 @@ html:not(.dark) .connectpro-dialer-toolbar input { background: #ffffff !importan
         background: #d1fae5 !important;
     }
     html:not(.dark) #dialer-full-activity .bg-blue-500\/15 {
-        background: #dbeafe !important;
+        background: #ede9fe !important;
     }
     html:not(.dark) #dialer-full-activity .bg-cyan-500\/15 {
         background: #cffafe !important;
@@ -476,7 +515,7 @@ html:not(.dark) .connectpro-dialer-toolbar input { background: #ffffff !importan
         color: #059669 !important;
     }
     html:not(.dark) #dialer-full-activity .text-blue-400 {
-        color: #2563eb !important;
+        color: #7c3aed !important;
     }
     html:not(.dark) #dialer-full-activity .text-cyan-400 {
         color: #0891b2 !important;
@@ -494,7 +533,7 @@ html:not(.dark) .connectpro-dialer-toolbar input { background: #ffffff !importan
         --tw-ring-color: rgba(16, 185, 129, 0.2) !important;
     }
     html:not(.dark) #dialer-full-activity .ring-blue-500\/20 {
-        --tw-ring-color: rgba(59, 130, 246, 0.2) !important;
+        --tw-ring-color: rgba(124, 58, 237, 0.2) !important;
     }
     html:not(.dark) #dialer-full-activity .ring-cyan-500\/20 {
         --tw-ring-color: rgba(6, 182, 212, 0.2) !important;
@@ -515,7 +554,7 @@ html:not(.dark) .connectpro-dialer-toolbar input { background: #ffffff !importan
         color: #0f172a !important;
     }
     html:not(.dark) .connectpro-incoming-card > p:first-child {
-        color: #2563eb !important;
+        color: #7c3aed !important;
     }
     html:not(.dark) .connectpro-incoming-card > p:nth-child(2) {
         color: #475569 !important;
@@ -524,7 +563,7 @@ html:not(.dark) .connectpro-dialer-toolbar input { background: #ffffff !importan
         color: #0f172a !important;
     }
     html:not(.dark) #incoming-company {
-        color: #2563eb !important;
+        color: #7c3aed !important;
     }
     html:not(.dark) #incoming-did {
         color: #475569 !important;
@@ -532,7 +571,7 @@ html:not(.dark) .connectpro-dialer-toolbar input { background: #ffffff !importan
     html:not(.dark) .connectpro-incoming-avatar {
         border-color: #94a3b8 !important;
         background: #e2e8f0 !important;
-        box-shadow: 0 0 0 8px rgba(59, 130, 246, 0.1), 0 0 0 18px rgba(59, 130, 246, 0.05), 0 0 48px rgba(37, 99, 235, 0.2) !important;
+        box-shadow: 0 0 0 8px rgba(124, 58, 237, 0.1), 0 0 0 18px rgba(124, 58, 237, 0.05), 0 0 48px rgba(124, 58, 237, 0.2) !important;
     }
     html:not(.dark) .connectpro-incoming-context {
         border-color: #d6e0eb !important;
@@ -686,7 +725,7 @@ html:not(.dark) .connectpro-dialer-toolbar input { background: #ffffff !importan
                     </div>
 
                     <div class="connectpro-call-actions mt-5 grid grid-cols-2 gap-3">
-                        <button type="submit" class="connectpro-call-button flex items-center justify-center gap-2 rounded-xl bg-blue-600 py-3.5 font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"><i class="bi bi-telephone-fill text-xl"></i><span>{{ __('Call') }}</span></button>
+                        <button type="submit" class="connectpro-call-button flex items-center justify-center gap-2 rounded-xl py-3.5 font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"><i class="bi bi-telephone-fill text-xl"></i><span>{{ __('Call') }}</span></button>
                         <button type="button" class="flex items-center justify-center gap-2 rounded-xl bg-red-500 py-3.5 font-semibold text-white shadow-lg shadow-red-600/20 transition hover:bg-red-400 disabled:cursor-not-allowed disabled:opacity-50" data-action="hangup" disabled><i class="bi bi-telephone-x-fill text-xl"></i><span>{{ __('Hangup') }}</span></button>
                     </div>
                 </form>
@@ -924,85 +963,6 @@ html:not(.dark) .connectpro-dialer-toolbar input { background: #ffffff !importan
              </section>
          </div>
 
-        <aside id="ai-agent-control" x-data="aiAgentBox()" class="fixed bottom-4 right-4 z-[70] w-[calc(100vw-2rem)] max-w-[360px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_80px_rgba(2,9,20,.35)] dark:border-[#2a4055] dark:bg-[#091827]" aria-labelledby="ai-agent-title">
-            <button id="ai-agent-collapsed" type="button" class="hidden w-full items-center gap-3 px-4 py-3 text-left" aria-expanded="false" aria-controls="ai-agent-body">
-                <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-500/15 text-violet-500 ring-1 ring-inset ring-violet-500/25 dark:text-violet-300"><i class="bi bi-stars text-xl"></i></span>
-                <span class="min-w-0 flex-1"><strong class="block truncate text-sm text-slate-900 dark:text-white">{{ $aiAgentBoxTitle }}</strong><span class="block truncate text-xs text-slate-500 dark:text-slate-400">{{ __('Gemini Live · Setup required') }}</span></span>
-                <i class="bi bi-chevron-up text-slate-500" aria-hidden="true"></i>
-            </button>
-
-            <div id="ai-agent-expanded">
-                <div class="flex items-center gap-3 border-b border-slate-200 px-4 py-3 dark:border-[#263b50]">
-                    <span class="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-500/15 text-violet-500 ring-1 ring-inset ring-violet-500/25 dark:text-violet-300">
-                        <i class="bi bi-stars text-xl"></i>
-                        <span class="absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-white bg-amber-400 dark:border-[#091827]"></span>
-                    </span>
-                    <span class="min-w-0 flex-1">
-                        <span class="flex items-center gap-2"><strong id="ai-agent-title" class="truncate text-sm text-slate-900 dark:text-white">{{ $aiAgentBoxTitle }}</strong><span class="rounded-full bg-violet-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-300">{{ __('Preview') }}</span></span>
-                        <span class="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">{{ $aiAgentBoxSubtitle }}</span>
-                    </span>
-                    <button id="ai-agent-minimize" type="button" class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-white/5 dark:hover:text-white" aria-label="{{ __('Minimize AI agent controls') }}" aria-expanded="true" aria-controls="ai-agent-body"><i class="bi bi-dash-lg"></i></button>
-                </div>
-
-                <div id="ai-agent-body" class="space-y-4 p-4">
-                    <div class="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 dark:border-amber-500/20 dark:bg-amber-500/10">
-                        <span class="h-2.5 w-2.5 shrink-0 rounded-full bg-amber-400 shadow-[0_0_10px_rgba(251,191,36,.55)]"></span>
-                        <span class="min-w-0 flex-1"><strong id="ai-agent-status-title" class="block text-xs text-amber-900 dark:text-amber-100">{{ __('Checking backend') }}</strong><span id="ai-agent-status-detail" class="block text-[11px] text-amber-700 dark:text-amber-300/80">{{ __('Please wait…') }}</span></span>
-                        <i class="bi bi-cloud-slash text-amber-600 dark:text-amber-300" aria-hidden="true"></i>
-                    </div>
-
-                    <div>
-                        <label for="ai-agent-goal" class="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{{ __('Conversation goal') }}</label>
-                        <textarea id="ai-agent-goal" rows="2" maxlength="2000" placeholder="{{ __('Collect patient and appointment details…') }}" class="w-full resize-none rounded-xl border border-slate-300 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10 dark:border-[#365068] dark:bg-[#071625] dark:text-white"></textarea>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label for="ai-agent-mode" class="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{{ __('Mode') }}</label>
-                            <select id="ai-agent-mode" class="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2.5 text-xs text-slate-900 outline-none focus:border-violet-500 dark:border-[#365068] dark:bg-[#071625] dark:text-white">
-                                <option value="lead">{{ __('Lead conversation') }}</option>
-                                <option value="assist">{{ __('Assist agent') }}</option>
-                                <option value="qualify">{{ __('Qualify only') }}</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label for="ai-agent-voice" class="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{{ __('Voice style') }}</label>
-                            <select id="ai-agent-voice" class="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2.5 text-xs text-slate-900 outline-none focus:border-violet-500 dark:border-[#365068] dark:bg-[#071625] dark:text-white">
-                                <option value="man">{{ __('Man') }}</option>
-                                <option value="woman">{{ __('Woman') }}</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-1 gap-2">
-                        <label class="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 px-3 py-2.5 text-xs font-medium text-slate-700 dark:border-[#263b50] dark:text-slate-300"><input id="ai-agent-handoff" type="checkbox" checked class="h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500"><span>{{ __('Human handoff') }}</span></label>
-                    </div>
-
-                    <div>
-                        <label class="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{{ __('Live voice model (Google)') }}</label>
-                        <p id="ai-agent-live-model" class="w-full rounded-xl border border-slate-200 bg-slate-100 px-3 py-2.5 text-xs text-slate-600 dark:border-[#263b50] dark:bg-[#0b1c2c] dark:text-slate-300">—</p>
-                        <p class="mt-1 text-[11px] text-slate-500 dark:text-slate-400">{{ __('Set via GEMINI_LIVE_MODEL in the backend .env, then restart the backend.') }}</p>
-                    </div>
-
-                    <button id="ai-agent-save" type="button" class="flex w-full items-center justify-center rounded-xl border border-violet-500 px-4 py-2.5 text-sm font-semibold text-violet-600 dark:text-violet-300">{{ __('Save settings') }}</button>
-                    <button id="ai-agent-toggle" type="button" class="flex w-full items-center justify-center gap-2 rounded-xl bg-violet-600 px-4 py-3 text-sm font-semibold text-white"><i class="bi bi-play-fill text-lg"></i><span>{{ __('Enable AI agent') }}</span></button>
-                    <p id="ai-agent-feedback" class="text-center text-[11px] text-slate-500 dark:text-slate-400">{{ __('Inbound calls use normal agent routing while disabled.') }}</p>
-                </div>
-            </div>
-        </aside>
-        <div id="ai-agent-labels" class="hidden">{{ json_encode([
-            'ready' => __('Ready'),
-            'disconnected' => __('Disconnected'),
-            'listening' => __('Listening'),
-            'speaking' => __('Speaking'),
-            'stopped' => __('Stopped'),
-            'error' => __('Error'),
-            'start' => __('Start conversation'),
-            'stop' => __('Stop'),
-            'minimize' => __('Minimize'),
-            'enable' => __('Enable AI agent'),
-            'disable' => __('Disable AI agent')
-        ]) }}</div>
      </div>
 </div>
 @endsection
@@ -1123,111 +1083,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const contactCallHistoryEl = document.getElementById('contact-call-history');
     const contactCallHistoryRefreshBtn = document.getElementById('contact-call-history-refresh');
 
-    const aiAgentControl = document.getElementById('ai-agent-control');
-    const aiAgentExpanded = document.getElementById('ai-agent-expanded');
-    const aiAgentCollapsed = document.getElementById('ai-agent-collapsed');
-    const aiAgentMinimize = document.getElementById('ai-agent-minimize');
-    const aiAgentGoal = document.getElementById('ai-agent-goal');
-    const aiAgentMode = document.getElementById('ai-agent-mode');
-    const aiAgentVoice = document.getElementById('ai-agent-voice');
-    const aiAgentLiveModel = document.getElementById('ai-agent-live-model');
-    const aiAgentHandoff = document.getElementById('ai-agent-handoff');
-    const aiAgentToggle = document.getElementById('ai-agent-toggle');
-    const aiAgentSave = document.getElementById('ai-agent-save');
-    const aiAgentStatusTitle = document.getElementById('ai-agent-status-title');
-    const aiAgentStatusDetail = document.getElementById('ai-agent-status-detail');
-    const aiAgentFeedback = document.getElementById('ai-agent-feedback');
-    const aiAgentSettingsUrl = @json(route('admin.dialer.ai-agent.show'));
-    let aiAgentEnabled = false;
-    let aiAgentReady = false;
-
-    const renderAiAgentState = () => {
-        if (!aiAgentToggle) return;
-        // Keep both Enable and Disable actions available. The backend remains
-        // the source of truth and returns a useful error if setup is incomplete.
-        aiAgentToggle.disabled = false;
-        aiAgentToggle.classList.remove('cursor-not-allowed', 'opacity-60');
-        aiAgentToggle.querySelector('span').textContent = aiAgentEnabled ? @json(__('Disable AI agent')) : @json(__('Enable AI agent'));
-        aiAgentToggle.querySelector('i').className = aiAgentEnabled ? 'bi bi-stop-fill text-lg' : 'bi bi-play-fill text-lg';
-        if (aiAgentStatusTitle) aiAgentStatusTitle.textContent = aiAgentEnabled ? @json(__('AI agent enabled')) : (aiAgentReady ? @json(__('AI agent ready')) : @json(__('Setup required')));
-        if (aiAgentStatusDetail) aiAgentStatusDetail.textContent = aiAgentEnabled ? @json(__('New inbound calls go to Gemini Live')) : (aiAgentReady ? @json(__('Human routing remains active')) : @json(__('Add GEMINI_API_KEY to activate')));
-    };
-
-    const applyAiAgentSettings = (settings) => {
-        aiAgentEnabled = Boolean(settings.enabled);
-        aiAgentReady = Boolean(settings.ready);
-        if (aiAgentGoal) aiAgentGoal.value = settings.goal || '';
-        if (aiAgentMode) aiAgentMode.value = settings.mode || 'lead';
-        if (aiAgentVoice) aiAgentVoice.value = settings.voice || 'man';
-        if (aiAgentLiveModel) aiAgentLiveModel.textContent = settings.model || '—';
-        if (aiAgentHandoff) aiAgentHandoff.checked = Boolean(settings.humanHandoff);
-        renderAiAgentState();
-    };
-
-    const setAiAgentCollapsed = (collapsed) => {
-        if (!aiAgentControl || !aiAgentExpanded || !aiAgentCollapsed) return;
-        aiAgentExpanded.classList.toggle('hidden', collapsed);
-        aiAgentCollapsed.classList.toggle('hidden', !collapsed);
-        aiAgentCollapsed.classList.toggle('flex', collapsed);
-        aiAgentCollapsed.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
-        aiAgentMinimize?.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
-        try { window.localStorage.setItem('dialer.aiAgent.collapsed', collapsed ? '1' : '0'); } catch (error) {}
-    };
-
-    const persistAiAgentSetup = () => {
-        try {
-            window.localStorage.setItem('dialer.aiAgent.setup', JSON.stringify({
-                goal: aiAgentGoal?.value || '',
-                mode: aiAgentMode?.value || 'lead',
-                voice: aiAgentVoice?.value || 'man',
-                handoff: Boolean(aiAgentHandoff?.checked)
-            }));
-        } catch (error) {}
-    };
-
-    if (aiAgentControl) {
-        try {
-            const savedSetup = JSON.parse(window.localStorage.getItem('dialer.aiAgent.setup') || '{}');
-            if (aiAgentGoal && typeof savedSetup.goal === 'string') aiAgentGoal.value = savedSetup.goal;
-            if (aiAgentMode && ['lead', 'assist', 'qualify'].includes(savedSetup.mode)) aiAgentMode.value = savedSetup.mode;
-            if (aiAgentVoice && ['man', 'woman', 'male', 'female', 'professional', 'warm', 'confident'].includes(savedSetup.voice)) aiAgentVoice.value = savedSetup.voice;
-            if (aiAgentHandoff && typeof savedSetup.handoff === 'boolean') aiAgentHandoff.checked = savedSetup.handoff;
-            const savedCollapsedState = window.localStorage.getItem('dialer.aiAgent.collapsed');
-            setAiAgentCollapsed(savedCollapsedState === '1' || (savedCollapsedState === null && window.innerWidth < 768));
-        } catch (error) {
-            setAiAgentCollapsed(false);
-        }
-        aiAgentMinimize?.addEventListener('click', () => setAiAgentCollapsed(true));
-        aiAgentCollapsed?.addEventListener('click', () => setAiAgentCollapsed(false));
-        [aiAgentGoal, aiAgentMode, aiAgentVoice, aiAgentHandoff].filter(Boolean).forEach((control) => {
-            control.addEventListener('change', persistAiAgentSetup);
-        });
-        aiAgentGoal?.addEventListener('input', persistAiAgentSetup);
-        fetch(aiAgentSettingsUrl, { headers: { Accept: 'application/json' } })
-            .then(async (response) => { const body = await response.json(); if (!response.ok) throw new Error(body.message || 'Unable to load AI settings'); return body; })
-            .then((body) => applyAiAgentSettings(body.settings))
-            .catch((error) => { if (aiAgentFeedback) aiAgentFeedback.textContent = error.message; renderAiAgentState(); });
-        const saveAiAgentSettings = async (enabled) => {
-            aiAgentToggle.disabled = true;
-            if (aiAgentSave) aiAgentSave.disabled = true;
-            if (aiAgentFeedback) aiAgentFeedback.textContent = @json(__('Saving…'));
-            try {
-                const response = await fetch(aiAgentSettingsUrl, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '' },
-                    body: JSON.stringify({ enabled, goal: aiAgentGoal?.value || 'Collect the patient name, phone number, preferred appointment date, and doctor name.', mode: aiAgentMode?.value || 'lead', voice: aiAgentVoice?.value || 'man', humanHandoff: Boolean(aiAgentHandoff?.checked) })
-                });
-                const body = await response.json();
-                if (!response.ok) throw new Error(body.message || 'Unable to update AI agent');
-                applyAiAgentSettings(body.settings);
-                if (aiAgentFeedback) aiAgentFeedback.textContent = @json(__('Settings saved.'));
-            } catch (error) {
-                if (aiAgentFeedback) aiAgentFeedback.textContent = error.message;
-            } finally { if (aiAgentSave) aiAgentSave.disabled = false; renderAiAgentState(); }
-        };
-        aiAgentToggle?.addEventListener('click', () => saveAiAgentSettings(!aiAgentEnabled));
-        aiAgentSave?.addEventListener('click', () => saveAiAgentSettings(aiAgentEnabled));
-    }
 
     if (!form) return;
 
