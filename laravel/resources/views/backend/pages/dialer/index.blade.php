@@ -2085,6 +2085,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let pollHandle = null;
     let callActive = false;
     let conferenceName = null;
+    let outboundAiActive = false;
     let browserAudioActive = false;
     let webRtcClient = null;
     let browserAudioConnecting = false;
@@ -2558,7 +2559,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!callCardMinimized) compactCallWindow?.classList.remove('hidden');
             startTimer(durationSeconds);
             syncCommentInputs();
-            if (conferenceName && webRtcClient && !browserAudioActive && !browserAudioConnecting && !hangupInProgress) {
+            if (conferenceName && webRtcClient && !outboundAiActive && !browserAudioActive && !browserAudioConnecting && !hangupInProgress) {
                 connectBrowserAudio();
             }
         }
@@ -2576,6 +2577,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             conferenceName = null;
             callUuid = null;
+            outboundAiActive = false;
             syncCommentInputs();
         }
     };
@@ -3287,6 +3289,7 @@ document.addEventListener('DOMContentLoaded', function () {
         stopCallStateSound();
         conferenceName = null;
         callUuid = null;
+        outboundAiActive = false;
 
         // show live session
         if (liveSession) liveSession.classList.remove('hidden');
@@ -3373,7 +3376,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 callActive = true;
                 await applyMuteState(false);
                 setControls(true);
-                if (conferenceName && webRtcClient) {
+                outboundAiActive = Boolean(data.ai);
+                if (conferenceName && webRtcClient && !outboundAiActive) {
                     connectBrowserAudio();
                 }
 
@@ -3676,6 +3680,11 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!inboundCall || !payload || payload.callUuid !== inboundCall.callUuid) return;
             stopCallStateSound();
             hideIncoming();
+        });
+        socket.on('ai.outbound.failed', (payload) => {
+            if (!payload || payload.callUuid !== callUuid) return;
+            outboundAiActive = false;
+            connectBrowserAudio();
         });
     };
     initInboundSocket();

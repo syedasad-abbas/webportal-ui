@@ -9,7 +9,13 @@ const defaults = {
   goal: 'Collect the patient name, phone number, preferred appointment date, and doctor name.',
   mode: 'lead',
   voice: 'man',
-  humanHandoff: true
+  humanHandoff: true,
+  callDirection: 'inbound'
+};
+
+const supportsDirection = (settings, direction) => {
+  const callDirection = settings && settings.callDirection ? settings.callDirection : defaults.callDirection;
+  return callDirection === 'both' || callDirection === direction;
 };
 
 // `role`, `greeting` and `goal` are free text chosen by the administrator, so
@@ -39,6 +45,9 @@ const normalize = (row = {}) => ({
   mode: row.mode || defaults.mode,
   voice: row.voice || defaults.voice,
   humanHandoff: row.human_handoff === undefined ? defaults.humanHandoff : Boolean(row.human_handoff),
+  callDirection: ['inbound', 'outbound', 'both'].includes(row.call_direction)
+    ? row.call_direction
+    : defaults.callDirection,
   updatedBy: row.updated_by || null,
   ready: Boolean(config.aiAgent.apiKey),
   model: config.aiAgent.model,
@@ -69,12 +78,13 @@ const update = async (settings, userId) => {
   }
   const result = await db.query(
     `INSERT INTO ai_agent_settings
-      (id, enabled, role, greeting, goal, mode, voice, human_handoff, updated_by, created_at, updated_at)
-     VALUES (1, $1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+      (id, enabled, role, greeting, goal, mode, voice, human_handoff, call_direction, updated_by, created_at, updated_at)
+     VALUES (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
      ON CONFLICT (id) DO UPDATE SET
        enabled = EXCLUDED.enabled, role = EXCLUDED.role, greeting = EXCLUDED.greeting,
        goal = EXCLUDED.goal, mode = EXCLUDED.mode, voice = EXCLUDED.voice,
        human_handoff = EXCLUDED.human_handoff,
+       call_direction = EXCLUDED.call_direction,
        updated_by = EXCLUDED.updated_by, updated_at = NOW()
      RETURNING *`,
     [
@@ -85,10 +95,11 @@ const update = async (settings, userId) => {
       value.mode,
       value.voice,
       value.humanHandoff,
+      value.callDirection,
       userId
     ]
   );
   return normalize(result.rows[0]);
 };
 
-module.exports = { get, update };
+module.exports = { get, update, supportsDirection };

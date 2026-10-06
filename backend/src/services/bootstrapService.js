@@ -17,6 +17,7 @@ const ensureSchemaUpgrades = async () => {
     mode VARCHAR(20) NOT NULL,
     voice VARCHAR(30) NOT NULL,
     human_handoff BOOLEAN NOT NULL DEFAULT TRUE,
+    call_direction VARCHAR(20) NOT NULL DEFAULT 'inbound',
     updated_by BIGINT,
     created_at TIMESTAMP WITHOUT TIME ZONE,
     updated_at TIMESTAMP WITHOUT TIME ZONE
@@ -29,6 +30,9 @@ const ensureSchemaUpgrades = async () => {
   );
   await db.query(
     "ALTER TABLE ai_agent_settings ADD COLUMN IF NOT EXISTS greeting TEXT NOT NULL DEFAULT ''"
+  );
+  await db.query(
+    "ALTER TABLE ai_agent_settings ADD COLUMN IF NOT EXISTS call_direction VARCHAR(20) NOT NULL DEFAULT 'inbound'"
   );
   await db.query(
     `CREATE TABLE IF NOT EXISTS inbound_dids (

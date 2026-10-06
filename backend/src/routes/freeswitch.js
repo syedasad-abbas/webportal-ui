@@ -4,6 +4,7 @@ const inboundCallService = require('../services/inboundCallService');
 const inboundDidService = require('../services/inboundDidService');
 const freeswitch = require('../lib/freeswitch');
 const aiSettings = require('../services/aiAgentSettingsService');
+const { supportsDirection } = require('../services/aiAgentSettingsService');
 const config = require('../config');
 
 const router = express.Router();
@@ -41,7 +42,7 @@ router.post('/inbound', requireInternalToken, async (req, res) => {
     console.warn('[ai-agent] unable to determine inbound mode', { uuid, error: err.message });
     return null;
   });
-  const ai = Boolean(settings?.enabled && settings?.ready && settings?.updatedBy);
+  const ai = Boolean(settings?.enabled && settings?.ready && settings?.updatedBy && supportsDirection(settings, 'inbound'));
 
   inboundCallService
     .dispatch({ uuid, did: normalizedDid, callerIdNumber, settings })
@@ -72,7 +73,7 @@ router.post('/ai-agent', requireInternalToken, async (req, res) => {
     console.warn('[ai-agent] settings unavailable', { uuid, error: err.message });
   }
 
-  if (!settings?.enabled || !settings?.ready || !settings?.updatedBy) {
+  if (!settings?.enabled || !settings?.ready || !settings?.updatedBy || !supportsDirection(settings, 'inbound')) {
     console.log('[ai-agent] skipping audio stream', { uuid, enabled: settings?.enabled, ready: settings?.ready });
     return res.json({ ok: true, skipped: true });
   }

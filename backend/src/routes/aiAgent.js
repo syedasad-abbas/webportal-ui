@@ -14,7 +14,7 @@ router.get('/', ...guard, async (_req, res, next) => {
 // Keys the service layer knows how to persist. Anything else the UI sends is
 // accepted and ignored rather than rejecting the whole request, so an extra
 // field in the browser never blocks saving the fields we do support.
-const PERSISTED_KEYS = ['enabled', 'role', 'greeting', 'goal', 'mode', 'voice', 'humanHandoff'];
+const PERSISTED_KEYS = ['enabled', 'role', 'greeting', 'goal', 'mode', 'voice', 'humanHandoff', 'callDirection'];
 
 const pickPersisted = (value) => PERSISTED_KEYS.reduce((acc, key) => {
   if (value[key] !== undefined) acc[key] = value[key];
@@ -36,7 +36,8 @@ router.put('/', ...guard, async (req, res, next) => {
     goal: Joi.string().trim().max(2000).allow('', null).default(''),
     mode: Joi.string().valid('lead', 'assist', 'qualify').required(),
     voice: Joi.string().valid('man', 'woman', 'male', 'female', 'professional', 'warm', 'confident').required(),
-    humanHandoff: Joi.boolean().required()
+    humanHandoff: Joi.boolean().required(),
+    callDirection: Joi.string().valid('inbound', 'outbound', 'both').default('inbound')
   }).unknown(true);
   const { error, value } = schema.validate(req.body);
   if (error) return res.status(400).json({ ok: false, message: error.message });

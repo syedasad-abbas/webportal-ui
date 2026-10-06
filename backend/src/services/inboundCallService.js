@@ -5,6 +5,7 @@ const freeswitch = require('../lib/freeswitch');
 const { emitToUser } = require('../socket');
 const { scheduleMetricsBroadcast } = require('./metricsService');
 const aiSettings = require('./aiAgentSettingsService');
+const { supportsDirection } = aiSettings;
 const aiBridge = require('./geminiLiveBridge');
 
 const presenceMinutes = config.metrics?.presenceMinutes || 5;
@@ -218,7 +219,7 @@ const dispatch = async ({ uuid, did, callerIdNumber, settings: suppliedSettings 
       return null;
     })
     : suppliedSettings;
-  if (settings?.enabled && settings.ready && settings.updatedBy) {
+  if (settings?.enabled && settings.ready && settings.updatedBy && supportsDirection(settings, 'inbound')) {
     try {
       // The Lua dialplan answers immediately after its HTTP dispatch returns.
       // Loopback channels may not expose answered_epoch on this UUID, so avoid

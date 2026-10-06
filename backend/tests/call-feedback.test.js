@@ -205,6 +205,7 @@ test('status requests do not overlap and HTTP failures preserve the call for ret
 });
 test('carrier routing continues to use the account assignment and configured proxy', async () => {
   const requests = [];
+  let aiSettings = { enabled: false, ready: true, updatedBy: 1, callDirection: 'inbound' };
   let record = { carrier_id: 7, sip_domain: 'configured.example', sip_port: 5070,
     outbound_proxy: 'proxy.example', default_caller_id: '12125550123', transport: 'tcp' };
   const service = load('backend/src/services/callService.js', {
@@ -217,7 +218,15 @@ test('carrier routing continues to use the account assignment and configured pro
     '../lib/freeswitch': { originateCall: async (request) => { requests.push(request); return { jobUuid: 'job' }; } },
     '../lib/carrierUtils': { normalizeGatewayName: ({ id }) => `carrier-${id}` },
     '../config': { defaults: {}, freeswitch: { advertisedSipIp: '192.0.2.1' } },
-    '../lib/callOutcomes': { get: () => null }, './metricsService': { scheduleMetricsBroadcast() {} }
+    '../lib/callOutcomes': { get: () => null }, './metricsService': { scheduleMetricsBroadcast() {} },
+    './aiAgentSettingsService': {
+      get: async () => aiSettings,
+      supportsDirection: load('backend/src/services/aiAgentSettingsService.js', {
+        '../db': {}, '../config': {}, './aiAgentFaqService': {},
+        './geminiLiveBridge': { activeSessionCount: () => 0 }
+      }).supportsDirection
+    },
+    './geminiLiveBridge': {}, '../socket': { emitToUser() {} }
   }, { setTimeout() {}, console: { log() {}, warn() {}, error() {} } });
   await service.originate({ user: { id: 1 }, destination: '2025550123' });
   assert.equal(requests[0].gateway, 'carrier-7');
@@ -228,4 +237,26 @@ test('carrier routing continues to use the account assignment and configured pro
   await service.originate({ user: { id: 1 }, destination: '2025550123' });
   assert.equal(requests[1].gateway, 'carrier-8');
   assert.ok(requests[1].variables.includes('sip_req_host=second.example'));
+  aiSettings = { ...aiSettings, callDirection: 'both', enabled: true };
+  assert.equal((await service.originate({ user: { id: 1 }, destination: '2025550123' })).ai, true);
+  aiSettings = { ...aiSettings, callDirection: 'inbound' };
+  assert.equal((await service.originate({ user: { id: 1 }, destination: '2025550123' })).ai, false);
+  aiSettings = { enabled: true, ready: true, updatedBy: 1, callDirection: 'outbound' };
+  assert.equal((await service.originate({ user: { id: 1 }, destination: '2025550123' })).ai, true);
+});
+test('AI call direction supports inbound, outbound, both, and legacy inbound defaults', () => {
+  const settings = load('backend/src/services/aiAgentSettingsService.js', {
+    '../db': {}, '../config': {}, './aiAgentFaqService': {},
+    './geminiLiveBridge': { activeSessionCount: () => 0 }
+  });
+  for (const [callDirection, inbound, outbound] of [
+    ['inbound', true, false],
+    ['outbound', false, true],
+    ['both', true, true],
+    [undefined, true, false]
+  ]) {
+    const current = callDirection ? { callDirection } : {};
+    assert.equal(settings.supportsDirection(current, 'inbound'), inbound);
+    assert.equal(settings.supportsDirection(current, 'outbound'), outbound);
+  }
 });

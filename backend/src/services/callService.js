@@ -5,7 +5,9 @@ const freeswitch = require('../lib/freeswitch');
 const { normalizeGatewayName } = require('../lib/carrierUtils');
 const config = require('../config');
 const { scheduleMetricsBroadcast } = require('./metricsService');
-const { get: getAiAgentSettings } = require('./aiAgentSettingsService');
+const { get: getAiAgentSettings, supportsDirection } = require('./aiAgentSettingsService');
+const aiBridge = require('./geminiLiveBridge');
+const { emitToUser } = require('../socket');
 
 const clientError = (message, statusCode = 400) => {
   const err = new Error(message);
@@ -128,11 +130,45 @@ const applyDialPrefix = (destinationDigits, prefixEntry) => {
   return `${prefixDigits}${destinationDigits}`;
 };
 
-const monitorCallProgress = async ({ callUuid, conferenceName, userId }) => {
-  
+const monitorCallProgress = async ({ callUuid, conferenceName, userId, outboundAiSettings = null }) => {
   const startedAt = Date.now();
   let answeredLogged = false;
   let conferenceLogged = false;
+  let aiStreamStarted = false;
+  let aiStreamStarting = false;
+  let callEnded = false;
+
+  const startOutboundAi = async () => {
+    if (!outboundAiSettings || aiStreamStarting || aiStreamStarted) return;
+    aiStreamStarting = true;
+    try {
+      const url = new URL(config.aiAgent.bridgeUrl);
+      url.searchParams.set('call_id', callUuid);
+      url.searchParams.set('token', config.aiAgent.bridgeToken);
+      await freeswitch.startAudioStream(callUuid, url.toString(), {
+        callId: callUuid,
+        direction: 'outbound'
+      });
+      const ready = await aiBridge.waitUntilReady(
+        callUuid,
+        (config.aiAgent.connectTimeoutMs * 2) + 10000
+      );
+      if (!ready) throw new Error('Gemini Live session did not become ready');
+      if (callEnded) throw new Error('Outbound call ended while AI was connecting');
+      aiStreamStarted = true;
+      console.log('[ai-agent] handling outbound call', { callUuid, model: outboundAiSettings.model });
+    } catch (err) {
+      aiBridge.closeSession(callUuid);
+      await freeswitch.stopAudioStream(callUuid).catch(() => null);
+      console.error('[ai-agent] outbound start failed; call remains connected', {
+        callUuid,
+        error: err.message
+      });
+      emitToUser(userId, 'ai.outbound.failed', { callUuid });
+    } finally {
+      aiStreamStarting = false;
+    }
+  };
 
   const markAnswered = async () => {
     await db.query(
@@ -147,6 +183,7 @@ const monitorCallProgress = async ({ callUuid, conferenceName, userId }) => {
   };
 
   const markEnded = async (diagnostics = null) => {
+    callEnded = true;
     await db.query(
       `UPDATE call_logs
          SET ended_at = COALESCE(ended_at, NOW()),
@@ -166,6 +203,11 @@ const monitorCallProgress = async ({ callUuid, conferenceName, userId }) => {
         diagnostics?.hangupCause ?? null
       ]
     );
+    if (aiStreamStarted || aiStreamStarting) {
+      aiBridge.closeSession(callUuid);
+      await freeswitch.stopAudioStream(callUuid).catch(() => null);
+      aiStreamStarted = false;
+    }
     scheduleMetricsBroadcast();
   };
 
@@ -191,6 +233,7 @@ const monitorCallProgress = async ({ callUuid, conferenceName, userId }) => {
         console.log('[call] answered', { userId, callUuid });
         answeredLogged = true;
         await markAnswered();
+        void startOutboundAi();
       }
     }
 
@@ -206,6 +249,7 @@ const monitorCallProgress = async ({ callUuid, conferenceName, userId }) => {
           answeredLogged = true;
           await markAnswered();
         }
+        void startOutboundAi();
       }
     }
 
@@ -227,6 +271,15 @@ const originate = async ({ user, destination, callerId }) => {
   const normalizedDestination = normalizeDestination(destination);
   if (!normalizedDestination) {
     throw clientError('Only US/CA destinations (+1) are allowed', 400);
+  }
+  let outboundAiSettings = null;
+  try {
+    const settings = await getAiAgentSettings();
+    if (settings.enabled && settings.ready && settings.updatedBy && supportsDirection(settings, 'outbound')) {
+      outboundAiSettings = settings;
+    }
+  } catch (err) {
+    console.warn('[ai-agent] outbound settings unavailable; continuing call without AI', { error: err.message });
   }
   const userResult = await db.query(
     `SELECT users.id,
@@ -367,8 +420,13 @@ const originate = async ({ user, destination, callerId }) => {
       recordingPath,
       callUuid: originationUuid
     });
-    monitorCallProgress({ callUuid: originationUuid, conferenceName, userId: user.id });
-    return { status: 'queued', callUuid: originationUuid, conference: conferenceName };
+    monitorCallProgress({ callUuid: originationUuid, conferenceName, userId: user.id, outboundAiSettings });
+    return {
+      status: 'queued',
+      callUuid: originationUuid,
+      conference: conferenceName,
+      ai: Boolean(outboundAiSettings)
+    };
   } catch (err) {
     console.error('[call] originate failed', {
       userId: user.id,

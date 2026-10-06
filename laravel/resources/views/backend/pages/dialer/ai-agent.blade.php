@@ -260,6 +260,14 @@ html:not(.dark) #ai-agent-page .ai-save-faq:hover { background: #f5f3ff; }
                 </div>
 
                 <div class="grid grid-cols-2 gap-3 p-4">
+                    <div class="col-span-2">
+                        <label for="ai-agent-call-direction" class="ai-label mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{{ __('Apply configuration to') }}</label>
+                        <select id="ai-agent-call-direction" class="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2.5 text-xs text-slate-900 outline-none focus:border-violet-500 dark:border-[#365068] dark:bg-[#071625] dark:text-white">
+                            <option value="inbound" @selected(($aiAgentSettings['callDirection'] ?? 'inbound') === 'inbound')>{{ __('Inbound only') }}</option>
+                            <option value="outbound" @selected(($aiAgentSettings['callDirection'] ?? 'inbound') === 'outbound')>{{ __('Outbound only') }}</option>
+                            <option value="both" @selected(($aiAgentSettings['callDirection'] ?? 'inbound') === 'both')>{{ __('Both inbound and outbound') }}</option>
+                        </select>
+                    </div>
                     <div>
                         <label for="ai-agent-mode" class="ai-label mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{{ __('Mode') }}</label>
                         <select id="ai-agent-mode" class="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2.5 text-xs text-slate-900 outline-none focus:border-violet-500 dark:border-[#365068] dark:bg-[#071625] dark:text-white">
@@ -378,6 +386,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const modeSelect = document.getElementById('ai-agent-mode');
     const voiceSelect = document.getElementById('ai-agent-voice');
     const handoffInput = document.getElementById('ai-agent-handoff');
+    const callDirectionSelect = document.getElementById('ai-agent-call-direction');
     const modelEl = document.getElementById('ai-agent-live-model');
     const sessionsEl = document.getElementById('ai-agent-sessions');
     const dotEl = document.getElementById('ai-agent-dot');
@@ -406,8 +415,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const on = enabled ? @json(__('AI agent enabled')) : @json(__('Enable AI agent'));
         statusTitle.textContent = on;
         bannerTitle.textContent = on;
+        const callDirection = callDirectionSelect?.value || 'inbound';
+        const activeRoutingLabel = callDirection === 'both'
+            ? @json(__('Inbound and outbound calls go to Gemini Live'))
+            : (callDirection === 'outbound'
+                ? @json(__('New outbound calls go to Gemini Live'))
+                : @json(__('New inbound calls go to Gemini Live')));
         statusDetail.textContent = enabled
-            ? @json(__('New inbound calls go to Gemini Live'))
+            ? activeRoutingLabel
             : (ready ? @json(__('Human routing remains active')) : @json(__('Add GEMINI_API_KEY to activate')));
 
         // The indicator dot carries a border colour that has to match the card
@@ -428,6 +443,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (modeSelect) modeSelect.value = settings.mode || 'lead';
         if (voiceSelect) voiceSelect.value = settings.voice || 'man';
         if (handoffInput) handoffInput.checked = Boolean(settings.humanHandoff);
+        if (callDirectionSelect) callDirectionSelect.value = settings.callDirection || 'inbound';
         if (modelEl) modelEl.textContent = settings.model || '—';
         if (sessionsEl) sessionsEl.textContent = settings.activeSessions ?? 0;
         renderState();
@@ -447,14 +463,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 goal: goalInput?.value || '',
                 mode: modeSelect?.value || 'lead',
                 voice: voiceSelect?.value || 'man',
-                handoff: Boolean(handoffInput?.checked)
+                handoff: Boolean(handoffInput?.checked),
+                callDirection: callDirectionSelect?.value || 'inbound'
             }));
         } catch (error) {}
     };
-    [roleInput, greetingInput, goalInput, modeSelect, voiceSelect, handoffInput]
+    [roleInput, greetingInput, goalInput, modeSelect, voiceSelect, handoffInput, callDirectionSelect]
         .filter(Boolean)
         .forEach((control) => control.addEventListener('input', writeDraft));
-    [modeSelect, voiceSelect, handoffInput].filter(Boolean)
+    [modeSelect, voiceSelect, handoffInput, callDirectionSelect].filter(Boolean)
         .forEach((control) => control.addEventListener('change', writeDraft));
 
     const draft = readDraft();
@@ -487,7 +504,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     goal: goalInput?.value || '',
                     mode: modeSelect?.value || 'lead',
                     voice: voiceSelect?.value || 'man',
-                    humanHandoff: Boolean(handoffInput?.checked)
+                    humanHandoff: Boolean(handoffInput?.checked),
+                    callDirection: callDirectionSelect?.value || 'inbound'
                 })
             });
             const body = await response.json();
