@@ -13,7 +13,7 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
-const APP = (process.env.QA_BASE_URL || 'http://127.0.0.1:18080').replace(/\/$/, '');
+const APP = (process.env.QA_BASE_URL || 'http://127.0.0.1:8080').replace(/\/$/, '');
 const DRIVER = process.env.QA_GECKODRIVER || '/snap/bin/geckodriver';
 const PROFILE_ROOT = process.env.QA_FIREFOX_PROFILE_ROOT || path.resolve(__dirname, '..', '.qa-firefox');
 const PORT = Number(process.env.QA_WEBDRIVER_PORT || 4446);
@@ -29,6 +29,8 @@ const results = {
   browser: 'firefox',
   passed: [],
   failed: [],
+  blocked: [],
+  inventory: [],
   diagnostics: {},
   artifacts: []
 };
@@ -76,11 +78,43 @@ async function captureScreenshot(name) {
 }
 async function test(name, callback) {
   try { const detail = await callback(); pass(name, detail); }
-  catch (error) { fail(name, error); await captureScreenshot(name); }
+  catch (error) {
+    if (error.qaBlocked) { results.blocked.push({name, detail:error.message}); console.error('BLOCKED ' + name + ' - ' + error.message); }
+    else fail(name, error);
+    await captureScreenshot(name);
+  }
 }
 function endpoint(path) { return '/session/' + sessionId + path; }
 function execute(script, args) { return request('POST', endpoint('/execute/sync'), { script: script, args: args || [] }); }
 function navigate(url) { return request('POST', endpoint('/url'), { url: url }); }
+
+// Mutations use native WebDriver input, so hidden or covered controls cannot pass.
+const ELEMENT_KEY = 'element-6066-11e4-a52e-4f735466cecf';
+async function element(selector) {
+  return request('POST', endpoint('/element'), { using: 'css selector', value: selector });
+}
+async function click(selector) {
+  const target = typeof selector === 'string' ? await element(selector) : selector;
+  let lastError;
+  for (let attempt = 0; attempt < 25; attempt += 1) {
+    try { return await request('POST', endpoint('/element/' + target[ELEMENT_KEY] + '/click'), {}); }
+    catch (error) { lastError = error; if (!/obscures|not interactable|not clickable/.test(error.message)) throw error; await sleep(200); }
+  }
+  throw lastError;
+}
+async function fill(selector, text) {
+  const target = await element(selector);
+  const route = endpoint('/element/' + target[ELEMENT_KEY]);
+  await request('POST', route + '/clear', {});
+  await request('POST', route + '/value', { text });
+}
+async function visible(selector) {
+  return execute('const e=document.querySelector(arguments[0]); if(!e)return false; const r=e.getBoundingClientRect(),s=getComputedStyle(e); return r.width>0 && r.height>0 && s.display!=="none" && s.visibility!=="hidden";', [selector]);
+}
+async function inventory() {
+  const data = await execute('return {url:location.href,controls:[...document.querySelectorAll("button,a[href],input,select,textarea,[role=tab]")].map(e=>({tag:e.tagName,id:e.id,label:(e.getAttribute("aria-label")||e.innerText||e.getAttribute("placeholder")||e.title||"").trim().slice(0,100),type:e.type,disabled:!!e.disabled,visible:!!(e.getBoundingClientRect().width&&e.getBoundingClientRect().height)}))};');
+  results.inventory.push(data);
+}
 
 async function waitFor(callback, message, timeout) {
   const end = Date.now() + (timeout || 15000);
@@ -97,6 +131,7 @@ async function startDriver() {
   fs.mkdirSync(PROFILE_ROOT, { recursive: true });
   driver = spawn(DRIVER, ['--host', '127.0.0.1', '--port', String(PORT), '--profile-root', PROFILE_ROOT], { stdio: ['ignore', 'pipe', 'pipe'] });
   let errors = '';
+  driver.on('error', function (error) { errors += error.message; });
   driver.stdout.on('data', function (chunk) { errors += String(chunk); });
   driver.stderr.on('data', function (chunk) { errors += String(chunk); });
   await waitFor(async function () {
@@ -117,13 +152,18 @@ async function startDriver() {
 
 async function login() {
   await navigate(APP + '/login');
-  await execute('document.querySelector("#email").value=arguments[0]; document.querySelector("input[name=password]").value=arguments[1]; document.querySelector("button[type=submit]").click(); return true;', [EMAIL, PASSWORD]);
+  await fill('#email', EMAIL);
+  await fill('input[name=password]', PASSWORD);
+  await click('button[type=submit]');
   await waitFor(async function () { return execute('return location.pathname === "/admin" || location.pathname === "/admin/";'); }, 'Login did not reach the dashboard', 20000);
 }
 
 async function clickSidebar(text) {
-  const clicked = await execute('const wanted=arguments[0]; const link=[...document.querySelectorAll("a")].find(e=>e.textContent.trim()===wanted); if(!link)return false; link.click(); return true;', [text]);
-  assert(clicked, 'Sidebar link not found: ' + text);
+  const link = await execute('return [...document.querySelectorAll("aside a")].find(e=>e.textContent.trim()===arguments[0])||null;', [text]);
+  assert(link, 'Sidebar link not found: ' + text);
+  const opener = await execute('const link=arguments[0]; const menu=link.closest(".menu-dropdown"); if(menu && !menu.getBoundingClientRect().height)return menu.previousElementSibling; let p=link.parentElement; while(p && p.tagName!=="ASIDE"){if(getComputedStyle(p).display==="none" && p.previousElementSibling?.tagName==="BUTTON")return p.previousElementSibling;p=p.parentElement;}return null;', [link]);
+  if (opener) await click(opener);
+  await click(link);
   await sleep(500);
 }
 
@@ -154,12 +194,19 @@ async function dialerTests() {
     assert(data.overflow <= data.viewport + 1, 'Desktop page overflows horizontally');
   });
   await test('dial pad, backspace, and clear', async function () {
-    const values = await execute('const d=document.querySelector("#dialpad-display"); ["1","2","#"].forEach(v=>[...document.querySelectorAll("[data-value]")].find(e=>e.dataset.value===v).click()); const typed=d.value; document.querySelector("#dialpad-backspace").click(); const back=d.value; document.querySelector("#dialpad-clear").click(); return {typed:typed,back:back,clear:d.value};');
+    await click('#dialpad-clear');
+    for (const key of ['1','2','#']) await click('[data-value="' + key + '"]');
+    const typed = await execute('return document.querySelector("#dialpad-display").value;');
+    await click('#dialpad-backspace');
+    const back = await execute('return document.querySelector("#dialpad-display").value;');
+    await click('#dialpad-clear');
+    const values = {typed, back, clear: await execute('return document.querySelector("#dialpad-display").value;')};
     assert(values.typed === '12#' && values.back === '12' && values.clear === '', JSON.stringify(values));
   });
   await test('empty call is blocked in browser', async function () {
     const before = await execute('return performance.getEntriesByType("resource").filter(e=>e.name.includes("/admin/dialer/dial")).length;');
-    await execute('document.querySelector("#dialpad-clear").click(); document.querySelector("#dialer-form button[type=submit]").click(); return true;');
+    await click('#dialpad-clear');
+    await click('#dialer-form button[type=submit]');
     await sleep(500);
     const data = await execute('const alert=document.querySelector("#dialer-alert");const badge=document.querySelector("#call-id-badge");const input=document.querySelector("#dialpad-display");return {path:location.pathname,alert:alert?.textContent?.trim()||"",callId:badge?.textContent?.trim()||"",value:input?.value||"",hasForm:!!document.querySelector("#dialer-form"),dialRequests:performance.getEntriesByType("resource").filter(e=>e.name.includes("/admin/dialer/dial")).length};');
     assert(data.path.endsWith('/admin/dialer') && data.callId === '' && data.value === '' && data.hasForm, 'Empty call entered an active call state or left the dialer: ' + JSON.stringify(data));
@@ -167,8 +214,11 @@ async function dialerTests() {
     assert(data.dialRequests === before, 'Empty destination was sent to the dial API');
   });
   await test('all contact tabs switch', async function () {
-    const states = await execute('const out={}; ["notes","activity","history","info"].forEach(tab=>{const b=[...document.querySelectorAll("[data-contact-tab]")].find(e=>e.dataset.contactTab===tab);b.click();const p=[...document.querySelectorAll("[data-contact-tab-panel]")].find(e=>e.dataset.contactTabPanel===tab);out[tab]=b.getAttribute("aria-selected")==="true"&&!p.classList.contains("hidden")});return out;');
-    Object.keys(states).forEach(function (tab) { assert(states[tab], tab + ' tab did not activate'); });
+    for (const tab of ['notes', 'activity', 'history', 'info']) {
+      await click('[data-contact-tab="' + tab + '"]');
+      assert(await visible('[data-contact-tab-panel="' + tab + '"]'), tab + ' panel is not visible');
+      assert(await execute('return document.querySelector(arguments[0]).getAttribute("aria-selected")==="true";', ['[data-contact-tab="' + tab + '"]']), tab + ' is not selected');
+    }
   });
   await test('labels, notes, activity, history, call and audio controls exist', async function () {
     const data = await execute('const ids=["contact-label-input","contact-label-add","contact-comment-input","contact-comment-add","contact-activity","contact-call-history","dialer-audio","incoming-call-banner"];const audio=document.querySelector("#dialer-audio");return {missing:ids.filter(id=>!document.getElementById(id)),keys:document.querySelectorAll("[data-value]").length,hangup:document.querySelectorAll("[data-action=hangup]").length,mute:document.querySelectorAll("[data-call-proxy=mute]").length,audio:{autoplay:audio?.hasAttribute("autoplay"),playsInline:audio?.hasAttribute("playsinline")},duplicates:[...document.querySelectorAll("[id]")].map(e=>e.id).filter((id,i,a)=>a.indexOf(id)!==i)};');
@@ -177,17 +227,9 @@ async function dialerTests() {
     assert(data.audio.autoplay && data.audio.playsInline, 'Remote audio is not configured for automatic inline playback');
     assert(data.duplicates.length === 0, 'Duplicate IDs: ' + data.duplicates.join(', '));
   });
-  await test('compact mute control toggles microphone state in the UI', async function () {
-    const before = await execute('const button=document.querySelector("[data-call-proxy=mute]");if(!button)return null;const value=button.getAttribute("aria-pressed")||"false";button.click();return value;');
-    assert(before !== null, 'Compact mute control is missing');
-    await sleep(150);
-    const after = await execute('return document.querySelector("[data-call-proxy=mute]")?.getAttribute("aria-pressed")||"false";');
-    assert(after !== before, 'Compact mute state did not toggle');
-    await execute('document.querySelector("[data-call-proxy=mute]").click();return true;');
-  });
   await test('dark/light mode toggles and persists', async function () {
     const before = await execute('return document.documentElement.classList.contains("dark");');
-    await execute('document.querySelector("#sidebarDarkModeToggle").click(); return true;');
+    await click('#sidebarDarkModeToggle');
     await sleep(300);
     const after = await execute('return document.documentElement.classList.contains("dark");');
     const changed = { before: before, after: after };
@@ -195,6 +237,119 @@ async function dialerTests() {
     await request('POST', endpoint('/refresh'), {});
     const persisted = await execute('return document.documentElement.classList.contains("dark");');
     assert(persisted === changed.after, 'Theme did not persist');
+    await click('#sidebarDarkModeToggle');
+  });
+}
+
+async function contactDataTests() {
+  const phone = process.env.QA_CONTACT_PHONE || '+15550190099';
+  const name = 'Automated QA Contact';
+  let ready = false;
+  await test('controlled contact saves and survives reload', async function () {
+    await click('[data-contact-tab="info"]');
+    await fill('#contact-search', phone);
+    await sleep(900);
+    const existing = await execute('return document.querySelector("#contact-search-results [data-contact-id]")||null;', [phone]);
+    if (existing) {
+      await click(existing);
+      await sleep(500);
+      assert(await execute('return document.querySelector("#contact-name-input").value===arguments[0] && document.querySelector("#contact-phone-input").value===arguments[1];', [name, phone]), 'Fixture phone belongs to non-QA contact; refusing to modify');
+    }
+    await click('[data-contact-tab="info"]');
+    await fill('#contact-name-input', name);
+    await fill('#contact-phone-input', phone);
+    await fill('#contact-company-input', 'Webportal UI QA');
+    await fill('#contact-email-input', 'qa-contact@example.invalid');
+    await click('#contact-save');
+    await waitFor(() => execute('return /saved/i.test(document.querySelector("#contact-feedback").textContent);'), 'Contact save showed no success');
+    await request('POST', endpoint('/refresh'), {});
+    await fill('#contact-search', phone);
+    await waitFor(() => execute('return !!document.querySelector("#contact-search-results [data-contact-id]");'), 'Saved contact missing after reload');
+    await click('#contact-search-results [data-contact-id]');
+    await click('[data-contact-tab="info"]');
+    await waitFor(() => execute('return document.querySelector("#contact-name-input").value===arguments[0] && document.querySelector("#contact-phone-input").value===arguments[1];', [name, phone]), 'Saved contact values did not persist');
+    ready = true;
+  });
+  if (!ready) return;
+  await test('QA contact label can be added and removed', async function () {
+    const label = 'qa-loop-check';
+    const selector = '[data-contact-label="' + label + '"]';
+    if (await visible(selector)) await click(selector);
+    await fill('#contact-label-input', label);
+    await click('#contact-label-add');
+    await waitFor(() => visible(selector), 'Added label did not appear');
+    await click(selector);
+    await waitFor(async () => !(await visible(selector)), 'Removed label remains visible');
+  });
+  await test('QA contact follow-up flag toggles and restores', async function () {
+    const before = await execute('return document.querySelector("#contact-flag-toggle").getAttribute("aria-pressed");');
+    try {
+      await click('#contact-flag-toggle');
+      await waitFor(() => execute('return document.querySelector("#contact-flag-toggle").getAttribute("aria-pressed")!==arguments[0];', [before]), 'Flag did not toggle');
+    } finally {
+      const after = await execute('return document.querySelector("#contact-flag-toggle").getAttribute("aria-pressed");');
+      if (after !== before) {
+        await click('#contact-flag-toggle');
+        await waitFor(() => execute('return document.querySelector("#contact-flag-toggle").getAttribute("aria-pressed")===arguments[0];', [before]), 'Flag was not restored');
+      }
+    }
+  });
+  await test('contact comment persists and activity records change', async function () {
+    const note = 'QA verification ' + RUN_ID;
+    await click('[data-contact-tab="notes"]');
+    await fill('#contact-comment-input', note);
+    await click('#contact-comment-add');
+    await waitFor(() => execute('return document.querySelector("#contact-comments").textContent.includes(arguments[0]);', [note]), 'Comment was not rendered');
+    await request('POST', endpoint('/refresh'), {});
+    await fill('#contact-search', phone);
+    await waitFor(() => execute('return !!document.querySelector("#contact-search-results [data-contact-id]");'), 'Contact search did not load');
+    await click('#contact-search-results [data-contact-id]');
+    await click('[data-contact-tab="notes"]');
+    await waitFor(() => execute('return document.querySelector("#contact-comments").textContent.includes(arguments[0]);', [note]), 'Comment missing after reload');
+    await click('[data-contact-tab="activity"]');
+    await waitFor(() => execute('return /comment/i.test(document.querySelector("#contact-activity").textContent);'), 'Comment activity was not recorded');
+    await click('[data-contact-tab="history"]');
+    await waitFor(() => execute('const t=document.querySelector("#contact-call-history").textContent.trim();return t.length>0&&!/loading|unable|error/i.test(t);'), 'Call history failed to load');
+  });
+}
+
+async function echoTests() {
+  const number = process.env.QA_ECHO_NUMBER;
+  if (!number) {
+    results.blocked.push({name:'live call and audio', detail:'Set QA_ECHO_NUMBER to an authorized controlled echo destination.'});
+    return;
+  }
+  await test('controlled echo call connects, plays audio, mutes and hangs up', async function () {
+    await navigate(APP + '/admin/dialer');
+    try {
+      await fill('#dialpad-display', number);
+      await click('#dialer-form button[type=submit]');
+      await waitFor(async () => {
+        const alert = await execute('return document.querySelector("#dialer-alert")?.textContent || "";');
+        if (/Browser audio is not configured for this user/i.test(alert)) {
+          const error = new Error(alert); error.qaBlocked = true; throw error;
+        }
+        return execute('const a=document.querySelector("#dialer-audio"); return !!a?.srcObject?.getAudioTracks().some(t=>t.readyState==="live") && !a.paused;');
+      }, 'Echo call did not produce a playing remote audio track', 30000);
+      const measurement = await request('POST', endpoint('/execute/async'), {script: `const done=arguments[arguments.length-1];
+        (async()=>{const a=document.querySelector('#dialer-audio');const c=new AudioContext();
+        try {await c.resume();const source=c.createMediaStreamSource(a.srcObject);const analyser=c.createAnalyser();source.connect(analyser);
+        const data=new Float32Array(analyser.fftSize);let peak=0;const end=Date.now()+3000;
+        while(Date.now()<end){analyser.getFloatTimeDomainData(data);for(const value of data)peak=Math.max(peak,Math.abs(value));await new Promise(r=>setTimeout(r,50));}
+        done({peak,muted:a.muted,volume:a.volume});}catch(e){done({error:e.message});}finally{await c.close();}})();`, args:[]});
+      assert(!measurement.error && measurement.peak > 0.001 && !measurement.muted && measurement.volume > 0, 'Remote sound was silent or blocked: '+JSON.stringify(measurement));
+      const mute = '[data-call-proxy="mute"]';
+      await click(mute);
+      await waitFor(() => execute('return document.querySelector("[data-call-proxy=mute]").getAttribute("aria-pressed")==="true";'), 'Mute UI did not activate');
+      await click(mute);
+      await waitFor(() => execute('return document.querySelector("[data-call-proxy=mute]").getAttribute("aria-pressed")==="false";'), 'Unmute UI did not activate');
+    } finally {
+      const active = await execute('return !document.querySelector("[data-action=hangup]")?.disabled;');
+      if (active) {
+        await click(await visible('[data-call-proxy="hangup"]') ? '[data-call-proxy="hangup"]' : '[data-action="hangup"]');
+        await waitFor(() => execute('return document.querySelector("[data-action=hangup]").disabled;'), 'Hangup did not end call');
+      }
+    }
   });
 }
 
@@ -215,8 +370,9 @@ async function adminTests() {
     });
   }
   await test('Inbound DID add form', async function () {
-    const clicked = await execute('const a=[...document.querySelectorAll("a")].find(e=>/add inbound did/i.test(e.textContent));if(!a)return false;a.click();return true;');
+    const clicked = await execute('const a=[...document.querySelectorAll("a")].find(e=>/add inbound did/i.test(e.textContent));return a||null;');
     assert(clicked, 'Add Inbound DID link missing');
+    await click(clicked);
     await waitFor(async function () { return execute('return location.pathname.endsWith("/inbound-dids/create");'); }, 'DID form did not load');
     const missing = await execute('return ["#carrier_id","#did","#label"].filter(s=>!document.querySelector(s));');
     assert(missing.length === 0, 'DID fields missing: ' + missing.join(', '));
@@ -230,8 +386,10 @@ async function adminTests() {
     for (const route of routes) {
       const target = route.href.startsWith('http') ? route.href : APP + (route.href.startsWith('/') ? route.href : '/' + route.href);
       if (!target.startsWith(APP)) continue;
-      await navigate(target);
+      await navigate(APP + '/admin');
+      await clickSidebar(route.label);
       await sleep(250);
+      await inventory();
       const state = await execute('return {body:document.body?.innerText||"",status:performance.getEntriesByType("navigation").slice(-1)[0]?.responseStatus||0};');
       if (state.status >= 400 || /server error|ErrorException|stack trace/i.test(state.body)) failures.push({ label: route.label, href: route.href, status: state.status });
     }
@@ -249,6 +407,13 @@ async function mobileTests() {
     assert(data.keys === 12, 'Mobile dialpad is incomplete');
     assert(data.scroll <= data.viewport + 1, 'Horizontal page overflow ' + data.scroll + '/' + data.viewport);
   });
+  await test('mobile contact tabs reveal their content', async function () {
+    for (const tab of ['notes', 'activity', 'history', 'info']) {
+      await click('[data-contact-tab="' + tab + '"]');
+      assert(await visible('[data-contact-tab-panel="' + tab + '"]'), tab + ' mobile panel is hidden');
+    }
+  });
+
 }
 
 async function apiDiagnostics() {
@@ -270,7 +435,8 @@ async function apiDiagnostics() {
 
 function writeReport() {
   results.finishedAt = new Date().toISOString();
-  results.summary = { passed: results.passed.length, failed: results.failed.length };
+  results.summary = { passed: results.passed.length, failed: results.failed.length, blocked: results.blocked.length };
+  results.coverage = { exhaustive: false, scope: 'UI navigation, dialpad, contact data, theme, layout and configured echo call', unverified: ['Inbound call fixture, carrier/PSTN calls and recordings', 'Role-by-role authorization and administrative CRUD', 'AI agent conversations and all settings combinations', 'Human speaker audibility and microphone hardware'] };
   fs.mkdirSync(path.dirname(REPORT_PATH), { recursive: true });
   fs.writeFileSync(REPORT_PATH, JSON.stringify(results, null, 2) + '\n');
   console.log('QA REPORT: ' + REPORT_PATH);
@@ -283,18 +449,21 @@ async function main() {
     await login();
     await dashboardTests();
     await dialerTests();
+    await contactDataTests();
+    await echoTests();
     await adminTests();
     await mobileTests();
   } catch (error) {
     fail('runner', error);
+    await captureScreenshot('runner');
   } finally {
     if (sessionId) await request('DELETE', endpoint('')).catch(function () {});
     if (driver) driver.kill('SIGTERM');
   }
-  console.log('\nQA RESULT: ' + results.passed.length + ' passed, ' + results.failed.length + ' failed');
+  console.log('\nQA RESULT: ' + results.passed.length + ' passed, ' + results.failed.length + ' failed, ' + results.blocked.length + ' blocked');
   if (results.failed.length) console.log(JSON.stringify(results.failed, null, 2));
   writeReport();
-  process.exitCode = results.failed.length ? 1 : 0;
+  process.exitCode = results.failed.length ? 1 : results.blocked.length ? 2 : 0;
 }
 
 main();

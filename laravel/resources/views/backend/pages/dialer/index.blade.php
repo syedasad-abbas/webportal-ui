@@ -71,6 +71,12 @@ html:not(.dark) .connectpro-dialer-toolbar input { background: #ffffff !importan
     .connectpro-dialer #contact-comment-input:disabled,
     .connectpro-dialer #contact-label-input:disabled,
     .connectpro-dialer [data-compact-comment-input]:disabled { background: #e5e7eb !important; color: #6b7280 !important; }
+    .dark .connectpro-dialer #contact-comment-input,
+    .dark .connectpro-dialer #contact-label-input,
+    .dark .connectpro-dialer [data-compact-comment-input] { background: #0b1b2c !important; color: #e2e8f0 !important; }
+    .dark .connectpro-dialer #contact-comment-input:disabled,
+    .dark .connectpro-dialer #contact-label-input:disabled,
+    .dark .connectpro-dialer [data-compact-comment-input]:disabled { background: #14263a !important; color: #94a3b8 !important; }
     .connectpro-dialer .connectpro-customer-workspace-card > #contact-workspace-panel > [data-contact-tab-panel] { min-height: 0; overflow: hidden; }
     .connectpro-dialer #contact-comments { overflow-y: auto; }
 }
@@ -662,6 +668,47 @@ html:not(.dark) .connectpro-dialer-toolbar input { background: #ffffff !importan
       margin-top: 1rem !important;
     }
   }
+
+/* Keep workspace navigation operable across the desktop grid and mobile stack. */
+.connectpro-dialer #contact-workspace-panel .contact-tabs {
+    display: flex !important;
+    overflow-x: auto;
+}
+.connectpro-dialer #contact-workspace-panel [data-contact-tab-panel].hidden {
+    display: none !important;
+}
+@media (min-width: 768px) and (orientation: landscape) {
+    .connectpro-dialer #contact-workspace-panel > .contact-tabs {
+        grid-column: 2;
+        grid-row: 2;
+        align-self: start;
+        height: 48px;
+        z-index: 1;
+    }
+    .connectpro-dialer #contact-workspace-panel > .connectpro-activity-history-card {
+        display: contents !important;
+    }
+    .connectpro-dialer #contact-workspace-panel [data-contact-tab-panel]:not(.hidden) {
+        display: flex !important;
+        flex-direction: column;
+        grid-column: 2 !important;
+        grid-row: 2 / span 2 !important;
+        align-self: stretch;
+        width: auto !important;
+        height: auto !important;
+        min-height: 0 !important;
+        margin: 48px 0 0 !important;
+        overflow-y: auto !important;
+        border: 1px solid #20344c;
+        border-radius: 0 0 16px 16px !important;
+    }
+}
+@media (min-width: 1101px) and (orientation: landscape) {
+    .connectpro-dialer #contact-workspace-panel > .contact-tabs,
+    .connectpro-dialer #contact-workspace-panel [data-contact-tab-panel]:not(.hidden) {
+        grid-column: 2 / span 2 !important;
+    }
+}
  </style>
 @endpush
 
@@ -708,11 +755,8 @@ html:not(.dark) .connectpro-dialer-toolbar input { background: #ffffff !importan
                 <form id="dialer-form" method="POST" action="{{ route('admin.dialer.dial') }}">
                     @csrf
                     <div class="relative rounded-xl border border-[#365068] bg-[#0b1b2c] px-11 py-3 sm:px-12 sm:py-3.5">
-                        <i class="bi bi-phone absolute left-4 top-1/2 -translate-y-1/2 text-xl text-slate-300"></i>
                         <input type="text" id="dialpad-display" placeholder="{{ __('Enter number or name') }}" inputmode="tel" autocomplete="tel" class="w-full border-0 bg-transparent p-0 text-left text-lg font-normal tracking-normal text-white outline-none ring-0 placeholder:text-slate-400 focus:border-0 focus:ring-0">
                         <input type="hidden" name="destination" id="dialpad-input" required>
-                        <button type="button" id="dialpad-clear" class="sr-only" title="{{ __('Clear') }}">{{ __('Clear') }}</button>
-                        <button type="button" id="dialpad-backspace" class="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-2 text-xl text-slate-300 hover:text-white" title="{{ __('Delete') }}"><i class="bi bi-x-lg"></i></button>
                     </div>
 
                     <div class="dialpad-grid mt-5" aria-label="Dial pad">
@@ -826,7 +870,7 @@ html:not(.dark) .connectpro-dialer-toolbar input { background: #ffffff !importan
                     <div id="contact-comments" class="max-h-72 space-y-2 overflow-y-auto p-4"><p class="text-sm text-slate-400">{{ __('Save or select a contact to view comments.') }}</p></div>
                     <div class="border-t border-[#263b50] p-3">
                         <div class="flex items-end gap-2">
-                            <textarea id="contact-comment-input" rows="2" maxlength="2000" disabled placeholder="{{ __('Add a comment…') }}" class="min-w-0 flex-1 resize-none rounded-xl border border-[#365068] bg-white px-3 py-2.5 text-sm text-[#0f172a] outline-none placeholder:text-slate-400 focus:border-blue-500 disabled:bg-gray-200 disabled:text-slate-500"></textarea>
+                            <textarea id="contact-comment-input" rows="2" maxlength="2000" disabled placeholder="{{ __('Add a comment…') }}" class="min-w-0 flex-1 resize-none rounded-xl border border-[#365068] bg-[#0b1b2c] px-3 py-2.5 text-sm text-slate-200 outline-none placeholder:text-slate-500 focus:border-violet-500 disabled:bg-[#14263a] disabled:text-slate-500"></textarea>
                             <button id="contact-comment-add" type="button" disabled class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-60" title="{{ __('Add comment') }}"><i class="bi bi-send-fill"></i></button>
                         </div>
                     </div>
@@ -843,7 +887,7 @@ html:not(.dark) .connectpro-dialer-toolbar input { background: #ffffff !importan
                     <p class="mt-2 text-xs leading-5 text-slate-400">{{ __('Flag contacts for follow-up after a call.') }}</p>
                 </div>
                 <div class="mt-5 flex w-full gap-2">
-                    <input id="contact-label-input" type="text" maxlength="30" disabled placeholder="{{ __('Add label') }}" class="min-w-0 flex-1 rounded-lg border border-[#365068] bg-white px-3 py-2 text-xs text-[#0f172a] outline-none placeholder:text-slate-400 focus:border-blue-500 disabled:bg-gray-200 disabled:text-slate-500">
+                    <input id="contact-label-input" type="text" maxlength="30" disabled placeholder="{{ __('Add label') }}" class="min-w-0 flex-1 rounded-lg border border-[#365068] bg-[#0b1b2c] px-3 py-2 text-xs text-slate-200 outline-none placeholder:text-slate-500 focus:border-violet-500 disabled:bg-[#14263a] disabled:text-slate-500">
                     <button id="contact-label-add" type="button" disabled class="rounded-lg border border-blue-500/50 bg-blue-500/10 px-3 py-2 text-xs font-semibold text-blue-300 hover:bg-blue-500/20 disabled:opacity-60">{{ __('Add') }}</button>
                 </div>
             </section>
@@ -977,8 +1021,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const displayInput = document.getElementById('dialpad-display');
     const hiddenInput = document.getElementById('dialpad-input');
     const dialpadButtons = document.querySelectorAll('.dialpad-key');
-    const clearButton = document.getElementById('dialpad-clear');
-    const backspaceButton = document.getElementById('dialpad-backspace');
 
     // Live session UI
     const liveSession = document.getElementById('live-call-session');
@@ -2918,29 +2960,6 @@ document.addEventListener('DOMContentLoaded', function () {
             playTone(value);
         });
     });
-
-    if (clearButton) {
-        clearButton.addEventListener('click', () => {
-            if (callActive) return;
-            if (manualDialLocked) {
-                showManualDialLocked();
-                return;
-            }
-            syncDisplay('');
-        });
-    }
-
-    if (backspaceButton) {
-        backspaceButton.addEventListener('click', () => {
-            if (callActive) return;
-            if (manualDialLocked) {
-                showManualDialLocked();
-                return;
-            }
-            const current = hiddenInput.value || '';
-            syncDisplay(current.slice(0, -1));
-        });
-    }
 
     // ===== Campaign automation =====
     const campaignSelect = document.getElementById('campaign_id');

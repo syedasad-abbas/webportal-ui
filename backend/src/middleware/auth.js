@@ -5,6 +5,7 @@ const db = require('../db');
 const { getAssignedPermissions } = require('../services/permissionService');
 
 const permissionAliases = {
+  'ai_agent.configure': ['dialer.create_call'],
   dial: ['dialer.create_call'],
   'dialer.create_call': ['dial']
 };

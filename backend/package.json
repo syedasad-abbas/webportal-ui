@@ -7,7 +7,9 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "qa:ui": "node qa-ui-webdriver.js",
-    "qa:playwright": "node qa-ui-loop.js"
+    "qa:playwright": "node qa-ui-loop.js",
+    "qa:loop-agent": "node qa-loop-agent.test.js",
+    "qa:autonomous": "bash ../scripts/qa-autonomous-loop.sh"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

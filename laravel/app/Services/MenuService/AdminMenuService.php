@@ -181,7 +181,7 @@ $this->addMenuItem([
     'route' => route('admin.ai-agent.index'),
     'active' => Route::is('admin.ai-agent.*'),
     'priority' => 11,
-    'permissions' => ['dialer.create_call'],
+    'permissions' => ['ai_agent.configure', 'dialer.create_call'],
 ]);
 
 //recording menu

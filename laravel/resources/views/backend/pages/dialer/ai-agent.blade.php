@@ -75,8 +75,20 @@ html:not(.dark) #ai-agent-page .ai-save-faq:hover { background: #f5f3ff; }
 .dark #ai-agent-page .ai-save-faq:hover { background: rgba(139, 92, 246, .1); }
 /* The checkbox sits on a light card inside the dark card, so it keeps the
    page's dark input surface rather than a flat white box. */
-.dark #ai-agent-page input[type="checkbox"] { background: #0b1c2c; border-color: #365068; }
-.dark #ai-agent-page input[type="checkbox"]:checked { background-color: #7c3aed; border-color: #7c3aed; }
+.dark #ai-agent-page input[type="checkbox"] {
+    background: #0b1c2c !important;
+    border-color: #365068 !important;
+    /* The checked state paints its background as currentColor !important, and
+       the card-wide rule above leaves every input's color at white, so the
+       checked box would come out white on white. Setting the checkbox colour
+       here makes currentColor resolve to violet for both states. */
+    color: #c4b5fd !important;
+}
+/* The card-wide rule above sets `background: #071625 !important` on every
+   input, and `background` is the shorthand for background-color, so without
+   the flag here the checkbox would stay white. The same flag is what lets the
+   checked state override the unchecked one. */
+.dark #ai-agent-page input[type="checkbox"]:checked { background-color: #7c3aed !important; border-color: #7c3aed !important; }
 </style>
 @endpush
 

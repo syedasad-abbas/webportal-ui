@@ -77,7 +77,7 @@ class AiAgentController extends Controller
 
         $saved = $settings->replaceFaqs($faqs);
 
-        if ($saved === [] && $faqs !== []) {
+        if ($saved === null || ($saved === [] && $faqs !== [])) {
             return response()->json([
                 'ok' => false,
                 'message' => __('The backend did not accept the expected questions.'),
@@ -93,7 +93,8 @@ class AiAgentController extends Controller
      */
     protected function assertAiAgentPermission(Request $request): void
     {
-        if (! $request->user() || ! $request->user()->can('dialer.create_call')) {
+        if (! $request->user()
+            || (! $request->user()->can('ai_agent.configure') && ! $request->user()->can('dialer.create_call'))) {
             abort(403, __('You do not have permission to configure the AI agent.'));
         }
     }

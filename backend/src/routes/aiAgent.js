@@ -5,7 +5,7 @@ const settings = require('../services/aiAgentSettingsService');
 const faqs = require('../services/aiAgentFaqService');
 
 const router = express.Router();
-const guard = [authenticate(), requirePermissions(['dialer.create_call'])];
+const guard = [authenticate(), requirePermissions(['ai_agent.configure'])];
 
 router.get('/', ...guard, async (_req, res, next) => {
   try { return res.json({ ok: true, settings: await settings.get() }); } catch (err) { return next(err); }

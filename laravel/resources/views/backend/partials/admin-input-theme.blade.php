@@ -31,6 +31,16 @@ textarea:disabled {
     color: #94a3b8 !important;
     cursor: not-allowed;
 }
+/* Tailwind paints a checked checkbox's background as currentColor !important,
+   so the box only takes a real colour when the element's own color is set. In
+   dark mode the card-wide rules leave most inputs at white, which made every
+   checked checkbox render white-on-white. A violet accent on the checkbox
+   itself makes currentColor resolve to violet in both states, and the
+   unchecked box falls back to the dark surface. */
+.dark input[type="checkbox"],
+.dark input[type="radio"] {
+    color: #c4b5fd !important;
+}
 html.dark input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="file"]):not([type="color"]):not([type="range"]),
 html.dark select,
 html.dark textarea {

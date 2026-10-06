@@ -21,6 +21,7 @@ const HEADLESS = process.env.QA_HEADLESS !== 'false';
 const QA_CONTACT_PHONE = process.env.QA_CONTACT_PHONE || '+15550190099';
 const QA_CONTACT_NAME = 'Automated QA Contact';
 const BROWSER_PATH = process.env.QA_BROWSER_PATH || '';
+const REPORT_PATH = process.env.QA_REPORT_PATH || '';
 const EXPECTED_NAV = ['Dialer', 'Roles', 'Permissions', 'Users', 'View carrier', 'New Carrier', 'Inbound DIDs'];
 
 class Suite {
@@ -67,25 +68,53 @@ class Suite {
 
 const visible = async (locator) => locator.count() > 0 && locator.first().isVisible();
 
-async function clickSidebarLink(page, text) {
-  let link = page.getByRole('link', { name: text, exact: true }).first();
-  if (await visible(link)) {
-    await link.click();
-    return;
-  }
+const SIDEBAR_ROUTES = {
+  Dialer: '/admin/dialer',
+  Roles: '/admin/roles',
+  'New Role': '/admin/roles/create',
+  Permissions: '/admin/permissions',
+  Users: '/admin/users',
+  'New User': '/admin/users/create',
+  'View carrier': '/admin/carrier',
+  'New Carrier': '/admin/carrier/create',
+  'Inbound DIDs': '/admin/carrier/inbound-dids',
+};
 
-  const submenuButtons = page.locator('aside button.menu-item');
-  for (let i = 0; i < await submenuButtons.count(); i += 1) {
-    const button = submenuButtons.nth(i);
-    const submenu = button.locator('xpath=following-sibling::div[1]');
-    if (await submenu.getByRole('link', { name: text, exact: true }).count()) {
-      if (await submenu.evaluate((element) => element.classList.contains('hidden'))) await button.click();
-      link = submenu.getByRole('link', { name: text, exact: true }).first();
-      await link.click();
-      return;
+async function sidebarLink(page, text) {
+  const route = SIDEBAR_ROUTES[text];
+  if (route) {
+    const routeSelector = `aside a[href="${route}"], aside a[href="${BASE_URL}${route}"]`;
+    return page.locator(routeSelector).first();
+  }
+  return page.locator('aside a.menu-item').filter({ hasText: text }).first();
+}
+
+async function clickSidebarLink(page, text) {
+  const route = SIDEBAR_ROUTES[text];
+  const link = await sidebarLink(page, text);
+  if ((await link.count()) === 0) throw new Error(`Sidebar link not found: ${text}`);
+
+  if (route) {
+    const linkHandle = await link.elementHandle();
+    if (linkHandle) {
+      await linkHandle.evaluate((element) => {
+        let list = element.closest('ul');
+        while (list) {
+          if (list.classList.contains('hidden')) {
+            const parentButton = list.parentElement?.querySelector(':scope > button');
+            parentButton?.click();
+          }
+          list = list.parentElement?.closest('ul');
+        }
+      });
     }
   }
-  throw new Error(`Sidebar link not found: ${text}`);
+
+  const target = page.locator(`aside a[href="${route}"], aside a[href="${BASE_URL}${route}"]`).first();
+  await target.scrollIntoViewIfNeeded();
+  if (!(await visible(target))) throw new Error(`Sidebar item is not visible: ${text}`);
+  await target.click();
+  if (route) await page.waitForURL(`${BASE_URL}${route}*`);
 }
 
 async function login(page, suite) {
@@ -122,7 +151,7 @@ async function testDashboard(page, suite) {
 async function testTheme(page, suite) {
   await suite.test('dark and light theme toggle persists', async () => {
     const toggle = page.locator('#sidebarDarkModeToggle');
-    suite.assert(await visible(toggle), 'Theme toggle is not visible');
+    suite.assert(await toggle.count() === 1 && await toggle.isVisible(), 'Theme toggle is not visible');
     const before = await page.locator('html').evaluate((el) => el.classList.contains('dark'));
     await toggle.click();
     await page.waitForTimeout(250);
@@ -381,12 +410,19 @@ async function main() {
   const final = cycles[cycles.length - 1];
   const report = {
     cycles: cycles.length,
-    passed: final.passed.length,
+    passed: final.passed,
     failed: final.failed,
     warnings: final.warnings,
     networkErrors: final.networkErrors,
     consoleErrors: final.consoleErrors,
+    inventory: final.passed,
   };
+  if (REPORT_PATH) {
+    const fs = require('fs');
+    const path = require('path');
+    fs.mkdirSync(path.dirname(REPORT_PATH), { recursive: true });
+    fs.writeFileSync(REPORT_PATH, `${JSON.stringify(report, null, 2)}\n`);
+  }
   console.log(`\nQA_RESULT ${JSON.stringify(report, null, 2)}`);
   process.exitCode = final.failed.length ? 1 : 0;
 }

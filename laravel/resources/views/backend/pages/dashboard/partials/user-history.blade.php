@@ -9,9 +9,13 @@
         <div>
             <button type="button" data-tooltip-target="data-tooltip" data-tooltip-placement="bottom"
                 onclick="window.location.href='{{ route('admin.users.index') }}'"
-                class="hidden sm:inline-flex items-center justify-center text-gray-500 w-8 h-8 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-4 focus:ring-gray-200 dark:focus:ring-gray-700 rounded-lg text-sm">
+                class="hidden sm:inline-flex items-center justify-center text-gray-500 w-8 h-8 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-4 focus:ring-gray-200 dark:focus:ring-gray-700 rounded-lg text-sm" aria-label="View users">
                 <img src="{{ asset('/images/icons/move.svg') }}" class="dark:invert">
             </button>
+            <div id="data-tooltip" role="tooltip" class="absolute z-10 invisible inline-block rounded-lg bg-gray-900 px-3 py-2 text-sm font-medium text-white opacity-0 shadow-xs transition-opacity duration-300 tooltip dark:bg-gray-700">
+                {{ __('View users') }}
+                <div class="tooltip-arrow" data-popper-arrow></div>
+            </div>
         </div>
     </div>
 

@@ -32,10 +32,14 @@
             </div>
             <p class="mt-1 truncate text-[10px] text-slate-400">SIP: {{ auth()->user()->sipCredential?->sip_username ?? '—' }}<span>@</span>{{ config('services.webrtc.domain') ?: request()->getHost() }}</p>
         </div>
-        <button id="sidebarDarkModeToggle" type="button" @click.prevent="toggleTheme()" :aria-pressed="darkMode.toString()" class="mb-2 flex w-full items-center justify-between rounded-xl px-2 py-2 text-sm text-slate-300 transition hover:bg-white/5">
+        <button id="sidebarDarkModeToggle" type="button" data-theme-toggle="sidebar" @click.prevent="toggleTheme()" :aria-pressed="darkMode.toString()" class="mb-2 flex w-full items-center justify-between rounded-xl border border-[#294158] bg-[#0f2031] px-2 py-2 text-sm text-slate-200 shadow-sm transition hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-blue-500/60" aria-label="Toggle theme">
             <span class="flex items-center gap-3"><i class="bi text-xl" :class="darkMode ? 'bi-moon-stars' : 'bi-sun'"></i><span x-text="darkMode ? '{{ __('Dark Mode') }}' : '{{ __('Light Mode') }}'"></span></span>
             <span class="relative h-6 w-11 rounded-full transition-colors" :class="darkMode ? 'bg-blue-600' : 'bg-slate-300'"><span class="absolute top-1 h-4 w-4 rounded-full bg-white shadow transition-all" :class="darkMode ? 'left-6' : 'left-1'"></span></span>
         </button>
+        <a id="dialer-menu-link" href="{{ route('admin.dialer.index') }}" class="mb-2 flex items-center justify-between rounded-xl border border-[#294158] bg-[#0f2031] px-3 py-2 text-sm font-medium text-slate-200 transition hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-blue-500/60">
+            <span class="flex items-center gap-3"><i class="bi bi-telephone-fill text-base"></i>{{ __('Dialer') }}</span>
+            <i class="bi bi-chevron-right text-xs text-slate-400"></i>
+        </a>
         <a href="{{ route('profile.edit') }}" class="flex items-center gap-3 rounded-xl p-2 transition hover:bg-slate-100 dark:hover:bg-white/5">
             <img src="{{ auth()->user()->getGravatarUrl() }}" alt="" class="h-9 w-9 rounded-full object-cover ring-2 ring-blue-500/20">
             <span class="min-w-0 flex-1">

@@ -34,6 +34,9 @@ class AiAgentSettingsService
 
         $response = Http::acceptJson()
             ->withToken($token)
+            ->withHeaders([
+                'x-internal-token' => config('services.backend.internal_token'),
+            ])
             ->put(config('services.backend.url').'/ai-agent', $settings);
 
         if (! $response->successful()) {
@@ -71,20 +74,25 @@ class AiAgentSettingsService
      * so the browser never has to reconcile entry ids.
      *
      * @param  array<int, array<string, mixed>>  $faqs
-     * @return array<int, array<string, mixed>>
+     * @return array<int, array<string, mixed>>|null Null when the backend rejects the save.
      */
-    public function replaceFaqs(array $faqs): array
+    public function replaceFaqs(array $faqs): ?array
     {
         $token = session('admin_token');
 
         $response = Http::acceptJson()
             ->withToken($token)
+            ->withHeaders([
+                'x-internal-token' => config('services.backend.internal_token'),
+            ])
             ->put(config('services.backend.url').'/ai-agent/faqs', ['faqs' => $faqs]);
 
         if (! $response->successful()) {
-            return [];
+            return null;
         }
 
-        return $response->json('faqs') ?? [];
+        $saved = $response->json('faqs');
+
+        return is_array($saved) ? $saved : null;
     }
 }

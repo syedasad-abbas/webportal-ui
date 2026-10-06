@@ -64,6 +64,19 @@ test('required permissions are conjunctive and dial alias remains supported', as
   assert.equal((await f.check('campaign.play', 'admin')).status, 403);
 });
 
+test('AI agent configuration uses a dedicated permission with dialer compatibility', async () => {
+  const permissionSource = fs.readFileSync(path.resolve(__dirname, '../../laravel/app/Services/PermissionService.php'), 'utf8');
+  assert.match(permissionSource, /'ai_agent\.configure'/);
+
+  const f = fixture();
+  f.grant(['ai_agent.configure']);
+  assert.equal((await f.check('ai_agent.configure', 'admin')).allowed, true);
+  f.grant(['dialer.create_call']);
+  assert.equal((await f.check('ai_agent.configure', 'admin')).allowed, true);
+  f.grant([]);
+  assert.equal((await f.check('ai_agent.configure', 'admin')).status, 403);
+});
+
 test('database failures cannot grant access', async () => {
   const f = fixture();
   f.fail();

@@ -57,6 +57,10 @@ class PermissionService
                 'permissions' => ['dialer.create_call'],
             ],
             [
+                'group_name' => 'ai_agent',
+                'permissions' => ['ai_agent.configure'],
+            ],
+            [
                 'group_name' => 'recording',
                 'permissions' => [
                     'recording.view',

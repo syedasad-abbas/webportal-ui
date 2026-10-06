@@ -22,3 +22,6 @@ laravel/vendor/
 
 # Logs
 *.log
+
+# Prevent concurrent QA repair loops
+.qa-agent-loop.lock
