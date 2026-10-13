@@ -51,7 +51,6 @@
                             {{-- Internal Name --}}
                             <div>
                                 <label for="internal_name" class="block text-sm font-medium text-gray-700 dark:text-gray-400">
-                                    {{ __('Internal Name') }}
                                 </label>
                                 <input
                                     type="text"
@@ -127,6 +126,33 @@
                                         </option>
                                     @endforeach
                                 </select>
+                            </div>
+
+                            {{-- Dialer Provider --}}
+                            <div>
+                                <label for="dialer_provider" class="block text-sm font-medium text-gray-700 dark:text-gray-400">{{ __('Dialer Provider') }}</label>
+                                <select name="dialer_provider" id="dialer_provider" data-dialer-provider-select class="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90">
+                                    <option value="freeswitch" @selected(old('dialer_provider', 'freeswitch') === 'freeswitch')>{{ __('FreeSWITCH') }}</option>
+                                    <option value="vicidial" @selected(old('dialer_provider') === 'vicidial')>{{ __('VICIdial') }}</option>
+                                </select>
+                            </div>
+
+                            {{-- VICIdial agent and browser phone --}}
+                            <div class="sm:col-span-2 border-t border-gray-200 pt-5 dark:border-gray-700">
+                                <h3 class="text-sm font-semibold text-gray-800 dark:text-white">{{ __('VICIdial agent and phone') }}</h3>
+                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Required only when VICIdial is selected. Enter the agent login and phone credentials assigned in VICIdial. API, WebSocket, SIP server, and certificate settings stay in the application .env.') }}</p>
+                            </div>
+                            <div>
+                                <label for="vicidial_agent_user" class="block text-sm font-medium text-gray-700 dark:text-gray-400">{{ __('VICIdial Agent User') }}</label>
+                                <input type="text" name="vicidial_agent_user" id="vicidial_agent_user" value="{{ old('vicidial_agent_user') }}" placeholder="{{ __('e.g. 6666') }}" autocomplete="off" class="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90">
+                            </div>
+                            <div>
+                                <label for="vici_username" class="block text-sm font-medium text-gray-700 dark:text-gray-400">{{ __('VICIdial Username') }}</label>
+                                <input type="text" name="vici_username" id="vici_username" value="{{ old('vici_username') }}" placeholder="{{ __('e.g. gs102') }}" autocomplete="off" class="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90">
+                            </div>
+                            <div>
+                                <label for="vici_password" class="block text-sm font-medium text-gray-700 dark:text-gray-400">{{ __('VICIdial Password') }}</label>
+                                <input type="password" name="vici_password" id="vici_password"  placeholder="{{ __('VICIdial phone secret') }}" autocomplete="new-password" class="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90">
                             </div>
 
                             {{-- SIP Username --}}

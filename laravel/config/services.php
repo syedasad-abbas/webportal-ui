@@ -1,23 +1,11 @@
 <?php
 
 return [
-
-    /*
-    |--------------------------------------------------------------------------
-    | Third Party Services
-    |--------------------------------------------------------------------------
-    |
-    | This file is for storing the credentials for third party services such
-    | as Mailgun, Postmark, AWS and more. This file provides the de facto
-    | location for this type of information, allowing packages to have
-    | a conventional file to locate the various service credentials.
-    |
-    */
-
     'mailgun' => [
         'domain' => env('MAILGUN_DOMAIN'),
         'secret' => env('MAILGUN_SECRET'),
         'endpoint' => env('MAILGUN_ENDPOINT', 'api.mailgun.net'),
+        'scheme' => 'https',
     ],
 
     'postmark' => [
@@ -31,23 +19,13 @@ return [
     ],
 
     'backend' => [
-        'url' => env('BACKEND_URL', 'http://backend:4000'),
-        // Browser events use the website's /socket.io/ proxy by default.
-        // BACKEND_URL is server-to-server and must not become a browser URL.
+        'url' => env('BACKEND_URL'),
         'ws_url' => env('BACKEND_WS_URL', ''),
         'internal_token' => env('BACKEND_INTERNAL_TOKEN'),
     ],
 
     'webrtc' => [
-        'ws' => env('WEBRTC_WS') ?: (function () {
-            $appUrl = env('APP_URL', 'http://localhost');
-            $parsed = parse_url($appUrl);
-            $host = $parsed['host'] ?? 'localhost';
-            $scheme = $parsed['scheme'] ?? 'http';
-            $protocol = ($scheme === 'https') ? 'wss' : 'ws';
-            $port = ($scheme === 'https') ? 7443 : 5066;
-            return "{$protocol}://{$host}:{$port}";
-        })(),
+        'ws' => env('WEBRTC_WS', 'ws://192.168.18.31:5066'),
         'domain' => env('WEBRTC_SIP_DOMAIN') ?: (function () {
             $appUrl = env('APP_URL', 'http://localhost');
             $parsed = parse_url($appUrl);
@@ -57,6 +35,4 @@ return [
         'password' => env('WEBRTC_SIP_PASSWORD', '1234'),
         'ice_servers' => array_values(array_filter(array_map('trim', explode(',', env('WEBRTC_ICE_SERVERS', 'stun:stun.l.google.com:19302'))))),
     ],
-
-
 ];

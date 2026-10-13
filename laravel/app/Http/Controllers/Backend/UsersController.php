@@ -122,6 +122,7 @@ class UsersController extends Controller
         $user->external_name = $request->input('external_name');
         $user->internal_name = $request->input('internal_name');
         $user->email = $request->input('email');
+        $user->dialer_provider = $request->input('dialer_provider', 'freeswitch');
 
         // Status
         $user->is_active = $request->boolean('is_active', true);
@@ -145,6 +146,7 @@ class UsersController extends Controller
         /** @var User $user */
         $user = ld_apply_filters('user_store_after_save', $user, $request);
         $this->persistSipCredentials($request, $user);
+        $this->persistVicidialCredentials($request, $user);
 
         // Roles assignment
         if ($request->filled('roles')) {
@@ -202,6 +204,7 @@ class UsersController extends Controller
         $user->external_name = $request->input('external_name');
         $user->internal_name = $request->input('internal_name');
         $user->email = $request->input('email');
+        $user->dialer_provider = $request->input('dialer_provider', 'freeswitch');
 
         // Status
         if ($request->has('is_active')) {
@@ -229,6 +232,7 @@ class UsersController extends Controller
         $user->save();
         $user = ld_apply_filters('user_update_after_save', $user, $request);
         $this->persistSipCredentials($request, $user);
+        $this->persistVicidialCredentials($request, $user);
 
         ld_do_action('user_update_after', $user);
 
@@ -291,6 +295,7 @@ class UsersController extends Controller
             'role' => $this->normalizeBackendRole($roleName),
             'carrierId' => $carrierExternalId,
             'recordingEnabled' => $user->recording_enabled,
+            'dialerProvider' => $user->dialer_provider ?? 'freeswitch',
             'permissions' => $user->getAllPermissions()->pluck('name')->values()->all(),
         ];
 
@@ -340,6 +345,24 @@ class UsersController extends Controller
             ['user_id' => $user->id],
             $payload
         );
+    }
+
+    protected function persistVicidialCredentials(Request $request, User $user): void
+    {
+        $payload = [];
+        foreach ([
+            'vicidial_agent_user' => 'agent_user',
+            'vici_username' => 'sip_username',
+            'vici_password' => 'sip_password',
+        ] as $input => $column) {
+            if ($request->filled($input)) {
+                $payload[$column] = $request->input($input);
+            }
+        }
+
+        if ($payload) {
+            $user->vicidialCredential()->updateOrCreate(['user_id' => $user->id], $payload);
+        }
     }
 
     public function destroy(int $id): RedirectResponse

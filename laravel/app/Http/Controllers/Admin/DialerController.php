@@ -7,8 +7,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Campaign;
 use App\Models\CampaignRun;
 use App\Models\User;
+use App\Services\VicidialService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class DialerController extends Controller
 {
@@ -56,6 +58,24 @@ class DialerController extends Controller
 
         $user = $request->user();
         $sipCredential = $user?->sipCredential;
+        $dialerProvider = $user?->dialer_provider ?? 'freeswitch';
+        $backendSocketUrl = config('services.backend.ws_url');
+        if (! $backendSocketUrl) {
+            $socketScheme = $request->isSecure() ? 'wss' : 'ws';
+            $backendSocketUrl = $socketScheme.'://'.$request->getHost().':4000';
+        }
+        $dialerProviders = [];
+        if ($sipCredential?->sip_username && $sipCredential?->sip_password) {
+            $dialerProviders['freeswitch'] = __('FreeSWITCH');
+        }
+        if (config('vicidial.enabled')) {
+            try {
+                app(VicidialService::class)->browserConfig((int) $user->id);
+                $dialerProviders['vicidial'] = __('VICIdial');
+            } catch (\Throwable $error) {
+                // Leave VICIdial unavailable in the selector until its agent and phone config are complete.
+            }
+        }
         $wsUrl = config('services.webrtc.ws');
         $webrtcConfig = [
             'wsUrl' => $wsUrl,
@@ -67,6 +87,44 @@ class DialerController extends Controller
         $webrtcError = null;
         if (! $sipCredential || ! $sipCredential->sip_username || ! $sipCredential->sip_password) {
             $webrtcError = __('SIP credentials are not configured for this user.');
+        }
+
+        $vicidial = [
+            'enabled' => $dialerProvider === 'vicidial',
+            'apiReady' => false,
+            'webrtc' => null,
+            'agentUrl' => null,
+            'agentUser' => null,
+            'dispositions' => [],
+            'leadLookup' => false,
+            'commandUrl' => route('admin.vicidial.command'),
+            'csrf' => csrf_token(),
+            'error' => null,
+        ];
+        if ($dialerProvider === 'vicidial') {
+            $webrtcConfig = [
+                'wsUrl' => null,
+                'domain' => null,
+                'username' => null,
+                'password' => null,
+                'iceServers' => [],
+            ];
+            $webrtcError = null;
+            try {
+                $service = app(VicidialService::class);
+                $agent = $service->agent((int) $user->id);
+                $vicidial['webrtc'] = $webrtcConfig = $service->browserConfig((int) $user->id);
+                $vicidial['apiReady'] = $service->apiReady();
+                $vicidial['agentUser'] = $agent['agent_user'];
+                $vicidial['agentUrl'] = str_starts_with((string) config('vicidial.agent_url'), 'https://')
+                    ? config('vicidial.agent_url')
+                    : null;
+                $vicidial['dispositions'] = config('vicidial.dispositions', []);
+                $vicidial['leadLookup'] = ! empty($agent['crm_agent_id']) && ! empty($agent['crm_team_id']);
+            } catch (\Throwable $error) {
+                $vicidial['error'] = $error->getMessage();
+                $webrtcError = $error->getMessage();
+            }
         }
 
         $aiAgentSettings = null;
@@ -89,6 +147,9 @@ class DialerController extends Controller
         return view('backend.pages.dialer.index', [
             'webrtcConfig' => $webrtcConfig,
             'webrtcError' => $webrtcError,
+            'dialerProvider' => $dialerProvider,
+            'dialerProviders' => $dialerProviders,
+            'vicidial' => $vicidial,
             'aiAgentSettings' => $aiAgentSettings,
             'aiAgentBoxTitle' => $this->aiAgentBoxText('ai_box_title', 'box_title'),
             'aiAgentBoxSubtitle' => $this->aiAgentBoxText('ai_box_subtitle', 'box_subtitle'),
@@ -104,15 +165,71 @@ class DialerController extends Controller
                 'labels' => (bool) $user?->can('contacts.labels'),
             ],
             'inboundSocket' => [
-                'url' => config('services.backend.ws_url'),
+                'url' => $backendSocketUrl,
                 'userId' => $user?->id,
             ],
         ]);
     }
 
+    public function selectProvider(Request $request)
+    {
+        $this->assertDialerPermission($request);
+        $data = $request->validate([
+            'provider' => ['required', 'in:freeswitch,vicidial'],
+        ]);
+        $user = $request->user();
+
+        if ($data['provider'] === 'vicidial') {
+            try {
+                app(VicidialService::class)->browserConfig((int) $user->id);
+            } catch (\Throwable $error) {
+                return back()->withErrors(['provider' => $error->getMessage()]);
+            }
+        } elseif (! $user->sipCredential?->sip_username || ! $user->sipCredential?->sip_password) {
+            return back()->withErrors(['provider' => __('FreeSWITCH SIP credentials are not configured for this user.')]);
+        }
+
+        $user->dialer_provider = $data['provider'];
+        $user->save();
+
+        try {
+            $internalToken = config('services.backend.internal_token');
+            if (! $internalToken) {
+                throw new \RuntimeException('Backend internal token is not configured.');
+            }
+            $response = Http::withHeaders(['x-internal-token' => $internalToken])
+                ->baseUrl(config('services.backend.url'))
+                ->post('/admin/users/sync', [
+                    'email' => $user->email,
+                    'fullName' => $user->external_name ?: $user->email,
+                    'dialerProvider' => $user->dialer_provider,
+                ]);
+            if ($response->failed()) {
+                throw new \RuntimeException('Backend user sync returned HTTP '.$response->status());
+            }
+        } catch (\Throwable $error) {
+            Log::warning('Dialer provider saved but backend sync failed', [
+                'user_id' => $user->id,
+                'provider' => $user->dialer_provider,
+                'error' => $error->getMessage(),
+            ]);
+            return redirect()->route('admin.dialer.index')
+                ->with('warning', __('Provider changed locally, but call-routing sync failed. Refresh or contact an administrator.'));
+        }
+
+        return redirect()->route('admin.dialer.index')
+            ->with('status', __('Phone provider changed to :provider.', ['provider' => $data['provider'] === 'vicidial' ? 'VICIdial' : 'FreeSWITCH']));
+    }
+
     public function dial(Request $request)
     {
         $this->assertDialerPermission($request);
+        if ($request->user()?->dialer_provider === 'vicidial') {
+            return response()->json([
+                'ok' => false,
+                'message' => __('Manual dialing is handled by the active VICIdial agent session.'),
+            ], 409);
+        }
 
         $token = $this->backendToken($request);
         if (! $token) {
@@ -236,6 +353,16 @@ class DialerController extends Controller
             'callDirection' => ['required', 'in:inbound,outbound,both'],
         ]);
         return $this->proxyRequest($request, 'put', '/ai-agent', $data);
+    }
+
+    public function aiAssist(Request $request)
+    {
+        $data = $request->validate([
+            'question' => ['required', 'string', 'max:2000'],
+            'callNotes' => ['nullable', 'string', 'max:5000'],
+        ]);
+
+        return $this->proxyRequest($request, 'post', '/ai-agent/assist', $data);
     }
 
     public function startCampaign(Request $request)

@@ -3,6 +3,7 @@ const db = require('../db');
 const config = require('../config');
 
 const ensureSchemaUpgrades = async () => {
+  await db.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS dialer_provider VARCHAR(20) NOT NULL DEFAULT 'freeswitch'");
   await db.query(
     'ALTER TABLE carriers ADD COLUMN IF NOT EXISTS caller_id_required BOOLEAN NOT NULL DEFAULT TRUE'
   );

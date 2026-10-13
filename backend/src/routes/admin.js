@@ -108,6 +108,7 @@ router.post('/users/sync', requireInternalToken, async (req, res) => {
     permissions: Joi.array().items(Joi.string()).optional(),
     role: Joi.string().optional(),
     recordingEnabled: Joi.boolean().optional(),
+    dialerProvider: Joi.string().valid('freeswitch', 'vicidial').optional(),
     sipUsername: Joi.string().max(64).allow(null, '').optional(),
     sipPassword: Joi.string().min(4).allow(null, '').optional()
   });

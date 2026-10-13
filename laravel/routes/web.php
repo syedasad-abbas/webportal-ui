@@ -127,7 +127,10 @@ Route::get('/carrier/{carrierId}/edit', [CarrierController::class, 'edit'])->nam
 Route::put('/carrier/{carrierId}', [CarrierController::class, 'update'])->name('carrier.update');
 Route::delete('/carrier/{carrierId}', [CarrierController::class, 'destroy'])->name('carrier.destroy');
  Route::get('/dialer', [DialerController::class, 'index'])->name('dialer.index');
+ Route::post('/dialer/provider', [DialerController::class, 'selectProvider'])->name('dialer.provider');
  Route::get('/vicidial', [\App\Http\Controllers\Admin\VicidialController::class, 'index'])->name('vicidial.index');
+ Route::get('/vicidial/ca-certificate', [\App\Http\Controllers\Admin\VicidialController::class, 'caCertificate'])->name('vicidial.ca-certificate');
+ Route::get('/dialer/freeswitch-ca-certificate', [\App\Http\Controllers\Admin\VicidialController::class, 'freeswitchCaCertificate'])->name('dialer.freeswitch-ca-certificate');
  Route::post('/vicidial/command', [\App\Http\Controllers\Admin\VicidialController::class, 'command'])->middleware('throttle:60,1')->name('vicidial.command');
  // Deliberately not named admin.dialer.* : the Dialer sidebar entry stays
  // highlighted for every admin.dialer.* route, so the AI agent page needs its
@@ -175,6 +178,7 @@ Route::delete('/carrier/{carrierId}', [CarrierController::class, 'destroy'])->na
         Route::post('/dialer/calls/{uuid}/decline', [DialerController::class, 'decline'])->name('dialer.decline');
         Route::get('/dialer/ai-agent', [DialerController::class, 'aiAgentSettings'])->name('dialer.ai-agent.show');
         Route::put('/dialer/ai-agent', [DialerController::class, 'updateAiAgentSettings'])->name('dialer.ai-agent.update');
+        Route::post('/dialer/ai-assist', [DialerController::class, 'aiAssist'])->middleware('throttle:12,1')->name('dialer.ai-assist');
 
     });
 

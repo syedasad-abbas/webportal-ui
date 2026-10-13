@@ -14,6 +14,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use App\Models\AgentTimeLog; 
 use App\Models\SipCredential;
+use App\Models\VicidialCredential;
 use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
@@ -125,5 +126,10 @@ return $this->hasMany(AgentTimeLog::class, 'user_id', 'user_id');
     public function sipCredential()
     {
         return $this->hasOne(SipCredential::class);
+    }
+
+    public function vicidialCredential()
+    {
+        return $this->hasOne(VicidialCredential::class);
     }
 }

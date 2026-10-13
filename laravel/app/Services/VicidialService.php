@@ -2,34 +2,47 @@
 
 namespace App\Services;
 
+use App\Models\User;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
 
 class VicidialService
 {
+    public function configuredAgent(int $userId): ?array
+    {
+        if (\Illuminate\Support\Facades\Schema::hasTable('vicidial_credentials')) {
+            $record = \App\Models\VicidialCredential::where('user_id', $userId)->first();
+            if ($record) {
+                return array_merge($record->toArray(), ['sip_password' => $record->sip_password]);
+            }
+        }
+        return config('vicidial.enabled') ? (config('vicidial.agents', [])[$userId] ?? null) : null;
+    }
+
     public function agent(int $userId): array
     {
         abort_unless(config('vicidial.enabled'), 404);
-        $agent = config('vicidial.agents', [])[$userId] ?? null;
+        $agent = $this->configuredAgent($userId);
         abort_unless(is_array($agent) && ! empty($agent['agent_user']), 403, 'No VICIdial agent is assigned to your account.');
-
         return $agent;
     }
 
     public function browserConfig(int $userId): array
     {
         $agent = $this->agent($userId);
-        $this->requireUrl(config('vicidial.ws_url'), 'wss', 'VICIDIAL_WSS_URL');
-        foreach ([config('vicidial.sip_domain'), $agent['sip_username'] ?? '', $agent['sip_password'] ?? ''] as $value) {
+        $wsUrl = $agent['ws_url'] ?? config('vicidial.ws_url');
+        $domain = $agent['sip_domain'] ?? config('vicidial.sip_domain');
+        $this->requireUrl($wsUrl, 'wss', 'VICIDIAL_WSS_URL');
+        foreach ([$domain, $agent['sip_username'] ?? '', $agent['sip_password'] ?? ''] as $value) {
             if (! is_string($value) || trim($value) === '') {
                 throw new RuntimeException('VICIdial configuration is incomplete. Ask your administrator to configure your phone account.');
             }
         }
 
         return [
-            'wsUrl' => config('vicidial.ws_url'),
-            'domain' => config('vicidial.sip_domain'),
+            'wsUrl' => $wsUrl,
+            'domain' => $domain,
             'username' => $agent['sip_username'],
             'password' => $agent['sip_password'],
             'iceServers' => config('vicidial.ice_servers', []),

@@ -174,6 +174,7 @@ const baseConfig = {
   aiAgent: {
     apiKey: optionalEnv(process.env.GEMINI_API_KEY, null),
     model: optionalEnv(process.env.GEMINI_LIVE_MODEL, 'gemini-3.8-live'),
+    textModel: optionalEnv(process.env.GEMINI_TEXT_MODEL, 'gemini-2.5-flash'),
     voice: optionalEnv(process.env.GEMINI_LIVE_VOICE, 'Orus'),
     bridgeUrl: optionalEnv(process.env.AI_AUDIO_BRIDGE_URL, 'ws://127.0.0.1:4000/ai-audio'),
     bridgeToken: optionalEnv(process.env.AI_AUDIO_BRIDGE_TOKEN, process.env.BACKEND_INTERNAL_TOKEN),

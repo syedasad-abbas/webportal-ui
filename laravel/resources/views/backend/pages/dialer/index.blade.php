@@ -14,6 +14,11 @@
     {{ __('Dialer') }} | {{ config('app.name') }}
 @endsection
 
+@push('scripts')
+<script src="{{ asset('js/vicidial-inline.js') }}" defer></script>
+<script src="{{ asset('js/dialer-ai-assist.js') }}" defer></script>
+@endpush
+
 @push('styles')
 <style>
 @media (min-width: 768px) {
@@ -727,6 +732,12 @@ html:not(.dark) .connectpro-dialer #dialpad-backspace:hover { color: #0f172a !im
         @if (!empty($webrtcError))
             <div class="sr-only" role="status">{{ $webrtcError }}</div>
         @endif
+        @if(($dialerProvider ?? 'freeswitch') === 'freeswitch' && is_file(public_path('certs/freeswitch-wss-ca.crt')))
+            <div class="flex flex-wrap items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100" role="status">
+                <span>{{ __('If browser registration reports an untrusted certificate, install the FreeSWITCH WSS CA on this device and reload the dialer.') }}</span>
+                <a href="{{ route('admin.dialer.freeswitch-ca-certificate') }}" class="inline-flex items-center gap-1 font-semibold underline underline-offset-2"><i class="bi bi-download"></i>{{ __('Download CA certificate') }}</a>
+            </div>
+        @endif
 
         <div class="hidden">
             <div>
@@ -773,7 +784,9 @@ html:not(.dark) .connectpro-dialer #dialpad-backspace:hover { color: #0f172a !im
                     </div>
 
                     <div class="dialpad-grid mt-5" aria-label="Dial pad">
-                        @php($keys = [['1',''],['2','ABC'],['3','DEF'],['4','GHI'],['5','JKL'],['6','MNO'],['7','PQRS'],['8','TUV'],['9','WXYZ'],['*',''],['0','+'],['#','']])
+                        @php
+                            $keys = [['1',''],['2','ABC'],['3','DEF'],['4','GHI'],['5','JKL'],['6','MNO'],['7','PQRS'],['8','TUV'],['9','WXYZ'],['*',''],['0','+'],['#','']];
+                        @endphp
                         @foreach($keys as [$k,$sub])
                             <button type="button" class="dialpad-key" data-value="{{ $k }}">
                                 <div class="leading-none">{{ $k }}</div><div class="mt-1 text-[10px]">{{ $sub ?: ' ' }}</div>
@@ -782,7 +795,11 @@ html:not(.dark) .connectpro-dialer #dialpad-backspace:hover { color: #0f172a !im
                     </div>
 
                     <div class="connectpro-call-actions mt-5 grid grid-cols-2 gap-3">
-                        <button type="submit" class="connectpro-call-button flex items-center justify-center gap-2 rounded-xl py-3.5 font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"><i class="bi bi-telephone-fill text-xl"></i><span>{{ __('Call') }}</span></button>
+                        @if(($dialerProvider ?? 'freeswitch') === 'freeswitch')
+                            <button type="submit" class="connectpro-call-button flex items-center justify-center gap-2 rounded-xl py-3.5 font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"><i class="bi bi-telephone-fill text-xl"></i><span>{{ __('Call') }}</span></button>
+                        @else
+                            <span class="flex items-center justify-center gap-2 rounded-xl border border-[#365068] px-3 py-3.5 text-center text-xs font-medium text-slate-300">{{ __('Outbound calls are controlled by your VICIdial campaign.') }}</span>
+                        @endif
                         <button type="button" class="flex items-center justify-center gap-2 rounded-xl bg-red-500 py-3.5 font-semibold text-white shadow-lg shadow-red-600/20 transition hover:bg-red-400 disabled:cursor-not-allowed disabled:opacity-50" data-action="hangup" disabled><i class="bi bi-telephone-x-fill text-xl"></i><span>{{ __('Hangup') }}</span></button>
                     </div>
                 </form>
@@ -832,6 +849,10 @@ html:not(.dark) .connectpro-dialer #dialpad-backspace:hover { color: #0f172a !im
 
                 <div class="contact-tabs -mx-3 flex overflow-x-auto border-b border-[#2a4055] px-3 sm:-mx-5 sm:px-5" role="tablist" aria-label="{{ __('Contact workspace') }}">
                     <button type="button" data-contact-tab="notes" class="contact-tab-active flex shrink-0 items-center gap-2 border-b-2 px-3 py-3 text-xs font-semibold sm:text-sm" role="tab" aria-selected="true"><i class="bi bi-file-earmark-text"></i>{{ __('Notes & Comments') }}</button>
+                    <button type="button" data-contact-tab="ai-assist" class="flex shrink-0 items-center gap-2 border-b-2 border-transparent px-3 py-3 text-xs font-semibold text-slate-400 sm:text-sm" role="tab" aria-selected="false"><i class="bi bi-stars"></i>{{ __('AI Assist') }}</button>
+                    @if(($vicidial['enabled'] ?? false))
+                        <button type="button" data-contact-tab="vicidial" class="flex shrink-0 items-center gap-2 border-b-2 border-transparent px-3 py-3 text-xs font-semibold text-slate-400 sm:text-sm" role="tab" aria-selected="false"><i class="bi bi-headset"></i>{{ __('VICIdial') }}</button>
+                    @endif
                     <button type="button" data-contact-tab="activity" class="flex shrink-0 items-center gap-2 border-b-2 border-transparent px-3 py-3 text-xs font-semibold text-slate-400 sm:text-sm" role="tab" aria-selected="false"><i class="bi bi-activity"></i>{{ __('Activity Log') }}</button>
                     <button type="button" data-contact-tab="history" class="flex shrink-0 items-center gap-2 border-b-2 border-transparent px-3 py-3 text-xs font-semibold text-slate-400 sm:text-sm" role="tab" aria-selected="false"><i class="bi bi-clock-history"></i>{{ __('Call History') }}</button>
                     <button type="button" data-contact-tab="info" class="flex shrink-0 items-center gap-2 border-b-2 border-transparent px-3 py-3 text-xs font-semibold text-slate-400 sm:text-sm" role="tab" aria-selected="false"><i class="bi bi-person"></i>{{ __('Contact Info') }}</button>
@@ -850,6 +871,66 @@ html:not(.dark) .connectpro-dialer #dialpad-backspace:hover { color: #0f172a !im
                         <button id="contact-save" type="button" class="rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-500">{{ __('Save contact') }}</button>
                     </div>
                 </div>
+
+                <div data-contact-tab-panel="ai-assist" class="mt-4 hidden rounded-xl border border-[#263b50] bg-[#102338] p-4">
+                    <div class="flex items-center gap-2">
+                        <i class="bi bi-stars text-amber-300"></i>
+                        <h3 class="font-semibold text-white">{{ __('AI Assist') }}</h3>
+                    </div>
+                    <label for="ai-assist-question" class="mt-4 block text-xs font-semibold text-slate-300">{{ __('Question or response needed') }}</label>
+                    <textarea id="ai-assist-question" rows="2" maxlength="2000" class="mt-2 w-full resize-y rounded-lg border border-[#365068] bg-[#091827] px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-500 focus:border-amber-400" placeholder="{{ __('What should I say to the caller?') }}"></textarea>
+                    <label for="ai-assist-notes" class="mt-3 block text-xs font-semibold text-slate-300">{{ __('Call notes') }}</label>
+                    <textarea id="ai-assist-notes" rows="3" maxlength="5000" class="mt-2 w-full resize-y rounded-lg border border-[#365068] bg-[#091827] px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-500 focus:border-amber-400" placeholder="{{ __('Relevant details from the conversation') }}"></textarea>
+                    <div class="mt-3 flex flex-wrap items-center gap-3">
+                        <button id="ai-assist-submit" type="button" class="inline-flex min-h-10 items-center gap-2 rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-amber-400 disabled:cursor-wait disabled:opacity-60"><i class="bi bi-stars"></i>{{ __('Suggest a response') }}</button>
+                        <span id="ai-assist-status" role="status" aria-live="polite" class="text-xs text-slate-400"></span>
+                    </div>
+                    <div id="ai-assist-answer" class="mt-4 hidden whitespace-pre-wrap rounded-lg border border-[#365068] bg-[#091827] p-3 text-sm leading-6 text-slate-100" aria-live="polite"></div>
+                </div>
+
+                @if(($vicidial['enabled'] ?? false))
+                    <div data-contact-tab-panel="vicidial" class="mt-4 hidden min-h-0 overflow-y-auto rounded-xl border border-[#263b50] bg-[#102338] p-4">
+                        <div class="flex flex-wrap items-center gap-3">
+                            <div class="min-w-0 flex-1">
+                                <h3 class="font-semibold text-white">{{ __('VICIdial agent session') }}</h3>
+                                <p class="mt-1 text-xs text-slate-400">{{ __('Agent') }}: {{ $vicidial['agentUser'] ?? '—' }}</p>
+                            </div>
+                            <span id="vicidial-inline-status" role="status" class="text-xs text-slate-300">{{ $vicidial['error'] ?? __('Log in to the agent console, then request agent audio.') }}</span>
+                        </div>
+                        @if(config('vicidial.ca_bundle') && is_file(config('vicidial.ca_bundle')))
+                            <p class="mt-3 text-xs leading-5 text-amber-200">{{ __('If browser registration reports an untrusted certificate, download and trust the VICIdial lab CA on this device, then reload the dialer.') }}
+                                <a href="{{ route('admin.vicidial.ca-certificate') }}" class="ml-1 inline-flex items-center gap-1 underline underline-offset-2"><i class="bi bi-download"></i>{{ __('Download CA certificate') }}</a>
+                            </p>
+                        @endif
+                        @if(!empty($vicidial['error']))
+                            <p class="mt-3 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">{{ $vicidial['error'] }}</p>
+                        @endif
+                        <div class="mt-4 flex flex-wrap gap-2">
+                            <button type="button" data-vici-action="connect" @disabled(!$vicidial['apiReady']) class="rounded-lg border border-[#49647b] px-3 py-2 text-xs font-semibold text-white disabled:opacity-40">{{ __('Request agent audio') }}</button>
+                            <button type="button" data-vici-action="ready" @disabled(!$vicidial['apiReady']) class="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-40">{{ __('Ready for calls') }}</button>
+                            <button type="button" data-vici-action="pause" @disabled(!$vicidial['apiReady']) class="rounded-lg border border-[#49647b] px-3 py-2 text-xs font-semibold text-white disabled:opacity-40">{{ __('Pause') }}</button>
+                            <button type="button" data-vici-action="hangup" @disabled(!$vicidial['apiReady']) class="rounded-lg border border-red-500/60 px-3 py-2 text-xs font-semibold text-red-300 disabled:opacity-40">{{ __('End customer call') }}</button>
+                            @if(!empty($vicidial['dispositions']))
+                                <select id="vicidial-inline-disposition" aria-label="{{ __('Disposition') }}" class="rounded-lg border border-[#365068] bg-[#091827] px-3 py-2 text-xs text-white">
+                                    <option value="">{{ __('Select disposition') }}</option>
+                                    @foreach($vicidial['dispositions'] as $disposition)<option value="{{ $disposition }}">{{ $disposition }}</option>@endforeach
+                                </select>
+                                <button type="button" data-vici-action="disposition" @disabled(!$vicidial['apiReady']) class="rounded-lg border border-[#49647b] px-3 py-2 text-xs font-semibold text-white disabled:opacity-40">{{ __('Submit disposition') }}</button>
+                            @endif
+                            @if(!empty($vicidial['leadLookup']))
+                                <button type="button" data-vici-action="lead" @disabled(!$vicidial['apiReady']) class="rounded-lg border border-[#49647b] px-3 py-2 text-xs font-semibold text-white disabled:opacity-40">{{ __('Refresh customer details') }}</button>
+                            @endif
+                        </div>
+                        <p id="vicidial-inline-feedback" role="status" aria-live="polite" class="mt-3 text-xs text-slate-300"></p>
+                        <p id="vicidial-inline-lead" class="mt-2 text-sm text-slate-200" aria-live="polite"></p>
+                        @if(!empty($vicidial['agentUrl']))
+                            <div class="mt-4 overflow-hidden rounded-lg border border-[#365068] bg-[#091827]">
+                                <iframe src="{{ $vicidial['agentUrl'] }}" title="{{ __('VICIdial agent console') }}" loading="lazy" allow="microphone; autoplay" referrerpolicy="strict-origin-when-cross-origin" class="h-[min(48vh,560px)] min-h-[320px] w-full border-0"></iframe>
+                            </div>
+                            <a href="{{ $vicidial['agentUrl'] }}" target="_blank" rel="noopener noreferrer" class="mt-2 inline-flex items-center gap-2 text-xs text-blue-300 underline"><i class="bi bi-box-arrow-up-right"></i>{{ __('Open agent console separately if embedding is blocked') }}</a>
+                        @endif
+                    </div>
+                @endif
 
                 <div class="connectpro-activity-history-card">
                 <div data-contact-tab-panel="activity" class="mt-4 hidden rounded-xl border border-[#263b50] bg-[#102338]">
@@ -970,8 +1051,23 @@ html:not(.dark) .connectpro-dialer #dialpad-backspace:hover { color: #0f172a !im
             </div>
         </div>
 
+        @php
+            $vicidialInlineConfig = [
+                'enabled' => $vicidial['enabled'] ?? false,
+                'apiReady' => $vicidial['apiReady'] ?? false,
+                'commandUrl' => $vicidial['commandUrl'] ?? '',
+                'csrf' => $vicidial['csrf'] ?? '',
+                'leadLookup' => $vicidial['leadLookup'] ?? false,
+            ];
+            $aiAssistConfig = [
+                'url' => route('admin.dialer.ai-assist'),
+                'csrf' => csrf_token(),
+            ];
+        @endphp
         <div id="dialer-webrtc-config" data-config='@json($webrtcConfig)' class="hidden" aria-hidden="true"></div>
         <div id="dialer-inbound-socket" data-config='@json($inboundSocket ?? [])' class="hidden" aria-hidden="true"></div>
+        <div id="vicidial-inline-config" data-config='@json($vicidialInlineConfig)' class="hidden" aria-hidden="true"></div>
+        <div id="ai-assist-config" data-config='@json($aiAssistConfig)' class="hidden" aria-hidden="true"></div>
 
         <!-- Full Call History Panel (shown when History tab is clicked) -->
         <div id="dialer-full-history" class="hidden mt-4">
@@ -1028,6 +1124,8 @@ html:not(.dark) .connectpro-dialer #dialpad-backspace:hover { color: #0f172a !im
 <script src="{{ asset('js/dialer-feedback.js') }}?v=1"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    const isVicidial = @json(($dialerProvider ?? 'freeswitch') === 'vicidial');
+    const viciApiReady = @json($vicidial['apiReady'] ?? false);
     const form = document.getElementById('dialer-form');
     const alertBox = document.getElementById('dialer-alert');
 
@@ -2771,8 +2869,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 updateWebPhoneState('{{ __('Connecting') }}', 'pending');
                 updateBrowserAudioStatus('Browser audio idle');
                 webRtcClient.ensureClient().then(() => {
-                    updateWebPhoneState('{{ __('Ready') }}');
-                    updateBrowserAudioStatus('Browser audio ready');
+                    updateBrowserAudioStatus('Waiting for phone registration…');
                 }).catch((error) => {
                     console.error('Failed to register WebRTC client', error);
                     updateWebPhoneState('{{ __('Unavailable') }}', 'error');
@@ -2786,6 +2883,15 @@ document.addEventListener('DOMContentLoaded', function () {
         return webRtcClient;
     };
 
+    window.addEventListener('dialer:sip-registered', () => {
+        updateWebPhoneState('Connected');
+        updateBrowserAudioStatus('Phone registered and ready to receive calls');
+    });
+    window.addEventListener('dialer:sip-registration-failed', () => {
+        updateWebPhoneState('Registration failed', 'error');
+        updateBrowserAudioStatus('Registration rejected. Check the selected phone credentials.', true);
+    });
+    window.addEventListener('dialer:sip-disconnected', () => updateWebPhoneState('Disconnected', 'error'));
     ensureWebRtcClient();
 
     const pollStatus = async () => {
@@ -2834,6 +2940,19 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (action === 'mute' || action === 'unmute') {
                     await applyMuteState(action === 'mute');
                 } else if (action === 'hangup') {
+                    if (isVicidial && viciApiReady) {
+                        try {
+                            const response = await fetch(@json(route('admin.vicidial.command')), {
+                                method: 'POST', credentials: 'same-origin',
+                                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+                                body: JSON.stringify({ action: 'hangup' })
+                            });
+                            const result = await response.json();
+                            if (!response.ok || !result.ok) throw new Error(result.message || 'VICIdial hangup failed.');
+                            updateBrowserAudioStatus('Customer hangup requested. Agent audio remains connected.');
+                        } catch (error) { showError(error.message); }
+                        return;
+                    }
                     await webRtcClient?.leaveConference();
                     directSipActive = false;
                     callActive = false;
@@ -3297,6 +3416,10 @@ document.addEventListener('DOMContentLoaded', function () {
     // ===== Start call (inline; no popup) =====
     form.addEventListener('submit', async function (event) {
         event.preventDefault();
+        if (isVicidial) {
+            showError('Use the VICIdial agent console to originate customer calls.');
+            return;
+        }
 
         if (manualDialLocked && !campaignSubmission) {
             showManualDialLocked();
@@ -3658,6 +3781,7 @@ document.addEventListener('DOMContentLoaded', function () {
     window.addEventListener('dialer:sip-disconnected', handleTransportDisconnect);
 
     const initInboundSocket = () => {
+        if (isVicidial) return;
         if (!window.io || !inboundSocketEl) return;
         let cfg = {};
         try {
@@ -3746,7 +3870,17 @@ document.addEventListener('DOMContentLoaded', function () {
         if (restoreCompactCallWindow()) event.preventDefault();
     });
     compactCallWindow?.querySelector('[data-compact-keypad-toggle]')?.addEventListener('click', () => compactCallWindow.querySelector('[data-compact-keypad]')?.classList.toggle('hidden'));
-    compactCallWindow?.querySelectorAll('[data-call-proxy]').forEach((button) => button.addEventListener('click', () => document.querySelector(`[data-action="${button.dataset.callProxy}"]`)?.click()));
+    let vicidialMode = false;
+    try {
+        vicidialMode = Boolean(JSON.parse(document.getElementById('vicidial-inline-config')?.dataset.config || '{}').enabled);
+    } catch (_error) {}
+    compactCallWindow?.querySelectorAll('[data-call-proxy]').forEach((button) => button.addEventListener('click', () => {
+        if (vicidialMode && button.dataset.callProxy === 'hangup') {
+            document.querySelector('[data-vici-action="hangup"]')?.click();
+            return;
+        }
+        document.querySelector(`[data-action="${button.dataset.callProxy}"]`)?.click();
+    }));
     compactMuteButton?.addEventListener('click', () => applyMuteState(!isMuted));
     compactCallWindow?.querySelectorAll('[data-compact-key]').forEach((button) => button.addEventListener('click', () => document.querySelector(`.dialpad-key[data-value="${button.dataset.compactKey}"]`)?.click()));
      const initialDestination = new URLSearchParams(window.location.search).get('destination');

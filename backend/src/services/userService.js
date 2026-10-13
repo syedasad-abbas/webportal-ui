@@ -18,17 +18,18 @@ const resolveCarrierId = async (carrierId) => {
   return result.rows[0]?.id || null;
 };
 
-const createUser = async ({ fullName, email, password, groupId, carrierId, permissions, role, recordingEnabled }) => {
+const createUser = async ({ fullName, email, password, groupId, carrierId, permissions, role, recordingEnabled, dialerProvider }) => {
   const passwordHash = await bcrypt.hash(password, 10);
   const resolvedGroupId = await resolveGroupId(groupId);
   const resolvedCarrierId = await resolveCarrierId(carrierId);
   const resolvedRole = role || 'user';
   const resolvedRecordingEnabled = recordingEnabled !== undefined ? recordingEnabled : true;
+  const resolvedDialerProvider = dialerProvider || 'freeswitch';
 
   const insert = await db.query(
-    `INSERT INTO users (full_name, email, password_hash, role, group_id, carrier_id, recording_enabled, backend_permissions)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb)
-     RETURNING id, full_name, email, group_id, carrier_id, recording_enabled`,
+    `INSERT INTO users (full_name, email, password_hash, role, group_id, carrier_id, recording_enabled, backend_permissions, dialer_provider)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9)
+     RETURNING id, full_name, email, group_id, carrier_id, recording_enabled, dialer_provider`,
     [
       fullName,
       email,
@@ -37,7 +38,8 @@ const createUser = async ({ fullName, email, password, groupId, carrierId, permi
       resolvedGroupId,
       resolvedCarrierId,
       resolvedRecordingEnabled,
-      JSON.stringify(permissions || [])
+      JSON.stringify(permissions || []),
+      resolvedDialerProvider
     ]
   );
 
@@ -82,7 +84,8 @@ const upsertUser = async ({
   carrierId,
   permissions,
   recordingEnabled,
-  role
+  role,
+  dialerProvider
 }) => {
   if (!email) {
     throw new Error('Email is required');
@@ -101,7 +104,8 @@ const upsertUser = async ({
       carrierId,
       permissions,
       role,
-      recordingEnabled
+      recordingEnabled,
+      dialerProvider
     });
   }
 
@@ -111,6 +115,7 @@ const upsertUser = async ({
   const resolvedRole = role || existing.role;
   const resolvedRecordingEnabled =
     recordingEnabled !== undefined ? recordingEnabled : existing.recording_enabled;
+  const resolvedDialerProvider = dialerProvider || existing.dialer_provider || 'freeswitch';
 
   const existingPermissions = existing.permissions ?? existing.backend_permissions ?? [];
   const result = await db.query(
@@ -121,9 +126,10 @@ const upsertUser = async ({
          carrier_id = $4,
          backend_permissions = $5::jsonb,
          recording_enabled = $6,
-         password_hash = COALESCE($7, password_hash)
-     WHERE id = $8
-     RETURNING id, full_name, email, group_id, carrier_id, recording_enabled`,
+         dialer_provider = $7,
+         password_hash = COALESCE($8, password_hash)
+       WHERE id = $9
+       RETURNING id, full_name, email, group_id, carrier_id, recording_enabled, dialer_provider`,
     [
       fullName || existing.full_name,
       resolvedRole,
@@ -131,6 +137,7 @@ const upsertUser = async ({
       resolvedCarrierId,
       JSON.stringify(permissions !== undefined ? permissions : existingPermissions),
       resolvedRecordingEnabled,
+      resolvedDialerProvider,
       passwordHash,
       existing.id
     ]

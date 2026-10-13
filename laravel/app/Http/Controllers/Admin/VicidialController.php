@@ -15,27 +15,34 @@ class VicidialController extends Controller
         abort_unless($request->user()?->can('dialer.create_call'), 403);
     }
 
-    public function index(Request $request, VicidialService $service)
+    public function caCertificate(Request $request)
     {
         $this->authorizeAgent($request);
-        $agent = $service->agent($request->user()->id);
-        $error = null;
-        $webrtc = null;
-        try {
-            $webrtc = $service->browserConfig($request->user()->id);
-        } catch (RuntimeException $e) {
-            $error = $e->getMessage();
-        }
+        $path = config('vicidial.ca_bundle');
+        abort_unless(is_string($path) && is_file($path) && is_readable($path), 404, 'VICIdial CA certificate is not configured.');
 
-        return response()->view('backend.pages.dialer.vicidial', [
-            'agentUser' => $agent['agent_user'],
-            'agentUrl' => $webrtc && str_starts_with((string) config('vicidial.agent_url'), 'https://') ? config('vicidial.agent_url') : null,
-            'apiReady' => $service->apiReady(),
-            'webrtc' => $webrtc,
-            'configurationError' => $error,
-            'leadLookup' => ! empty($agent['crm_agent_id']) && ! empty($agent['crm_team_id']),
-            'dispositions' => config('vicidial.dispositions', []),
-        ])->header('Cache-Control', 'no-store, private');
+        return response()->download($path, 'vicidial-lab-ca.crt', [
+            'Content-Type' => 'application/x-x509-ca-cert',
+            'Cache-Control' => 'no-store, private',
+        ]);
+    }
+
+    public function freeswitchCaCertificate(Request $request)
+    {
+        $this->authorizeAgent($request);
+        $path = public_path('certs/freeswitch-wss-ca.crt');
+        abort_unless(is_file($path) && is_readable($path), 404, 'FreeSWITCH WSS CA certificate is not available.');
+
+        return response()->download($path, 'freeswitch-wss-ca.crt', [
+            'Content-Type' => 'application/x-x509-ca-cert',
+            'Cache-Control' => 'no-store, private',
+        ]);
+    }
+
+    public function index(Request $request)
+    {
+        abort_unless($request->user()?->can('dialer.create_call'), 403);
+        return redirect()->route('admin.dialer.index');
     }
 
     public function command(Request $request, VicidialService $service)

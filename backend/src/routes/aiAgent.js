@@ -1,6 +1,7 @@
 const express = require('express');
 const Joi = require('joi');
 const { authenticate, requirePermissions } = require('../middleware/auth');
+const config = require('../config');
 const settings = require('../services/aiAgentSettingsService');
 const faqs = require('../services/aiAgentFaqService');
 
@@ -9,6 +10,59 @@ const guard = [authenticate(), requirePermissions(['ai_agent.configure'])];
 
 router.get('/', ...guard, async (_req, res, next) => {
   try { return res.json({ ok: true, settings: await settings.get() }); } catch (err) { return next(err); }
+});
+
+router.post('/assist', authenticate(), requirePermissions(['dialer.create_call']), async (req, res, next) => {
+  const schema = Joi.object({
+    question: Joi.string().trim().min(1).max(2000).required(),
+    callNotes: Joi.string().trim().max(5000).allow('').default('')
+  });
+  const { error, value } = schema.validate(req.body);
+  if (error) return res.status(400).json({ ok: false, message: error.message });
+  if (!config.aiAgent.apiKey) {
+    return res.status(503).json({ ok: false, message: 'AI assistance is not configured.' });
+  }
+
+  try {
+    const current = await settings.get();
+    const approvedFaqs = faqs.enabledEntries(current.faqs)
+      .map((entry) => `Question: ${entry.question}\nApproved answer: ${entry.answer}`)
+      .join('\n\n');
+    const systemInstruction = [
+      `You assist a human call-center agent. The configured duty is: ${current.role || 'call-center representative'}.`,
+      `The configured call objective is: ${current.goal || 'help the caller with their request'}.`,
+      'Suggest a concise, natural response the human agent can say. Do not claim a booking, action, policy, price, or fact unless the notes or approved answers confirm it.',
+      'If the requested fact is not provided, say that it is unverified and suggest a short clarification or follow-up.',
+      approvedFaqs ? `Approved question and answer pairs:\n${approvedFaqs}` : 'No approved question and answer pairs are configured.'
+    ].join('\n\n');
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(config.aiAgent.textModel)}:generateContent`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': config.aiAgent.apiKey },
+        signal: AbortSignal.timeout(15000),
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: systemInstruction }] },
+          contents: [{ role: 'user', parts: [{ text: `Agent question or context:\n${value.question}\n\nCall notes:\n${value.callNotes || 'None provided.'}` }] }],
+          generationConfig: { temperature: 0.3, maxOutputTokens: 500 }
+        })
+      }
+    );
+    const payload = await response.json().catch(() => ({}));
+    const responseParts = payload && payload.candidates && payload.candidates[0]
+      && payload.candidates[0].content && payload.candidates[0].content.parts || [];
+    const suggestion = responseParts
+      .filter((part) => !part.thought)
+      .map((part) => part.text || '')
+      .join('\n')
+      .trim();
+    if (!response.ok || !suggestion) {
+      return res.status(502).json({ ok: false, message: 'AI assistance could not generate a suggestion.' });
+    }
+    return res.json({ ok: true, suggestion });
+  } catch (_err) {
+    return res.status(502).json({ ok: false, message: 'AI assistance is temporarily unavailable.' });
+  }
 });
 
 // Keys the service layer knows how to persist. Anything else the UI sends is

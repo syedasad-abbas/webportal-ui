@@ -81,6 +81,7 @@ const getOnlineAgents = async () => {
       WHERE s.user_id IS NOT NULL
         AND sc.sip_username IS NOT NULL
         AND sc.sip_username <> ''
+        AND u.dialer_provider = 'freeswitch'
         AND s.last_activity >= EXTRACT(EPOCH FROM NOW())::int - ($1 * 60)
       ORDER BY u.id`,
     [presenceMinutes]

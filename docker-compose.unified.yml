@@ -78,6 +78,7 @@ services:
     network_mode: host
     volumes:
       - ./freeswitch/conf:/etc/freeswitch
+      - ${FREESWITCH_WSS_CERT_PATH:-./freeswitch/conf/tls/wss.pem}:/etc/freeswitch/tls/wss.pem:ro
       - ./freeswitch/conf/scripts:/usr/share/freeswitch/scripts:ro
       - ./recordings:/var/recordings
       - freeswitch_gateways:/etc/freeswitch/gateways

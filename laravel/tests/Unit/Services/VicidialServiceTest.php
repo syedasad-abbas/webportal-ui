@@ -23,6 +23,7 @@ class VicidialServiceTest extends TestCase
             'ice_servers' => [], 'dispositions' => ['SALE'],
             'agents' => [7 => ['agent_user' => 'agent7', 'sip_username' => 'phone7', 'sip_password' => 'phone-private-password', 'crm_agent_id' => 'crm7', 'crm_team_id' => 'team1']],
         ]);
+        \Illuminate\Support\Facades\Schema::shouldReceive('hasTable')->with('vicidial_credentials')->andReturn(false);
         Http::preventStrayRequests();
     }
 

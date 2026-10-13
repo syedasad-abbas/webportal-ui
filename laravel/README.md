@@ -604,11 +604,14 @@ If you like my work you may consider buying me a ☕ / 🍕
 
 ## VICIdial browser calling
 
-The optional VICIdial mode uses the existing SIP.js browser phone for audio and a
-server-side Laravel proxy for the VICIdial Agent API. The separate test page
-`/admin/vicidial` is available to explicitly mapped users when enabled.
-`/admin/dialer` retains the existing dialer interface and FreeSWITCH behavior.
-No schema migration is required. API credentials never go to the browser; the
+The dialer uses a saved per-user provider selection. Users with both accounts
+configured can select FreeSWITCH or VICIdial and press Connect on `/admin/dialer`.
+The same incoming-call banner, answer and mute controls handle browser audio.
+User create/edit forms configure the VICIdial agent username, phone username and
+Registration Password. The server WSS, domain, API endpoint and API credentials
+remain deployment settings. Existing environment mappings remain a fallback.
+The legacy `/admin/vicidial` URL redirects to the dialer.
+The provider and credential migration must be applied before using the user fields. API credentials never go to the browser; the
 browser necessarily receives its own SIP phone credentials.
 
 ### Configure before deployment
@@ -713,3 +716,18 @@ After deployment, open `/admin/vicidial` as the mapped user and choose Connect b
 Confirm the peer has a registration contact in Asterisk before originating a
 lab test call. API Ready/Pause controls additionally need a VICIdial campaign,
 a logged-in agent session and a permitted API account.
+
+### Unified provider selection
+
+Only the selected provider is registered on the dialer. FreeSWITCH inbound
+routing excludes users currently assigned to VICIdial. Finish calls before
+switching providers, and pause/log out of the VICIdial campaign first.
+A successful browser registration is separate from an active VICIdial campaign
+session: keep the embedded VICIdial console logged in and disable its duplicate
+webphone. Browser iframe/cookie restrictions may require allowing the VICIdial
+site in the browser. API controls require a configured API account.
+
+AI Assist supplies on-demand text suggestions from the agent's question and
+submitted notes using the existing Gemini key, duty, goal and approved FAQs.
+It does not stream VICIdial audio to AI or speak to the caller. Suggestions are
+shown only to the human agent and do not place calls or make bookings.

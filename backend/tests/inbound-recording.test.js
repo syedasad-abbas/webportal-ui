@@ -17,7 +17,7 @@ function load(relative, mocks, extra = {}) {
 
 const uuid = '12345678-1234-1234-1234-123456789abc';
 function fixture({ enabled = true, ai = false, failRecording = false, missed = false, failover = false } = {}) {
-  const recordings = []; const updates = []; const errors = []; const settingsUsers = [];
+  const recordings = []; const updates = []; const errors = []; const settingsUsers = []; const agentQueries = [];
   let legs = 0;
   const service = load('../src/services/inboundCallService.js', {
     crypto: { randomUUID: () => `leg-${++legs}` },
@@ -28,9 +28,12 @@ function fixture({ enabled = true, ai = false, failRecording = false, missed = f
         settingsUsers.push(args[0]);
         return { rows: [{ recording_enabled: enabled }] };
       }
-      if (sql.includes('FROM sessions')) return { rows: [
-        { id: 1, sip_username: 'one' }, { id: 2, sip_username: 'two' }
-      ] };
+      if (sql.includes('FROM sessions')) {
+        agentQueries.push(sql);
+        return { rows: [
+          { id: 1, sip_username: 'one' }, { id: 2, sip_username: 'two' }
+        ] };
+      }
       if (sql.includes('SELECT id, last_user_id')) return { rowCount: 1, rows: [{ id: 1 }] };
       updates.push({ sql, args });
       return { rows: [], rowCount: 1 };
@@ -50,13 +53,13 @@ function fixture({ enabled = true, ai = false, failRecording = false, missed = f
     },
     '../socket': { emitToUser() {} },
     './metricsService': { scheduleMetricsBroadcast() {} },
-    './aiAgentSettingsService': { get: async () => null },
+    './aiAgentSettingsService': { get: async () => null, supportsDirection: () => true },
     './geminiLiveBridge': { waitUntilReady: async () => true }
   }, {
     setTimeout: (fn) => setImmediate(fn),
     console: { log() {}, warn() {}, error: (...args) => errors.push(args) }
   });
-  return { recordings, updates, errors, settingsUsers, run: () => service.dispatch({
+  return { recordings, updates, errors, settingsUsers, agentQueries, run: () => service.dispatch({
     uuid, did: '123', callerIdNumber: '456',
     settings: ai ? { enabled: true, ready: true, updatedBy: 7 } : null
   }) };
@@ -97,6 +100,13 @@ test('missed calls do not record; failover uses the answering agent setting and 
   assert.equal((await answered.run()).answeredBy, 2);
   assert.deepEqual(answered.settingsUsers, [2]);
   assert.equal(answered.recordings[0][1], `/var/recordings/2-inbound-${uuid}.wav`);
+});
+
+test('FreeSWITCH inbound agent query excludes VICIdial-selected users', async () => {
+  const f = fixture();
+  await f.run();
+  assert.equal(f.agentQueries.length, 1);
+  assert.match(f.agentQueries[0], /u\.dialer_provider\s*=\s*'freeswitch'/);
 });
 
 test('FreeSWITCH recording API checks responses and rejects unsafe input', async () => {
