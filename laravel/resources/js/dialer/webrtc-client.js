@@ -299,6 +299,8 @@ class DialerWebRTC {
                         }
                     },
                     delegate: {
+                        onRegistered: () => window.dispatchEvent(new CustomEvent("dialer:sip-registered")),
+                        onUnregistered: () => window.dispatchEvent(new CustomEvent("dialer:sip-registration-failed")),
                         onServerConnect: () => {
                             this.connected = true;
                             if (this.reconnectTimer) {
@@ -337,7 +339,11 @@ class DialerWebRTC {
             }
             if (!this.isClientConnected()) {
                 await this.simpleUser.connect();
-                await this.simpleUser.register();
+                await this.simpleUser.register({
+                    requestDelegate: {
+                        onReject: () => window.dispatchEvent(new CustomEvent("dialer:sip-registration-failed"))
+                    }
+                });
                 this.connected = true;
             }
             return this.simpleUser;

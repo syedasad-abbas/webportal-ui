@@ -134,7 +134,19 @@ services:
       APP_KEY: ${APP_KEY:-base64:7xQj4dM2vN8pL5sR1wK6cH9bF3gT0yUeA2iO4zX6nP8=}
       BACKEND_URL: http://127.0.0.1:4000
       BACKEND_INTERNAL_TOKEN: ${BACKEND_INTERNAL_TOKEN:-dev-backend-token-9c2a7e5d}
+      VICIDIAL_ENABLED: ${VICIDIAL_ENABLED:-false}
+      VICIDIAL_CA_BUNDLE: ${VICIDIAL_CA_BUNDLE:-}
+      VICIDIAL_API_URL: ${VICIDIAL_API_URL:-}
+      VICIDIAL_API_USER: ${VICIDIAL_API_USER:-}
+      VICIDIAL_API_PASSWORD: ${VICIDIAL_API_PASSWORD:-}
+      VICIDIAL_AGENT_URL: ${VICIDIAL_AGENT_URL:-}
+      VICIDIAL_WSS_URL: ${VICIDIAL_WSS_URL:-}
+      VICIDIAL_SIP_DOMAIN: ${VICIDIAL_SIP_DOMAIN:-}
+      VICIDIAL_ICE_SERVERS: ${VICIDIAL_ICE_SERVERS:-[]}
+      VICIDIAL_AGENTS: ${VICIDIAL_AGENTS:-}
+      VICIDIAL_DISPOSITIONS: ${VICIDIAL_DISPOSITIONS:-}
     volumes:
+      - ./docker/vicidial-certs:/etc/vicidial-certs:ro
       - ./recordings:/var/recordings
       - freeswitch_gateways:/mnt/gateways
       - freeswitch_users:/mnt/users

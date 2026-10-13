@@ -25,13 +25,20 @@
     .connectpro-dialer-toolbar > .ml-auto > a { display: none; }
 }
 html:not(.dark) .connectpro-dialer-toolbar input { background: #ffffff !important; border-color: #d1d5db !important; color: #111827 !important; }
+html:not(.dark) .connectpro-dialer #dialpad-field { background: #ffffff !important; border-color: #cbd5e1 !important; }
+html:not(.dark) .connectpro-dialer #dialpad-display { color: #111827 !important; }
+html:not(.dark) .connectpro-dialer #dialpad-display::placeholder { color: #64748b !important; opacity: 1; }
+html:not(.dark) .connectpro-dialer #dialpad-clear,
+html:not(.dark) .connectpro-dialer #dialpad-backspace { color: #475569 !important; }
+html:not(.dark) .connectpro-dialer #dialpad-clear:hover { color: #b91c1c !important; }
+html:not(.dark) .connectpro-dialer #dialpad-backspace:hover { color: #0f172a !important; }
 @media (min-width: 768px) {
     .connectpro-dialer > div:not(.connectpro-dialer-toolbar) { width: 100%; max-width: 1180px; height: calc(100dvh - 58px); min-height: 0; overflow: hidden; padding: .875rem; }
     .connectpro-two-panel-grid { grid-template-columns: minmax(170px, 220px) minmax(0, 1fr) minmax(220px, 266px) !important; grid-template-rows: minmax(0, 1fr) auto; gap: .875rem; height: 100%; min-height: 0 !important; }
     .connectpro-dialer .connectpro-dialer-panel:first-child { grid-column: 2; grid-row: 1; min-height: 100%; border-radius: 12px; border-color: #20344c; background: #111c2b; padding: 1.125rem; box-shadow: none; }
     .connectpro-dialer .connectpro-dialer-panel:first-child > div:first-child { margin-bottom: 1rem; }
     .connectpro-dialer .connectpro-dialer-panel:first-child form { min-height: 0; }
-    .connectpro-dialer #dialer-form > .relative { border-radius: 8px; border-color: #263951; background: #19283d; padding: .7rem 2.5rem; }
+    .connectpro-dialer #dialpad-field { border-radius: 8px; padding: .7rem .5rem; }
     .connectpro-dialer #dialpad-display { font-size: .875rem; text-align: left; }
     .connectpro-dialer .dialpad-grid { width: 100%; aspect-ratio: auto; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; margin-top: 1rem; padding: 0; border: 0; border-radius: 0; background: transparent; }
     .connectpro-dialer .connectpro-dialer-panel:first-child .dialpad-key { width: auto; height: 42px; min-height: 42px; border-radius: 8px; border-color: #263951; background: #18283d; font-size: 1rem; }
@@ -754,8 +761,14 @@ html:not(.dark) .connectpro-dialer-toolbar input { background: #ffffff !importan
 
                 <form id="dialer-form" method="POST" action="{{ route('admin.dialer.dial') }}">
                     @csrf
-                    <div class="relative rounded-xl border border-[#365068] bg-[#0b1b2c] px-11 py-3 sm:px-12 sm:py-3.5">
-                        <input type="text" id="dialpad-display" placeholder="{{ __('Enter number or name') }}" inputmode="tel" autocomplete="tel" class="w-full border-0 bg-transparent p-0 text-left text-lg font-normal tracking-normal text-white outline-none ring-0 placeholder:text-slate-400 focus:border-0 focus:ring-0">
+                    <div id="dialpad-field" class="flex min-w-0 items-center gap-2 rounded-xl border border-[#365068] bg-[#0b1b2c] px-2 py-2.5 sm:px-2.5 sm:py-3">
+                        <button type="button" id="dialpad-clear" disabled class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-red-500/10 hover:text-red-300 focus:outline-none focus:ring-2 focus:ring-red-400 disabled:cursor-not-allowed disabled:opacity-40" title="{{ __('Clear all digits') }}" aria-label="{{ __('Clear all digits') }}">
+                            <i class="bi bi-trash3" aria-hidden="true"></i>
+                        </button>
+                        <input type="text" id="dialpad-display" placeholder="{{ __('Enter number or name') }}" inputmode="tel" autocomplete="tel" class="min-w-0 w-full border-0 bg-transparent p-0 text-left text-lg font-normal tracking-normal text-white outline-none ring-0 placeholder:text-slate-400 focus:border-0 focus:ring-0">
+                        <button type="button" id="dialpad-backspace" disabled class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-white/5 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:cursor-not-allowed disabled:opacity-40" title="{{ __('Delete last digit') }}" aria-label="{{ __('Delete last digit') }}">
+                            <i class="bi bi-backspace" aria-hidden="true"></i>
+                        </button>
                         <input type="hidden" name="destination" id="dialpad-input" required>
                     </div>
 
@@ -1020,6 +1033,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const displayInput = document.getElementById('dialpad-display');
     const hiddenInput = document.getElementById('dialpad-input');
+    const clearDialpadButton = document.getElementById('dialpad-clear');
+    const backspaceDialpadButton = document.getElementById('dialpad-backspace');
     const dialpadButtons = document.querySelectorAll('.dialpad-key');
 
     // Live session UI
@@ -2160,11 +2175,13 @@ document.addEventListener('DOMContentLoaded', function () {
     const lockManualDial = () => {
         manualDialLocked = true;
         refreshStartButton();
+        updateDialpadEditButtons();
     };
 
     const unlockManualDial = () => {
         manualDialLocked = false;
         refreshStartButton();
+        updateDialpadEditButtons();
     };
 
     const showManualDialLocked = () => {
@@ -2335,6 +2352,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const syncDisplay = (value) => {
         if (displayInput) displayInput.value = value;
         if (hiddenInput) hiddenInput.value = value;
+        updateDialpadEditButtons();
         const normalized = normalizeContactPhone(value);
         if (!activeContact || activeContact.phone_normalized !== normalized) {
             renderContact(null, value);
@@ -2348,6 +2366,24 @@ document.addEventListener('DOMContentLoaded', function () {
     const setDestination = (value) => {
         syncDisplay(value || '');
     };
+
+    const updateDialpadEditButtons = () => {
+        const disabled = !hiddenInput?.value || callActive || manualDialLocked;
+        if (clearDialpadButton) clearDialpadButton.disabled = disabled;
+        if (backspaceDialpadButton) backspaceDialpadButton.disabled = disabled;
+    };
+
+    clearDialpadButton?.addEventListener('click', () => {
+        if (callActive || manualDialLocked) return;
+        syncDisplay('');
+        displayInput?.focus();
+    });
+
+    backspaceDialpadButton?.addEventListener('click', () => {
+        if (callActive || manualDialLocked) return;
+        syncDisplay((hiddenInput.value || '').slice(0, -1));
+        displayInput?.focus();
+    });
 
     // Allow paste into readonly display
     const sanitizePhone = (value) => (value || '').toString().replace(/[^\d+*#]/g, '');
@@ -2459,6 +2495,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const setControls = (enabled) => {
         callControlsEnabled = enabled;
         updateActionButtons();
+        updateDialpadEditButtons();
     };
 
     const isConnectedStatus = (normalized) => (

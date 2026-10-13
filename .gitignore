@@ -25,3 +25,6 @@ laravel/vendor/
 
 # Prevent concurrent QA repair loops
 .qa-agent-loop.lock
+
+# Local VICIdial lab certificate authority
+docker/vicidial-certs/

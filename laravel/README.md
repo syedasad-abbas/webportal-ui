@@ -600,3 +600,116 @@ If you like my work you may consider buying me a ☕ / 🍕
 [TailwindCSS-url]: https://tailwindcss.com
 [AlpineJS.com]: https://img.shields.io/badge/Alpine.js-8BC0D0?style=for-the-badge&logo=alpine.js&logoColor=black
 [AlpineJS-url]: https://alpinejs.dev
+
+
+## VICIdial browser calling
+
+The optional VICIdial mode uses the existing SIP.js browser phone for audio and a
+server-side Laravel proxy for the VICIdial Agent API. The separate test page
+`/admin/vicidial` is available to explicitly mapped users when enabled.
+`/admin/dialer` retains the existing dialer interface and FreeSWITCH behavior.
+No schema migration is required. API credentials never go to the browser; the
+browser necessarily receives its own SIP phone credentials.
+
+### Configure before deployment
+
+For unified Docker, add these settings to the repository-root `.env` (or the
+Compose env file you already use). For a native Laravel deployment, use
+`laravel/.env`. Do not commit credentials. Use the exact WSS/SIP settings from
+your existing working VICIdial webphone, not the example hostnames below.
+
+```dotenv
+VICIDIAL_ENABLED=true
+VICIDIAL_API_URL=https://vici.example.com/agc/api.php
+VICIDIAL_API_USER=your_api_user
+VICIDIAL_API_PASSWORD='your_api_password'
+VICIDIAL_AGENT_URL=https://vici.example.com/agc/vicidial.php
+VICIDIAL_WSS_URL=wss://vici.example.com:8089/ws
+VICIDIAL_SIP_DOMAIN=vici.example.com
+VICIDIAL_ICE_SERVERS='[]'
+VICIDIAL_AGENTS='{"7":{"agent_user":"agent7","sip_username":"phone7","sip_password":"your_phone_password"}}'
+VICIDIAL_DISPOSITIONS=SALE,NI
+```
+
+Replace `7` with the local application user ID, and replace the agent and phone
+identities with the actual VICIdial assignments. Each user must have a distinct
+agent/phone mapping. Do not reuse the API account as a phone account. Configure
+only disposition codes your campaign allows; scheduled callbacks require the
+VICIdial agent screen. The API user needs Agent API Access and permission to
+control the mapped agents/functions. URLs must use HTTPS/WSS with trusted TLS
+certificates; redirects and embedded credentials in URLs are not accepted.
+
+Optional customer lookup: add `crm_agent_id` and `crm_team_id` to the user's
+mapping. This uses `st_get_agent_active_lead`, whose CRM agent ID must match the
+VICIdial user's `custom_three` field and whose team ID must follow your installed
+integration's requirements. Without this mapping, use the VICIdial screen for
+customer details. Lookup failures stop polling and are displayed; the refresh
+button retries it. Agent readiness/customer state is authoritative in VICIdial,
+not inferred from the persistent phone connection.
+
+### Manual deployment (the assistant does not run these commands)
+
+The unified image copies application code, so a plain container restart does not
+install source changes. From the repository root, using your usual Compose env
+file/options if different:
+
+```bash
+docker compose -f docker-compose.unified.yml build app
+docker compose -f docker-compose.unified.yml up -d --no-deps app
+```
+
+The entrypoint refreshes Laravel's production caches. No FreeSWITCH rebuild or
+restart is needed. For a native/source-mounted Laravel deployment, deploy the
+files and refresh cached config/routes/views with `php artisan optimize:clear`
+and your normal production cache command. This integration reuses the existing
+`window.DialerWebRTC` bundle; the new page controller is a plain public JavaScript
+file and adds no npm dependency. If existing frontend assets do not already
+contain that browser-phone class, build the frontend manually using the project's
+normal process.
+
+### Receive a call
+
+1. Open `/admin/vicidial` as the mapped application user and connect the browser phone.
+2. Open the linked VICIdial agent login, sign in with the assigned agent, phone,
+   and campaign, and keep the screen open. Disable its other embedded webphone
+   for the same extension so registrations do not compete. This integration
+   uses a normal persistent agent session, not on-hook/remote-agent mode.
+3. If agent audio does not ring automatically, select Request agent audio.
+   This sends `call_agent` with `value=CALL`; it does not create an agent login.
+4. Accept agent audio, enable browser playback if needed, then select Ready.
+   Customer calls flow through the persistent conference connection, so there
+   is not necessarily a new SIP invitation or accept button for each customer.
+5. End customer call uses `external_hangup`, preserving agent audio. Once the
+   customer call ends, submit a disposition; pause/resume as required.
+6. Pause/log out in VICIdial before closing the browser. Page exit attempts a
+   best-effort API pause, but network/browser shutdown can prevent delivery.
+
+Call history, recordings, and authoritative customer call state remain in
+VICIdial. These calls are not inserted into FreeSWITCH call logs or controlled
+with FreeSWITCH UUID endpoints. Keeping the existing agent screen open is
+required; this is not a headless replacement for VICIdial's agent application.
+Direct WSS/WebRTC avoids opening local inbound SIP ports but does not hide your
+public IP from VICIdial. IP privacy requires separately configured signaling
+and media relays.
+
+Reference: https://www.vicidial.org/docs/AGENT_API.txt
+
+### Internal VICIdial phone test and private CA
+
+Browser registration works with the assigned SIP phone credentials before API
+credentials are configured. The page displays phone test mode and disables API
+controls until API credentials exist. A registered status is shown only after
+SIP.js reports registration acceptance. This does not establish an agent session
+or verify a customer call or media path.
+
+For a private HTTPS CA, put its public PEM certificate in
+`docker/vicidial-certs/lab-ca.crt` and set
+`VICIDIAL_CA_BUNDLE=/etc/vicidial-certs/lab-ca.crt` in the Compose environment.
+The app mounts that directory read-only; the API client uses the configured CA
+for certificate verification. Firefox must trust the CA separately for WSS.
+Never copy the CA private key. The certificate directory is ignored by git.
+
+After deployment, open `/admin/vicidial` as the mapped user and choose Connect browser phone.
+Confirm the peer has a registration contact in Asterisk before originating a
+lab test call. API Ready/Pause controls additionally need a VICIdial campaign,
+a logged-in agent session and a permitted API account.

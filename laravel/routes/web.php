@@ -127,6 +127,8 @@ Route::get('/carrier/{carrierId}/edit', [CarrierController::class, 'edit'])->nam
 Route::put('/carrier/{carrierId}', [CarrierController::class, 'update'])->name('carrier.update');
 Route::delete('/carrier/{carrierId}', [CarrierController::class, 'destroy'])->name('carrier.destroy');
  Route::get('/dialer', [DialerController::class, 'index'])->name('dialer.index');
+ Route::get('/vicidial', [\App\Http\Controllers\Admin\VicidialController::class, 'index'])->name('vicidial.index');
+ Route::post('/vicidial/command', [\App\Http\Controllers\Admin\VicidialController::class, 'command'])->middleware('throttle:60,1')->name('vicidial.command');
  // Deliberately not named admin.dialer.* : the Dialer sidebar entry stays
  // highlighted for every admin.dialer.* route, so the AI agent page needs its
  // own prefix to light up only its own menu item.

@@ -41,7 +41,15 @@ FROM php-base AS application-build
 WORKDIR /var/www/html
 COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
 COPY laravel/ ./
-RUN composer install \
+# Composer's package:discover script boots Blade before the runtime stage.
+# Ensure realpath(storage_path('framework/views')) resolves during that boot.
+RUN mkdir -p \
+      storage/framework/cache/data \
+      storage/framework/sessions \
+      storage/framework/views \
+      storage/logs \
+      bootstrap/cache \
+    && composer install \
       --no-dev \
       --no-interaction \
       --no-progress \
