@@ -13,6 +13,7 @@ let server;
 const AI_INPUT_SAMPLE_RATE = 16000;
 
 const activeSessionCount = () => sessions.size;
+const hasSession = (callId) => sessions.has(callId);
 const waitUntilReady = async (callId, timeoutMs = 35000) => {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
@@ -140,7 +141,7 @@ const sendSetup = (session) => {
     month: 'long',
     year: 'numeric'
   }).format(new Date());
-  const prompt = buildAgentPrompt({
+  let prompt = buildAgentPrompt({
     role: session.settings.role,
     greeting: session.settings.greeting,
     goal: session.settings.goal,
@@ -149,6 +150,12 @@ const sendSetup = (session) => {
     faqs: Array.isArray(session.settings.faqs) ? session.settings.faqs : [],
     currentDate
   });
+  if (session.conference) {
+    prompt += '\nYou have joined an ongoing call as an assistant alongside a human agent and a customer. '
+      + 'Both people can hear you. Support the human agent, avoid repeating questions already answered, '
+      + 'and pause when the human agent asks to take over. The audio mixes both speakers; '
+      + 'do not assume the agent\'s personal details belong to the customer.';
+  }
   session.gemini.send(JSON.stringify({
     setup: {
       model: `models/${config.aiAgent.model.replace(/^models\//, '')}`,
@@ -188,6 +195,8 @@ const sendSetup = (session) => {
 };
 
 const scheduleSilenceFollowUp = (session, delayMs = 12000) => {
+  // A human is already managing a conference; don't interrupt their pauses.
+  if (session.conference) return;
   if (session.silencePromptTimer) clearTimeout(session.silencePromptTimer);
   session.silencePromptTimer = setTimeout(() => {
     if (sessions.get(session.callId) !== session || !session.ready || session.gemini.readyState !== WebSocket.OPEN) {
@@ -872,6 +881,7 @@ const attachGemini = (freeswitchSocket, request, callId, settings) => {
   const session = {
     callId,
     settings,
+    conference: new URL(request.url, 'http://localhost').searchParams.get('context') === 'vicidial-conference',
     freeswitch: freeswitchSocket,
     gemini: null,
     queue: [],
@@ -1034,7 +1044,7 @@ const initGeminiLiveBridge = (httpServer, getSettings) => {
   server = new WebSocketServer({ noServer: true });
   httpServer.on('upgrade', async (request, socket, head) => {
     const url = new URL(request.url, 'http://127.0.0.1');
-    console.log('[ai-agent] ALL upgrade request:', request.url, 'pathname:', url.pathname);
+    console.log('[ai-agent] upgrade request', { pathname: url.pathname });
     if (url.pathname !== '/ai-audio') return;
     const callId = url.searchParams.get('call_id');
     const token = url.searchParams.get('token');
@@ -1061,4 +1071,4 @@ const initGeminiLiveBridge = (httpServer, getSettings) => {
   return server;
 };
 
-module.exports = { initGeminiLiveBridge, closeSession, activeSessionCount, waitUntilReady };
+module.exports = { initGeminiLiveBridge, closeSession, activeSessionCount, waitUntilReady, hasSession };

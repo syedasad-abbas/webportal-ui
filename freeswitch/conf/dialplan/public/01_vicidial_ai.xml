@@ -1,0 +1,10 @@
+<include>
+  <!-- Each destination is a short-lived, single-use reservation issued to the
+       trusted VICIdial worker. Lua validates source and reservation BEFORE answer. -->
+  <extension name="vicidial_ai_conference_leg">
+    <condition field="destination_number" expression="^vici-ai-([a-f0-9]{64})$">
+      <action application="lua" data="vicidial_ai.lua $1"/>
+      <action application="hangup"/>
+    </condition>
+  </extension>
+</include>

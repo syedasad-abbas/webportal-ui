@@ -14,6 +14,7 @@ const adminRoutes = require('./routes/admin');
 const authRoutes = require('./routes/auth');
 const callRoutes = require('./routes/calls');
 const freeswitchRoutes = require('./routes/freeswitch');
+const vicidialAiRoutes = require('./routes/vicidialAi');
 const aiAgentRoutes = require('./routes/aiAgent');
 const aiRoutes = require('./routes/ai');
 const aiService = require('./services/aiService');
@@ -131,6 +132,7 @@ app.use('/admin', validateCsrfToken, adminRoutes);
 app.use('/auth', validateCsrfToken, authRoutes);
 app.use('/calls', validateCsrfToken, callRoutes);
 app.use('/freeswitch', freeswitchRoutes);
+app.use('/vicidial-ai', vicidialAiRoutes);
   app.use('/ai-agent', validateCsrfToken, aiAgentRoutes);
   app.use('/ai', validateCsrfToken, aiRoutes);
 

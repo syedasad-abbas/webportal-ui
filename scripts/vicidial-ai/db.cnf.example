@@ -1,0 +1,4 @@
+[client]
+protocol=SOCKET
+user=webportal_ai
+password=REPLACE_WITH_SEPARATE_DATABASE_PASSWORD

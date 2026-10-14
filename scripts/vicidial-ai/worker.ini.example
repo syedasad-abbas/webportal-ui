@@ -1,0 +1,11 @@
+[worker]
+server_ip = 172.16.253.142
+# Direct private address of the portal's Node backend, NOT the Laravel port.
+backend_url = http://172.16.253.1:4000
+sync_token = REPLACE_WITH_RANDOM_SECRET_MATCHING_PORTAL_ENV
+db_defaults_file = /etc/vicidial-ai-db.cnf
+ami_user = webportal_ai
+ami_secret = REPLACE_WITH_SEPARATE_RANDOM_SECRET
+ami_port = 5038
+sip_peer = webportal-ai
+state_file = /var/lib/vicidial-ai/attempts.json

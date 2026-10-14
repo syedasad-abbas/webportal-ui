@@ -1,0 +1,20 @@
+[Unit]
+Description=VICIdial inbound AI conference observer
+After=network-online.target mariadb.service asterisk.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=vicidial-ai
+Group=vicidial-ai
+ExecStart=/usr/bin/python3 /opt/vicidial-ai/worker.py
+Restart=on-failure
+RestartSec=5
+StateDirectory=vicidial-ai
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

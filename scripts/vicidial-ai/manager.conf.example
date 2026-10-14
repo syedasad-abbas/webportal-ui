@@ -1,0 +1,7 @@
+; Include this from /etc/asterisk/manager.conf, outside [general].
+[webportal_ai]
+secret = REPLACE_WITH_SAME_AMI_SECRET_AS_WORKER
+deny = 0.0.0.0/0.0.0.0
+permit = 127.0.0.1/255.255.255.255
+read = none
+write = reporting,originate

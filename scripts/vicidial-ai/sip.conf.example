@@ -1,0 +1,16 @@
+; Include from /etc/asterisk/sip.conf. Do NOT edit sip-vicidial.conf.
+; Private lab route to FreeSWITCH's external profile; no browser changes.
+[webportal-ai]
+type=peer
+host=192.168.18.31
+port=5080
+transport=udp
+disallow=all
+allow=ulaw
+directmedia=no
+qualify=yes
+context=webportal-ai-reject
+
+; Also add the following to a custom file included by extensions.conf:
+; [webportal-ai-reject]
+; exten => _.,1,Hangup()
