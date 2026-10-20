@@ -354,6 +354,8 @@ class UsersController extends Controller
             'vicidial_agent_user' => 'agent_user',
             'vici_username' => 'sip_username',
             'vici_password' => 'sip_password',
+            'vici_api_username' => 'api_username',
+            'vici_api_password' => 'api_password',
         ] as $input => $column) {
             if ($request->filled($input)) {
                 $payload[$column] = $request->input($input);

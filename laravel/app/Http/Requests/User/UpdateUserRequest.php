@@ -42,10 +42,19 @@ class UpdateUserRequest extends FormRequest
             'sip_password' => 'nullable|string|min:4',
             'dialer_provider' => 'required|in:freeswitch,vicidial',
             'vicidial_agent_user' => [
-                'nullable', 'string', 'max:64', 'required_if:dialer_provider,vicidial', 'required_with:vici_username,vici_password',
+                'nullable', 'string', 'max:64', 'required_if:dialer_provider,vicidial', 'required_with:vici_username,vici_password,vici_api_username,vici_api_password',
                 Rule::unique('vicidial_credentials', 'agent_user')->ignore($userId, 'user_id'),
             ],
             'vici_username' => 'nullable|string|max:64|required_if:dialer_provider,vicidial|required_with:vicidial_agent_user,vici_password',
+            'vici_api_username' => 'nullable|string|max:64|required_with:vici_api_password',
+            'vici_api_password' => [
+                'nullable', 'string', 'max:255',
+                Rule::requiredIf(function () use ($userId) {
+                    if (! $this->filled('vici_api_username')) return false;
+                    $credential = \App\Models\User::find($userId)?->vicidialCredential;
+                    return ! $credential?->api_password || $credential->api_username !== $this->input('vici_api_username');
+                }),
+            ],
             'vici_password' => [
                 'nullable', 'string', 'min:4', 'max:255',
                 Rule::requiredIf(fn () => ($this->input('dialer_provider') === 'vicidial' || $this->filled('vici_username') || $this->filled('vicidial_agent_user'))

@@ -909,6 +909,7 @@ html:not(.dark) .connectpro-dialer #dialpad-backspace:hover { color: #0f172a !im
                             <button type="button" data-vici-action="connect" @disabled(!$vicidial['apiReady']) class="rounded-lg border border-[#49647b] px-3 py-2 text-xs font-semibold text-white disabled:opacity-40">{{ __('Request agent audio') }}</button>
                             <button type="button" data-vici-action="ready" @disabled(!$vicidial['apiReady']) class="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-40">{{ __('Ready for calls') }}</button>
                             <button type="button" data-vici-action="pause" @disabled(!$vicidial['apiReady']) class="rounded-lg border border-[#49647b] px-3 py-2 text-xs font-semibold text-white disabled:opacity-40">{{ __('Pause') }}</button>
+                            <button type="button" data-vici-action="queue" @disabled(!$vicidial['apiReady']) class="rounded-lg border border-[#49647b] px-3 py-2 text-xs font-semibold text-white disabled:opacity-40">{{ __('Check queue') }}</button>
                             <button type="button" data-vici-action="hangup" @disabled(!$vicidial['apiReady']) class="rounded-lg border border-red-500/60 px-3 py-2 text-xs font-semibold text-red-300 disabled:opacity-40">{{ __('End customer call') }}</button>
                             @if(!empty($vicidial['dispositions']))
                                 <select id="vicidial-inline-disposition" aria-label="{{ __('Disposition') }}" class="rounded-lg border border-[#365068] bg-[#091827] px-3 py-2 text-xs text-white">
@@ -922,6 +923,41 @@ html:not(.dark) .connectpro-dialer #dialpad-backspace:hover { color: #0f172a !im
                             @endif
                         </div>
                         <p id="vicidial-inline-feedback" role="status" aria-live="polite" class="mt-3 text-xs text-slate-300"></p>
+                        <button type="button" data-vici-action="end_browser_call" disabled class="mt-3 rounded-lg border border-red-500 px-3 py-2 text-xs font-semibold text-red-300 disabled:opacity-40">{{ __('End browser call') }}</button>
+                        <p class="mt-1 text-xs text-slate-400">{{ __('Use End browser call to hang up a direct phone test. Customer hangup keeps the VICIdial agent audio connection open.') }}</p>
+                        <p class="mt-3 text-xs text-slate-400">{{ __('Keep your agent session logged in. Customer controls preserve agent audio. A successful request means VICIdial accepted the command; check the agent console for the resulting state.') }}</p>
+                        @if(!$vicidial['apiReady'])
+                            <p class="mt-2 text-xs text-amber-200">{{ __('Your browser phone can connect, but customer controls require an administrator to configure VICIdial API credentials.') }}</p>
+                        @endif
+                        <div class="mt-4 flex flex-wrap items-end gap-2">
+                            <label class="text-xs text-slate-300">{{ __('Country code') }}
+                                <input id="vicidial-inline-country" type="text" inputmode="numeric" maxlength="4" placeholder="92" class="mt-1 block w-24 rounded-lg border border-[#365068] bg-[#091827] px-3 py-2 text-white">
+                            </label>
+                            <label class="text-xs text-slate-300">{{ __('Customer number (without country code)') }}
+                                <input id="vicidial-inline-number" type="text" inputmode="tel" maxlength="20" class="mt-1 block rounded-lg border border-[#365068] bg-[#091827] px-3 py-2 text-white">
+                            </label>
+                            <button type="button" data-vici-action="dial" disabled class="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-40">{{ __('Call customer') }}</button>
+                            <button type="button" data-vici-action="park" disabled class="rounded-lg border border-[#49647b] px-3 py-2 text-xs text-white disabled:opacity-40">{{ __('Hold customer') }}</button>
+                            <button type="button" data-vici-action="unpark" disabled class="rounded-lg border border-[#49647b] px-3 py-2 text-xs text-white disabled:opacity-40">{{ __('Resume customer') }}</button>
+                        </div>
+                        <div class="mt-3 flex flex-wrap items-end gap-2">
+                            <label class="text-xs text-slate-300">{{ __('Keypad tones') }}
+                                <input id="vicidial-inline-dtmf" type="text" inputmode="tel" maxlength="20" placeholder="123#" class="mt-1 block w-36 rounded-lg border border-[#365068] bg-[#091827] px-3 py-2 text-white">
+                            </label>
+                            <button type="button" data-vici-action="dtmf" disabled class="rounded-lg border border-[#49647b] px-3 py-2 text-xs text-white disabled:opacity-40">{{ __('Send tones') }}</button>
+                            <button type="button" data-vici-action="logout" @disabled(!$vicidial['apiReady']) class="rounded-lg border border-[#49647b] px-3 py-2 text-xs text-white disabled:opacity-40">{{ __('Log out agent session') }}</button>
+                        </div>
+                        @if(!empty($vicidial['conferenceTargets']))
+                            <div class="mt-3 flex flex-wrap items-center gap-2">
+                                <select id="vicidial-inline-target" aria-label="{{ __('Transfer or conference destination') }}" class="rounded-lg border border-[#365068] bg-[#091827] px-3 py-2 text-xs text-white">
+                                    <option value="">{{ __('Select destination') }}</option>
+                                    @foreach($vicidial['conferenceTargets'] as $target)<option value="{{ $target }}">{{ $target }}</option>@endforeach
+                                </select>
+                                <button type="button" data-vici-action="conference" disabled class="rounded-lg border border-[#49647b] px-3 py-2 text-xs text-white disabled:opacity-40">{{ __('Add to conference') }}</button>
+                                <button type="button" data-vici-action="transfer" disabled class="rounded-lg border border-[#49647b] px-3 py-2 text-xs text-white disabled:opacity-40">{{ __('Transfer customer') }}</button>
+                                <button type="button" data-vici-action="end_conference" disabled class="rounded-lg border border-[#49647b] px-3 py-2 text-xs text-white disabled:opacity-40">{{ __('End third-party leg') }}</button>
+                            </div>
+                        @endif
                         <p id="vicidial-inline-lead" class="mt-2 text-sm text-slate-200" aria-live="polite"></p>
                         @if(!empty($vicidial['agentUrl']))
                             <div class="mt-4 overflow-hidden rounded-lg border border-[#365068] bg-[#091827]">
@@ -2940,7 +2976,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (action === 'mute' || action === 'unmute') {
                     await applyMuteState(action === 'mute');
                 } else if (action === 'hangup') {
-                    if (isVicidial && viciApiReady) {
+                    if (isVicidial) {
+                        if (!viciApiReady) {
+                            showError('Customer hangup requires VICIdial API credentials. Use the agent console; your agent audio has been kept connected.');
+                            return;
+                        }
                         try {
                             const response = await fetch(@json(route('admin.vicidial.command')), {
                                 method: 'POST', credentials: 'same-origin',
@@ -3778,6 +3818,25 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
     window.addEventListener('dialer:sip-hangup', handleBrowserHangup);
+    window.addEventListener('dialer:end-browser-call', async (event) => {
+        try {
+            if (!isVicidial || callUuid || !directSipActive || !webRtcClient) {
+                throw new Error('No direct VICIdial browser call is active.');
+            }
+            // leaveConference intentionally swallows SIP errors for other
+            // cleanup paths. Here a rejected BYE must not report success.
+            await webRtcClient.withSessionOp(async () => {
+                if (!webRtcClient.simpleUser?.session) {
+                    throw new Error('No browser phone session is available.');
+                }
+                await webRtcClient.simpleUser.hangup();
+            });
+            // The SIP client's onCallHangup event performs normal UI cleanup.
+            event.detail.resolve();
+        } catch (error) {
+            event.detail.reject(error);
+        }
+    });
     window.addEventListener('dialer:sip-disconnected', handleTransportDisconnect);
 
     const initInboundSocket = () => {

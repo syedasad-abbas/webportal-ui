@@ -32,9 +32,11 @@ class StoreUserRequest extends FormRequest
             'sip_username' => 'nullable|string|max:64|unique:sip_credentials,sip_username|required_with:sip_password',
             'sip_password' => 'nullable|string|min:4|required_with:sip_username',
             'dialer_provider' => 'required|in:freeswitch,vicidial',
-            'vicidial_agent_user' => 'nullable|string|max:64|required_if:dialer_provider,vicidial|required_with:vici_username,vici_password|unique:vicidial_credentials,agent_user',
+            'vicidial_agent_user' => 'nullable|string|max:64|required_if:dialer_provider,vicidial|required_with:vici_username,vici_password,vici_api_username,vici_api_password|unique:vicidial_credentials,agent_user',
             'vici_username' => 'nullable|string|max:64|required_if:dialer_provider,vicidial|required_with:vicidial_agent_user,vici_password',
             'vici_password' => 'nullable|string|min:4|max:255|required_if:dialer_provider,vicidial|required_with:vicidial_agent_user,vici_username',
+            'vici_api_username' => 'nullable|string|max:64|required_with:vici_api_password',
+            'vici_api_password' => 'nullable|string|max:255|required_with:vici_api_username',
         ]);
     }
 }

@@ -97,6 +97,7 @@ class DialerController extends Controller
             'agentUser' => null,
             'dispositions' => [],
             'leadLookup' => false,
+            'conferenceTargets' => [],
             'commandUrl' => route('admin.vicidial.command'),
             'csrf' => csrf_token(),
             'error' => null,
@@ -114,12 +115,13 @@ class DialerController extends Controller
                 $service = app(VicidialService::class);
                 $agent = $service->agent((int) $user->id);
                 $vicidial['webrtc'] = $webrtcConfig = $service->browserConfig((int) $user->id);
-                $vicidial['apiReady'] = $service->apiReady();
+                $vicidial['apiReady'] = $service->apiReady((int) $user->id);
                 $vicidial['agentUser'] = $agent['agent_user'];
                 $vicidial['agentUrl'] = str_starts_with((string) config('vicidial.agent_url'), 'https://')
                     ? config('vicidial.agent_url')
                     : null;
                 $vicidial['dispositions'] = config('vicidial.dispositions', []);
+                $vicidial['conferenceTargets'] = array_keys($service->conferenceTargets());
                 $vicidial['leadLookup'] = ! empty($agent['crm_agent_id']) && ! empty($agent['crm_team_id']);
             } catch (\Throwable $error) {
                 $vicidial['error'] = $error->getMessage();

@@ -63,6 +63,15 @@ const playAudioSegment = async (session, pcm, sampleRate, generation) => {
   );
   await fs.mkdir(directory, { recursive: true });
   await fs.writeFile(filePath, playbackWav);
+  // An interruption can arrive while the WAV is being written. Never submit
+  // that stale conference reply after uuid_break has already completed.
+  if (session.conference && (
+    sessions.get(session.callId) !== session ||
+    generation !== session.playbackGeneration
+  )) {
+    await fs.unlink(filePath).catch(() => {});
+    return;
+  }
   await freeswitch.broadcastAudio(session.callId, filePath);
   console.log('[ai-agent] playback segment broadcast', {
     callId: session.callId,
@@ -223,6 +232,12 @@ const scheduleSilenceFollowUp = (session, delayMs = 12000) => {
 };
 
 const sendInitialGreeting = (session) => {
+  if (session.conference) {
+    sendControlText(session, 'You are joining an existing customer-agent conversation. '
+      + 'Briefly say: “I’m the AI assistant, here to help.” Then listen. '
+      + 'Do not restart the call greeting, ask an intake question, or request a name or phone number.');
+    return;
+  }
   // The opening line is administrator controlled. When one is configured it is
   // sent verbatim so the call opens exactly as typed; otherwise the model is
   // told to introduce itself using the configured duty instead of a fixed
@@ -694,12 +709,17 @@ const handleGeminiMessage = (session, data) => {
     session.outputTurnBytes = 0;
     session.playbackGeneration += 1;
     session.modelGenerating = false;
-    freeswitch.breakAudioPlayback(session.callId).catch((err) => {
+    const stopped = freeswitch.breakAudioPlayback(session.callId).catch((err) => {
       console.warn('[ai-agent] unable to stop interrupted playback', {
         callId: session.callId,
         error: err.message
       });
     });
+    if (session.conference) {
+      // Serialize subsequent replies behind the break of this AI leg only.
+      session.playbackChain = Promise.all([session.playbackChain, stopped]).then(() => {});
+      return; // Discard any stale model audio bundled with the interruption.
+    }
     console.log('[ai-agent] Gemini playback interrupted', { callId: session.callId });
   }
   const parts = content.modelTurn?.parts || [];
@@ -1002,15 +1022,16 @@ const attachGemini = (freeswitchSocket, request, callId, settings) => {
     });
     if (session.ready && session.gemini?.readyState === WebSocket.OPEN) {
       if (
-        session.initialGreetingComplete &&
+        // The dedicated VICIdial leg captures mono READ audio (the MeetMe
+        // mix-minus) and broadcasts replies toward Asterisk on the WRITE side.
+        // Keep that separation: mixed/stereo capture would feed AI back into
+        // itself. Ordinary phone calls retain their existing playback gate.
+        session.conference || (session.initialGreetingComplete &&
         !session.modelGenerating &&
-        session.playbackQueueDepth === 0
+        session.playbackQueueDepth === 0)
       ) {
-        // Stream every caller frame. Gemini's server-side VAD now decides
-        // speech boundaries, matching the native Live application and
-        // preventing local thresholds from removing name syllables/digits.
-        // Do not stream while AI audio is being generated or played: streamed
-        // uuid_broadcast audio otherwise leaks back as fake caller names.
+        // Gemini handles speech detection. Only the isolated conference leg
+        // bypasses the ordinary call's protection against playback feedback.
         sendAudioPayload(session, payload);
       }
     } else {

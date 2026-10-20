@@ -175,4 +175,143 @@ class VicidialServiceTest extends TestCase
         }
         Http::assertNothingSent();
     }
+
+    public function test_customer_dial_uses_agent_api_and_validated_country_code(): void
+    {
+        Http::fake(['*' => Http::response('SUCCESS: external_dial function set')]);
+        $this->assertTrue(app(VicidialService::class)->command(7, 'dial', '3001234567', ['phone_code' => '92'])['ok']);
+        Http::assertSent(fn ($r) => $r['function'] === 'external_dial' && $r['agent_user'] === 'agent7'
+            && $r['phone_code'] === '92' && $r['value'] === '3001234567' && $r['search'] === 'YES'
+            && $r['preview'] === 'NO' && $r['focus'] === 'NO');
+    }
+
+    public function test_dial_cannot_inject_sip_destinations(): void
+    {
+        Http::fake();
+        try {
+            app(VicidialService::class)->command(7, 'dial', 'SIP/other', ['phone_code' => '92']);
+            $this->fail('Expected validation error');
+        } catch (ValidationException $e) {
+            Http::assertNothingSent();
+        }
+    }
+
+    public function test_dtmf_translates_hash_and_star_to_vicidial_encoding(): void
+    {
+        Http::fake(['*' => Http::response('SUCCESS: send_dtmf')]);
+        app(VicidialService::class)->command(7, 'dtmf', '12*3#');
+        Http::assertSent(fn ($r) => $r['function'] === 'send_dtmf' && $r['value'] === '12S3P');
+    }
+
+    public function test_conference_and_transfer_resolve_only_approved_destinations(): void
+    {
+        config()->set('vicidial.conference_targets', ['supervisor' => '8500']);
+        Http::fake(['*' => Http::response('SUCCESS: transfer_conference')]);
+        foreach (['conference' => 'DIAL_WITH_CUSTOMER', 'transfer' => 'BLIND_TRANSFER'] as $action => $value) {
+            app(VicidialService::class)->command(7, $action, 'supervisor');
+            Http::assertSent(fn ($r) => $r['function'] === 'transfer_conference' && $r['value'] === $value
+                && $r['phone_number'] === '8500' && $r['dial_override'] === 'YES' && $r['agent_user'] === 'agent7');
+        }
+        Http::assertSentCount(2);
+    }
+
+    public function test_arbitrary_conference_number_is_rejected(): void
+    {
+        Http::fake();
+        try {
+            app(VicidialService::class)->command(7, 'conference', '8500');
+            $this->fail('Expected allowlist rejection');
+        } catch (ValidationException $e) {
+            Http::assertNothingSent();
+        }
+    }
+
+    public function test_customer_and_third_party_controls_never_hangup_both(): void
+    {
+        Http::fake(['*' => Http::response('SUCCESS: accepted')]);
+        foreach (['park' => ['park_call', 'PARK_CUSTOMER'], 'unpark' => ['park_call', 'GRAB_CUSTOMER'],
+            'end_conference' => ['transfer_conference', 'HANGUP_XFER'], 'logout' => ['logout', 'LOGOUT']] as $action => [$function, $value]) {
+            app(VicidialService::class)->command(7, $action);
+            Http::assertSent(fn ($r) => $r['function'] === $function && $r['value'] === $value);
+        }
+        Http::assertNotSent(fn ($r) => $r['value'] === 'HANGUP_BOTH');
+    }
+
+    public function test_queue_count_is_parsed_without_leaking_upstream_data(): void
+    {
+        Http::fake(['*' => Http::response('SUCCESS: calls_in_queue_count - 3')]);
+        $result = app(VicidialService::class)->command(7, 'queue');
+        $this->assertSame(3, $result['queuedCalls']);
+        Http::assertSent(fn ($r) => $r['function'] === 'calls_in_queue_count' && $r['value'] === 'DISPLAY');
+    }
+
+    public function test_api_credential_failure_is_actionable_and_redacted(): void
+    {
+        Http::fake(['*' => Http::response('ERROR: Invalid Username/Password: |api-user|api-private-password|')]);
+        try {
+            app(VicidialService::class)->command(7, 'queue');
+            $this->fail('Expected credential failure');
+        } catch (RuntimeException $e) {
+            $this->assertStringContainsString('rejected the API credentials', $e->getMessage());
+            $this->assertStringNotContainsString('api-private-password', $e->getMessage());
+        }
+        Http::assertSentCount(1);
+    }
+
+    public function test_per_user_api_credentials_override_shared_account_without_changing_agent(): void
+    {
+        config()->set('vicidial.agents.7.api_username', 'specific-api');
+        config()->set('vicidial.agents.7.api_password', 'specific-secret');
+        Http::fake(['*' => Http::response('SUCCESS: accepted')]);
+        $service = app(VicidialService::class);
+        $this->assertTrue($service->apiReady(7));
+        $service->command(7, 'pause');
+        Http::assertSent(fn ($r) => $r['user'] === 'specific-api' && $r['pass'] === 'specific-secret'
+            && $r['agent_user'] === 'agent7');
+        $browser = json_encode($service->browserConfig(7));
+        $this->assertStringNotContainsString('specific-api', $browser);
+        $this->assertStringNotContainsString('specific-secret', $browser);
+    }
+
+    public function test_per_user_api_works_without_shared_credentials(): void
+    {
+        config()->set('vicidial.api_user', '');
+        config()->set('vicidial.api_password', '');
+        config()->set('vicidial.agents.7.api_username', 'specific-api');
+        config()->set('vicidial.agents.7.api_password', 'specific-secret');
+        $this->assertTrue(app(VicidialService::class)->apiReady(7));
+        $this->assertFalse(app(VicidialService::class)->apiReady());
+    }
+
+    public function test_incomplete_per_user_api_pair_does_not_mix_with_shared_credentials(): void
+    {
+        config()->set('vicidial.agents.7.api_username', 'specific-api');
+        Http::fake();
+        $service = app(VicidialService::class);
+        $this->assertFalse($service->apiReady(7));
+        try {
+            $service->command(7, 'pause');
+            $this->fail('Expected incomplete credentials rejection');
+        } catch (RuntimeException $e) {
+            Http::assertNothingSent();
+        }
+    }
+
+    public function test_phone_password_is_never_used_as_api_password(): void
+    {
+        config()->set('vicidial.api_user', '');
+        config()->set('vicidial.api_password', '');
+        $this->assertFalse(app(VicidialService::class)->apiReady(7));
+    }
+
+    public function test_new_api_password_is_encrypted_and_hidden_in_model_serialization(): void
+    {
+        $record = new \App\Models\VicidialCredential;
+        $record->api_username = 'specific-api';
+        $record->api_password = 'specific-secret';
+        $this->assertNotSame('specific-secret', $record->getAttributes()['api_password']);
+        $this->assertSame('specific-secret', $record->api_password);
+        $this->assertArrayNotHasKey('api_password', $record->toArray());
+        $this->assertArrayNotHasKey('api_username', $record->toArray());
+    }
 }

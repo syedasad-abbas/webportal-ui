@@ -154,19 +154,21 @@
                             {{-- VICIdial agent and browser phone --}}
                             <div class="sm:col-span-2 border-t border-gray-200 pt-5 dark:border-gray-700">
                                 <h3 class="text-sm font-semibold text-gray-800 dark:text-white">{{ __('VICIdial agent and phone') }}</h3>
-                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Required only when VICIdial is selected. Enter the agent login and phone credentials assigned in VICIdial. API, WebSocket, SIP server, and certificate settings stay in the application .env.') }}</p>
+                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Required only when VICIdial is selected. Enter the agent login and phone credentials assigned in VICIdial. API credentials can be set below for this user. Server addresses and certificate settings are shared.') }}</p>
                             </div>
                             @php($vicidialCredential = $user->vicidialCredential)
                             @foreach ([
                                 'vicidial_agent_user' => ['VICIdial Agent User', 'agent_user'],
-                                'vici_username' => ['VICIdial Username', 'sip_username'],
-                                'vici_password' => ['VICIdial Password', 'sip_password'],
+                                'vici_username' => ['VICIdial Phone Extension', 'sip_username'],
+                                'vici_password' => ['VICIdial Registration Password', 'sip_password'],
                             ] as $field => [$label, $column])
                                 <div>
                                     <label for="{{ $field }}" class="block text-sm font-medium text-gray-700 dark:text-gray-400">{{ __($label) }}</label>
                                     <input type="{{ $column === 'sip_password' ? 'password' : 'text' }}" name="{{ $field }}" id="{{ $field }}" value="{{ old($field, $column === 'sip_password' ? '' : ($vicidialCredential?->{$column} ?? '')) }}" placeholder="{{ $column === 'sip_password' ? __('Leave blank to keep current') : ($column === 'agent_user' ? __('e.g. 6666') : __('e.g. gs102')) }}" autocomplete="{{ $column === 'sip_password' ? 'new-password' : 'off' }}" class="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90">
                                 </div>
                             @endforeach
+
+                            @include('backend.pages.users.vicidial-api-fields')
 
                             {{-- SIP Username --}}
                             <div>

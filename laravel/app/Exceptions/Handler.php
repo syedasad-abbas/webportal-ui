@@ -26,6 +26,7 @@ class Handler extends ExceptionHandler
         'password',
         'password_confirmation',
         'vici_password',
+        'vici_api_password',
     ];
 
     /**

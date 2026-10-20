@@ -62,6 +62,47 @@ private; it requires no public IP or internet-facing port forwarding.
 
 ## 2. Copy worker files to VICIdial
 
+For a **new installation** with prepared private files, the short installation
+path is:
+
+```bash
+# Portal host:
+scp -r scripts/vicidial-ai docker/vicidial-ai-private vici@172.16.253.142:~/
+# Then on the VICIdial VM:
+sudo bash ~/vicidial-ai/install.sh ~/vicidial-ai-private
+```
+
+The installer creates the dedicated account, installs configuration, backs up
+the existing Asterisk configuration before adding custom includes, and installs
+the systemd unit. It refuses to overwrite an existing installation. It does not
+start or reload any service. After it succeeds, skip the manual installation
+below and run the Asterisk reload commands in section 3, then the worker check
+and service-start commands in section 4. Deploy the portal as in section 1 first.
+
+If `docker/vicidial-ai-private/` exists on the portal host, matching credentials
+have already been prepared locally. Keep the existing portal sync token. Copy
+this private folder as well as the worker sources:
+
+```bash
+scp -r docker/vicidial-ai-private vici@172.16.253.142:~/
+```
+
+Use these prepared files in place of the `.example` files below:
+
+| Prepared file | Install destination |
+| --- | --- |
+| `~/vicidial-ai-private/worker.ini` | `/etc/vicidial-ai-worker.ini` |
+| `~/vicidial-ai-private/db.cnf` | `/etc/vicidial-ai-db.cnf` |
+| `~/vicidial-ai-private/manager-webportal-ai.conf` | `/etc/asterisk/manager-webportal-ai.conf` |
+| `~/vicidial-ai-private/sip-webportal-ai.conf` | `/etc/asterisk/sip-webportal-ai.conf` |
+
+After checking that the dedicated database account does not already exist,
+run `sudo mariadb < ~/vicidial-ai-private/database.sql` instead of typing the
+database password into the SQL example. Preserve the installation ownership
+and permissions specified below. These private files contain secrets; do not
+paste their contents in chat or commit them. An existing worker installation
+must be checked before replacing its configuration.
+
 From the portal host:
 
 ```bash

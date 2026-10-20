@@ -50,11 +50,14 @@ class VicidialController extends Controller
         $this->authorizeAgent($request);
         $service->agent($request->user()->id);
         $data = $request->validate([
-            'action' => ['required', Rule::in(['connect', 'ready', 'pause', 'hangup', 'disposition', 'lead'])],
-            'value' => ['nullable', 'string', 'max:20'],
+            'action' => ['required', Rule::in(['connect', 'ready', 'pause', 'hangup', 'disposition', 'lead',
+                'dial', 'park', 'unpark', 'dtmf', 'conference', 'transfer', 'end_conference', 'logout', 'queue'])],
+            'value' => ['nullable', 'string', 'max:40'],
+            'phone_code' => ['nullable', 'string', 'regex:/^[0-9]{1,4}$/D'],
         ]);
         try {
-            return response()->json($service->command($request->user()->id, $data['action'], $data['value'] ?? null))
+            return response()->json($service->command($request->user()->id, $data['action'], $data['value'] ?? null,
+                ['phone_code' => $data['phone_code'] ?? null]))
                 ->header('Cache-Control', 'no-store, private');
         } catch (RuntimeException $e) {
             return response()->json(['message' => $e->getMessage()], 502);

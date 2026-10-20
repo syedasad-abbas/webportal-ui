@@ -10,6 +10,7 @@ const { requireInternalToken } = require('../middleware/auth');
 const { createService } = require('../services/vicidialAiConferenceService');
 
 const router = express.Router();
+router.use('/customer', require('./vicidialCustomerAi'));
 const enabled = () => process.env.VICIDIAL_AI_ENABLED === 'true';
 const sourceIp = () => process.env.VICIDIAL_AI_SERVER_IP || '';
 const same = (a, b) => {
@@ -19,7 +20,8 @@ const same = (a, b) => {
 const service = createService({
   settings: () => enabled() ? settings.get() : Promise.resolve(null),
   mappedAgents: async () => (await db.query(`SELECT v.agent_user FROM vicidial_credentials v
-    JOIN users u ON u.id = v.user_id WHERE u.dialer_provider = 'vicidial'`)).rows.map((r) => r.agent_user),
+    JOIN users u ON u.id = v.user_id WHERE u.dialer_provider = 'vicidial'`)).rows.map((r) => r.agent_user)
+    .filter((agent) => !require('../services/vicidialCustomerAiService').customerAgents().has(agent)),
   start: async (uuid) => {
     const url = new URL(config.aiAgent.bridgeUrl);
     url.searchParams.set('call_id', uuid);

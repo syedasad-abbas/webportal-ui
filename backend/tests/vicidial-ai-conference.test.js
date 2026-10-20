@@ -127,3 +127,37 @@ test('loss of established Gemini session removes AI without ending customer call
   assert.equal(await svc.lease(join.token, uuid), false);
   assert.deepEqual(stopped, [uuid]);
 });
+
+test('Gemini readiness timeout stops only the claimed AI UUID and never retries', async () => {
+  const stopped = [], started = [];
+  const svc = createService({
+    settings: async () => ({ enabled: true, ready: true, updatedBy: 1, callDirection: 'inbound' }),
+    mappedAgents: async () => ['6666'],
+    start: async (id) => { started.push(id); return false; },
+    stop: async (id) => stopped.push(id)
+  });
+  const [join] = await svc.sync([call]);
+  await svc.claim(join.token, uuid);
+  await svc.lease(join.token, uuid, true); await tick();
+  assert.deepEqual(started, [uuid]);
+  assert.deepEqual(stopped, [uuid]);
+  assert.equal(await svc.lease(join.token, uuid, true), false);
+  assert.deepEqual(await svc.sync([call]), []);
+  assert.deepEqual(started, [uuid]);
+});
+
+test('failed AI hangup never falls back to another channel or resurrects the leg', async () => {
+  const stopped = [];
+  const svc = createService({
+    settings: async () => ({ enabled: true, ready: true, updatedBy: 1, callDirection: 'inbound' }),
+    mappedAgents: async () => ['6666'], start: async () => { throw Error('Gemini failure'); },
+    stop: async (id) => { stopped.push(id); throw Error('ESL unavailable'); }
+  });
+  const [join] = await svc.sync([call]);
+  await svc.claim(join.token, uuid);
+  await svc.lease(join.token, uuid, true); await tick();
+  assert.deepEqual(stopped, [uuid]);
+  assert.equal(await svc.lease(join.token, uuid, true), false);
+  assert.deepEqual(await svc.sync([call]), []);
+  assert.ok(stopped.every((id) => id === uuid));
+});

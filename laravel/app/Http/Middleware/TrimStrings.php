@@ -15,5 +15,6 @@ class TrimStrings extends Middleware
         'password',
         'password_confirmation',
         'vici_password',
+        'vici_api_password',
     ];
 }

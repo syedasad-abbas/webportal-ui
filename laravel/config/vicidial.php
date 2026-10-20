@@ -13,4 +13,5 @@ return [
     // Keys are this application's user IDs, never agent IDs supplied by a browser.
     'agents' => json_decode(env('VICIDIAL_AGENTS', '{}'), true) ?: [],
     'dispositions' => array_values(array_filter(array_map('trim', explode(',', env('VICIDIAL_DISPOSITIONS', ''))))),
+    'conference_targets' => json_decode(env('VICIDIAL_CONFERENCE_TARGETS', '{}'), true) ?: [],
 ];

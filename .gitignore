@@ -28,3 +28,6 @@ laravel/vendor/
 
 # Local VICIdial lab certificate authority
 docker/vicidial-certs/
+
+# Private VICIdial AI deployment credentials (never commit)
+docker/vicidial-ai-private/

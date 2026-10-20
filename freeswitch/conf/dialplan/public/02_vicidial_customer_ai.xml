@@ -1,0 +1,10 @@
+<include>
+  <!-- Dedicated remote-agent destination; backend verifies source and agent
+       against server-side configuration before this leg is answered. -->
+  <extension name="vicidial_customer_ai">
+    <condition field="destination_number" expression="^vici-ai-customer$">
+      <action application="lua" data="vicidial_customer_ai.lua"/>
+      <action application="hangup"/>
+    </condition>
+  </extension>
+</include>
