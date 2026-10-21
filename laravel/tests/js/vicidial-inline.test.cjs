@@ -142,3 +142,49 @@ test('browser SIP failure propagates to the control instead of false success', a
         simpleUser: { session: {}, hangup: async () => { throw Error('BYE rejected'); } } } });
     await assert.rejects(f.invoke(), /BYE rejected/);
 });
+
+function hangupRoutingFixture(apiReady = true) {
+    const blade = fs.readFileSync(path.join(__dirname, '../../resources/views/backend/pages/dialer/index.blade.php'), 'utf8');
+    const f = fixture(apiReady); f.connect();
+    let pending; let proxy;
+    const selectors = [];
+    const document = { querySelector: (selector) => {
+        selectors.push(selector);
+        const match = selector.match(/^\[data-vici-action="([a-z_]+)"\]$/);
+        assert.ok(match, `Unexpected hangup target: ${selector}`);
+        return { click: () => { pending = f.click(match[1]); } };
+    } };
+    const start = blade.indexOf("                    if (isVicidial) {", blade.indexOf('// Live call actions'));
+    const end = blade.indexOf('                    await webRtcClient?.leaveConference();', start);
+    assert.ok(start >= 0 && end > start);
+    const main = vm.runInNewContext(`(async () => { ${blade.slice(start, end)} })`, { isVicidial: true, document });
+    const compactStart = blade.indexOf("    compactCallWindow?.querySelectorAll('[data-call-proxy]')");
+    const compactEnd = blade.indexOf('    compactMuteButton?', compactStart);
+    assert.ok(compactStart >= 0 && compactEnd > compactStart);
+    const button = { dataset: { callProxy: 'hangup' }, addEventListener: (_, handler) => { proxy = handler; } };
+    vm.runInNewContext(blade.slice(compactStart, compactEnd), {
+        vicidialMode: true, document, compactCallWindow: { querySelectorAll: () => [button] }
+    });
+    return { ...f, selectors, main: async () => { await main(); await pending; },
+        compact: async () => { proxy(); await pending; } };
+}
+
+test('main and compact VICIdial Hangup end the browser call without the customer API', async () => {
+    for (const control of ['main', 'compact']) {
+        const f = hangupRoutingFixture(false);
+        await f[control]();
+        assert.deepEqual(f.selectors, ['[data-vici-action="end_browser_call"]']);
+        assert.deepEqual(f.audioRequests, ['dialer:end-browser-call']);
+        assert.equal(f.requests.length, 0);
+    }
+});
+
+test('main and compact Hangup preserve agent audio when confirmation is cancelled', async () => {
+    for (const control of ['main', 'compact']) {
+        const f = hangupRoutingFixture(); f.cancel();
+        await f[control]();
+        assert.equal(f.audioRequests.length, 0);
+        assert.equal(f.requests.length, 0);
+        assert.equal(f.buttons.end_browser_call.disabled, false);
+    }
+});

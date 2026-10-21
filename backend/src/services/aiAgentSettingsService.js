@@ -42,6 +42,7 @@ const normalize = (row = {}) => ({
   role: normalizeRole(row.role),
   greeting: normalizeGreeting(row.greeting),
   goal: normalizeGoal(row.goal),
+  knowledgeInstructions: String(row.knowledge_instructions || '').trim(),
   mode: row.mode || defaults.mode,
   voice: row.voice || defaults.voice,
   humanHandoff: row.human_handoff === undefined ? defaults.humanHandoff : Boolean(row.human_handoff),
@@ -78,13 +79,14 @@ const update = async (settings, userId) => {
   }
   const result = await db.query(
     `INSERT INTO ai_agent_settings
-      (id, enabled, role, greeting, goal, mode, voice, human_handoff, call_direction, updated_by, created_at, updated_at)
-     VALUES (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
+      (id, enabled, role, greeting, goal, mode, voice, human_handoff, call_direction, updated_by, knowledge_instructions, created_at, updated_at)
+     VALUES (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, COALESCE($10, ''), NOW(), NOW())
      ON CONFLICT (id) DO UPDATE SET
        enabled = EXCLUDED.enabled, role = EXCLUDED.role, greeting = EXCLUDED.greeting,
        goal = EXCLUDED.goal, mode = EXCLUDED.mode, voice = EXCLUDED.voice,
        human_handoff = EXCLUDED.human_handoff,
        call_direction = EXCLUDED.call_direction,
+       knowledge_instructions = COALESCE($10, ai_agent_settings.knowledge_instructions),
        updated_by = EXCLUDED.updated_by, updated_at = NOW()
      RETURNING *`,
     [
@@ -96,7 +98,8 @@ const update = async (settings, userId) => {
       value.voice,
       value.humanHandoff,
       value.callDirection,
-      userId
+      userId,
+      settings.knowledgeInstructions === undefined ? null : String(settings.knowledgeInstructions ?? '').trim()
     ]
   );
   return normalize(result.rows[0]);

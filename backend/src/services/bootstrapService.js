@@ -23,6 +23,7 @@ const ensureSchemaUpgrades = async () => {
     created_at TIMESTAMP WITHOUT TIME ZONE,
     updated_at TIMESTAMP WITHOUT TIME ZONE
   )`);
+  await db.query("ALTER TABLE ai_agent_settings ADD COLUMN IF NOT EXISTS knowledge_instructions TEXT NOT NULL DEFAULT ''");
   // The agent is now role driven: `role` and `greeting` are free text chosen by
   // the administrator, and `goal` is the conversational objective. Add the two
   // columns to databases created before that change.

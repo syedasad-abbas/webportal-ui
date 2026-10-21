@@ -15,8 +15,8 @@ const service = createCustomerService({
     const url = new URL(config.aiAgent.bridgeUrl);
     url.searchParams.set('call_id', uuid);
     url.searchParams.set('token', config.aiAgent.bridgeToken);
-    // A standalone customer conversation, NOT the human-assist context.
-    url.searchParams.delete('context');
+    // Customer greeting with interruption support on this isolated audio leg.
+    url.searchParams.set('context', 'vicidial-customer');
     await fs.startAudioStream(uuid, url.toString(), { callId: uuid });
     return bridge.waitUntilReady(uuid, config.aiAgent.connectTimeoutMs * 2 + 10000);
   },

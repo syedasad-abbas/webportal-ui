@@ -38,7 +38,7 @@ function fixture(conference = true) {
     + '\nmodule.exports.testing = { attachGemini, sessions, sendInitialGreeting, handleGeminiMessage, playAudioSegment };', context);
   const api = context.module.exports.testing;
   const socket = new Socket();
-  api.attachGemini(socket, { url: conference ? '/ai-audio?context=vicidial-conference' : '/ai-audio' }, uuid,
+  api.attachGemini(socket, { url: typeof conference === 'string' ? `/ai-audio?context=${conference}` : conference ? '/ai-audio?context=vicidial-conference' : '/ai-audio' }, uuid,
     { greeting: 'Welcome. What is your name?' });
   const session = api.sessions.get(uuid);
   session.ready = true;
@@ -123,3 +123,56 @@ test('subsequent playback waits for AI-only break completion', async () => {
   await Promise.resolve(); assert.equal(completed, false);
   release(); await f.session.playbackChain; assert.equal(completed, true);
 });
+
+for (const label of ['vicidial-customer']) {
+  test(`${label} keeps customer greeting and sends speech during AI playback`, () => {
+    const f = fixture(label);
+    f.api.sendInitialGreeting(f.session);
+    assert.match(f.session.gemini.sent[0].realtimeInput.text, /Welcome/);
+    f.session.modelGenerating = true;
+    f.session.playbackQueueDepth = 2;
+    f.socket.emit('message', Buffer.from([1, 0]), true);
+    assert.equal(f.session.gemini.sent.at(-1).realtimeInput.audio.data, 'AQA=');
+    assert.equal(f.session.conference, false);
+  });
+
+  test(`${label} discards interrupted output, waits for break, and keeps call open`, async () => {
+    const f = fixture(label); let release;
+    f.media.breakAudioPlayback = (id) => {
+      f.breaks.push(id);
+      return new Promise(resolve => { release = resolve; });
+    };
+    f.session.outputTurnChunks.push(Buffer.from([1, 0]));
+    f.session.outputTurnBytes = 2;
+    f.api.handleGeminiMessage(f.session, Buffer.from(JSON.stringify({serverContent: {
+      interrupted: true, modelTurn: {parts: [{inlineData: {data: 'AQA='}}]}
+    }})));
+    let finished = false;
+    f.session.playbackChain.then(() => { finished = true; });
+    await Promise.resolve(); assert.equal(finished, false);
+    assert.equal(f.session.outputTurnBytes, 0);
+    assert.equal(f.session.outputTurnChunks.length, 0);
+    assert.deepEqual(f.breaks, [uuid]);
+    release(); await f.session.playbackChain;
+    await f.api.playAudioSegment(f.session, Buffer.from([1, 0]), 24000, 0);
+    assert.equal(f.broadcasts.length, 0);
+    assert.equal(f.socket.readyState, 1);
+    assert.equal(f.session.gemini.readyState, 1);
+    f.socket.emit('message', Buffer.from([2, 0]), true);
+    assert.equal(f.session.gemini.sent.at(-1).realtimeInput.audio.data, 'AgA=');
+    f.api.handleGeminiMessage(f.session, Buffer.from(JSON.stringify({serverContent: {
+      modelTurn: {parts: [{inlineData: {data: 'AgA='}}]}
+    }})));
+    assert.equal(f.session.outputTurnBytes, 2);
+  });
+
+  test(`${label} interruption during file write prevents stale playback`, async () => {
+    const f = fixture(label);
+    f.disk.writeFile = async () => {
+      f.api.handleGeminiMessage(f.session, Buffer.from('{"serverContent":{"interrupted":true}}'));
+    };
+    await f.api.playAudioSegment(f.session, Buffer.from([1, 0]), 24000, 0);
+    assert.equal(f.broadcasts.length, 0);
+    assert.equal(f.removed.length, 1);
+  });
+}

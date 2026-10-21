@@ -349,6 +349,7 @@ class DialerController extends Controller
             'role' => ['nullable', 'string', 'max:200'],
             'greeting' => ['nullable', 'string', 'max:1000'],
             'goal' => ['nullable', 'string', 'max:2000'],
+            'knowledgeInstructions' => ['sometimes', 'nullable', 'string', 'max:10000'],
             'mode' => ['required', 'in:lead,assist,qualify'],
             'voice' => ['required', 'in:man,woman,male,female,professional,warm,confident'],
             'humanHandoff' => ['required', 'boolean'],

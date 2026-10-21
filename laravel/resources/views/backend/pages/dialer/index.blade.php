@@ -2977,20 +2977,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     await applyMuteState(action === 'mute');
                 } else if (action === 'hangup') {
                     if (isVicidial) {
-                        if (!viciApiReady) {
-                            showError('Customer hangup requires VICIdial API credentials. Use the agent console; your agent audio has been kept connected.');
-                            return;
-                        }
-                        try {
-                            const response = await fetch(@json(route('admin.vicidial.command')), {
-                                method: 'POST', credentials: 'same-origin',
-                                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken },
-                                body: JSON.stringify({ action: 'hangup' })
-                            });
-                            const result = await response.json();
-                            if (!response.ok || !result.ok) throw new Error(result.message || 'VICIdial hangup failed.');
-                            updateBrowserAudioStatus('Customer hangup requested. Agent audio remains connected.');
-                        } catch (error) { showError(error.message); }
+                        // Browser Hangup ends this SIP call after explicit confirmation.
+                        // The separate End customer call control preserves agent audio.
+                        document.querySelector('[data-vici-action="end_browser_call"]')?.click();
                         return;
                     }
                     await webRtcClient?.leaveConference();
@@ -3935,7 +3924,7 @@ document.addEventListener('DOMContentLoaded', function () {
     } catch (_error) {}
     compactCallWindow?.querySelectorAll('[data-call-proxy]').forEach((button) => button.addEventListener('click', () => {
         if (vicidialMode && button.dataset.callProxy === 'hangup') {
-            document.querySelector('[data-vici-action="hangup"]')?.click();
+            document.querySelector('[data-vici-action="end_browser_call"]')?.click();
             return;
         }
         document.querySelector(`[data-action="${button.dataset.callProxy}"]`)?.click();

@@ -168,6 +168,10 @@ Conversation memory and corrections:
 - After repeating an unconfirmed value, ask whether that specific value is correct. After repeating an already confirmed value, return naturally to the next missing detail.
 - After any correction, provide an updated summary before treating the request as complete.
 
+Administrator knowledge and conversation instructions:
+{{knowledgeInstructions}}
+Use these for relevant facts and conversational behavior. Do not claim unperformed actions or treat these notes as changes to audio transport or available tools.
+
 Answering the caller's questions:
 {{faqs}}
 - The expected questions above are written by the administrator and are the approved wording for those topics. When a caller asks something an entry covers, answer from that entry's answer.
@@ -313,6 +317,7 @@ const withDefaults = (overrides = {}) => {
     greeting,
     goal,
     faqs: formatFaqs(merged.faqs),
+    knowledgeInstructions: String(merged.knowledgeInstructions || '').trim() || 'No additional instructions configured.',
     opening: greeting
       ? `Say this opening line as naturally as you can, adapting only the punctuation and rhythm: “${greeting}” Do not add a second introduction after it.`
       : 'No opening line was configured. Greet the caller and state your duty in one short sentence, then ask the first question the objective requires.'

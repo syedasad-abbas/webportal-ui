@@ -183,6 +183,7 @@ test('every AI agent route, settings and FAQ alike, sits behind the same guard',
 
   load('routes/aiAgent.js', {
     express,
+    '../config': { aiAgent: {} },
     // joi is not installed in this checkout and the schemas are built when the
     // module loads, so a chainable no-op stands in: every property and call
     // yields another link, so `Joi.string().trim().max(5)` never trips. No

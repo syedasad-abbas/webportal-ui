@@ -33,6 +33,7 @@ router.post('/assist', authenticate(), requirePermissions(['dialer.create_call']
       `The configured call objective is: ${current.goal || 'help the caller with their request'}.`,
       'Suggest a concise, natural response the human agent can say. Do not claim a booking, action, policy, price, or fact unless the notes or approved answers confirm it.',
       'If the requested fact is not provided, say that it is unverified and suggest a short clarification or follow-up.',
+      current.knowledgeInstructions ? `Administrator knowledge and conversation instructions (do not claim unperformed actions):\n${current.knowledgeInstructions}` : '',
       approvedFaqs ? `Approved question and answer pairs:\n${approvedFaqs}` : 'No approved question and answer pairs are configured.'
     ].join('\n\n');
     const response = await fetch(
@@ -68,7 +69,7 @@ router.post('/assist', authenticate(), requirePermissions(['dialer.create_call']
 // Keys the service layer knows how to persist. Anything else the UI sends is
 // accepted and ignored rather than rejecting the whole request, so an extra
 // field in the browser never blocks saving the fields we do support.
-const PERSISTED_KEYS = ['enabled', 'role', 'greeting', 'goal', 'mode', 'voice', 'humanHandoff', 'callDirection'];
+const PERSISTED_KEYS = ['enabled', 'role', 'greeting', 'goal', 'mode', 'voice', 'humanHandoff', 'callDirection', 'knowledgeInstructions'];
 
 const pickPersisted = (value) => PERSISTED_KEYS.reduce((acc, key) => {
   if (value[key] !== undefined) acc[key] = value[key];
@@ -87,6 +88,7 @@ router.put('/', ...guard, async (req, res, next) => {
     // opening line", which the prompt builder handles.
     role: Joi.string().trim().max(200).allow('', null).default(''),
     greeting: Joi.string().trim().max(1000).allow('', null).default(''),
+    knowledgeInstructions: Joi.string().trim().max(10000).allow('', null),
     goal: Joi.string().trim().max(2000).allow('', null).default(''),
     mode: Joi.string().valid('lead', 'assist', 'qualify').required(),
     voice: Joi.string().valid('man', 'woman', 'male', 'female', 'professional', 'warm', 'confident').required(),

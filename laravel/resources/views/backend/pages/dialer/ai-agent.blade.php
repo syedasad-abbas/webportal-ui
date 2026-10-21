@@ -193,6 +193,13 @@ html:not(.dark) #ai-agent-page .ai-save-faq:hover { background: #f5f3ff; }
                 </div>
             </section>
 
+            <section class="ai-card rounded-2xl border border-slate-200 bg-white p-4 dark:border-[#2a4055] dark:bg-[#091827]">
+                <label for="ai-agent-knowledge" class="block text-sm font-semibold text-slate-900 dark:text-white">{{ __('Knowledge and behavior instructions') }}</label>
+                <p class="mt-2 text-xs text-slate-500 dark:text-slate-400">{{ __('Add business facts and guidance for the conversation. Saved instructions apply to new AI calls in FreeSWITCH and VICIdial. They guide responses; they do not fix network latency or change audio interruption handling.') }}</p>
+                <textarea id="ai-agent-knowledge" rows="8" maxlength="10000" placeholder="{{ __('Example: After an interruption, answer the latest question without restarting your greeting. Keep replies to one or two sentences and ask one question at a time.') }}" class="mt-3 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 dark:border-[#365068] dark:bg-[#071625] dark:text-white">{{ $aiAgentSettings['knowledgeInstructions'] ?? '' }}</textarea>
+                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ __('Up to 10,000 characters. Use Save settings to apply. Clear this field and save to remove the instructions.') }}</p>
+            </section>
+
             <section class="ai-card overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_80px_rgba(2,9,20,.08)] dark:border-[#2a4055] dark:bg-[#091827] dark:shadow-[0_24px_80px_rgba(2,9,20,.35)]"
                 x-data="aiFaqEditor(@js($aiAgentFaqs), @js(route('admin.ai-agent.faqs.update')))">
                 <div class="ai-divide ai-divide border-b border-slate-200 px-4 py-3 dark:border-[#263b50]">
@@ -382,6 +389,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const settingsUrl = @json(route('admin.dialer.ai-agent.show'));
     const roleInput = document.getElementById('ai-agent-role');
     const greetingInput = document.getElementById('ai-agent-greeting');
+    const knowledgeInput = document.getElementById('ai-agent-knowledge');
     const goalInput = document.getElementById('ai-agent-goal');
     const modeSelect = document.getElementById('ai-agent-mode');
     const voiceSelect = document.getElementById('ai-agent-voice');
@@ -439,6 +447,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ready = Boolean(settings.ready);
         if (roleInput) roleInput.value = settings.role || '';
         if (greetingInput) greetingInput.value = settings.greeting || '';
+        if (knowledgeInput) knowledgeInput.value = settings.knowledgeInstructions || '';
         if (goalInput) goalInput.value = settings.goal || '';
         if (modeSelect) modeSelect.value = settings.mode || 'lead';
         if (voiceSelect) voiceSelect.value = settings.voice || 'man';
@@ -460,6 +469,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.localStorage.setItem(draftKey, JSON.stringify({
                 role: roleInput?.value || '',
                 greeting: greetingInput?.value || '',
+                knowledgeInstructions: knowledgeInput?.value || '',
                 goal: goalInput?.value || '',
                 mode: modeSelect?.value || 'lead',
                 voice: voiceSelect?.value || 'man',
@@ -468,7 +478,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }));
         } catch (error) {}
     };
-    [roleInput, greetingInput, goalInput, modeSelect, voiceSelect, handoffInput, callDirectionSelect]
+    [roleInput, greetingInput, goalInput, knowledgeInput, modeSelect, voiceSelect, handoffInput, callDirectionSelect]
         .filter(Boolean)
         .forEach((control) => control.addEventListener('input', writeDraft));
     [modeSelect, voiceSelect, handoffInput, callDirectionSelect].filter(Boolean)
@@ -478,6 +488,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (draft) {
         if (roleInput && typeof draft.role === 'string' && roleInput.value === '') roleInput.value = draft.role;
         if (greetingInput && typeof draft.greeting === 'string' && greetingInput.value === '') greetingInput.value = draft.greeting;
+        if (knowledgeInput && typeof draft.knowledgeInstructions === 'string' && knowledgeInput.value === '') knowledgeInput.value = draft.knowledgeInstructions;
         if (goalInput && typeof draft.goal === 'string' && goalInput.value === '') goalInput.value = draft.goal;
     }
 
@@ -501,6 +512,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     enabled: nextEnabled,
                     role: roleInput?.value || '',
                     greeting: greetingInput?.value || '',
+                    knowledgeInstructions: knowledgeInput?.value || '',
                     goal: goalInput?.value || '',
                     mode: modeSelect?.value || 'lead',
                     voice: voiceSelect?.value || 'man',

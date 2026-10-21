@@ -64,8 +64,8 @@ const playAudioSegment = async (session, pcm, sampleRate, generation) => {
   await fs.mkdir(directory, { recursive: true });
   await fs.writeFile(filePath, playbackWav);
   // An interruption can arrive while the WAV is being written. Never submit
-  // that stale conference reply after uuid_break has already completed.
-  if (session.conference && (
+  // that stale interruptible reply after uuid_break has already completed.
+  if (session.bargeIn && (
     sessions.get(session.callId) !== session ||
     generation !== session.playbackGeneration
   )) {
@@ -154,6 +154,7 @@ const sendSetup = (session) => {
     role: session.settings.role,
     greeting: session.settings.greeting,
     goal: session.settings.goal,
+    knowledgeInstructions: session.settings.knowledgeInstructions,
     // Only the enabled pairs reach the prompt. `settings.get()` already trims
     // each entry, so anything without a question or an answer is gone by here.
     faqs: Array.isArray(session.settings.faqs) ? session.settings.faqs : [],
@@ -715,7 +716,7 @@ const handleGeminiMessage = (session, data) => {
         error: err.message
       });
     });
-    if (session.conference) {
+    if (session.bargeIn) {
       // Serialize subsequent replies behind the break of this AI leg only.
       session.playbackChain = Promise.all([session.playbackChain, stopped]).then(() => {});
       return; // Discard any stale model audio bundled with the interruption.
@@ -902,6 +903,9 @@ const attachGemini = (freeswitchSocket, request, callId, settings) => {
     callId,
     settings,
     conference: new URL(request.url, 'http://localhost').searchParams.get('context') === 'vicidial-conference',
+    bargeIn: ['vicidial-conference', 'vicidial-customer'].includes(
+      new URL(request.url, 'http://localhost').searchParams.get('context')
+    ),
     freeswitch: freeswitchSocket,
     gemini: null,
     queue: [],
@@ -1022,16 +1026,13 @@ const attachGemini = (freeswitchSocket, request, callId, settings) => {
     });
     if (session.ready && session.gemini?.readyState === WebSocket.OPEN) {
       if (
-        // The dedicated VICIdial leg captures mono READ audio (the MeetMe
-        // mix-minus) and broadcasts replies toward Asterisk on the WRITE side.
-        // Keep that separation: mixed/stereo capture would feed AI back into
-        // itself. Ordinary phone calls retain their existing playback gate.
-        session.conference || (session.initialGreetingComplete &&
+        // VICIdial streams capture mono READ audio; AI playback uses WRITE
+        // (uuid_broadcast aleg). Do not switch capture to mixed/stereo: that
+        // would feed AI output back into its speech detector.
+        session.bargeIn || (session.initialGreetingComplete &&
         !session.modelGenerating &&
         session.playbackQueueDepth === 0)
       ) {
-        // Gemini handles speech detection. Only the isolated conference leg
-        // bypasses the ordinary call's protection against playback feedback.
         sendAudioPayload(session, payload);
       }
     } else {
