@@ -1,4 +1,8 @@
 x-backend-env: &backend-env
+  CRM_REPORTS_ENABLED: ${CRM_REPORTS_ENABLED:-false}
+  CRM_REPORTS_CONFIG: ${CRM_REPORTS_CONFIG:-/etc/crm-reports/reports.json}
+  CRM_STORAGE_STATE: ${CRM_STORAGE_STATE:-/etc/crm-reports/auth.json}
+  CRM_CHROMIUM_EXECUTABLE: ${CRM_CHROMIUM_EXECUTABLE:-}
   PORT: 4000
   BACKEND_BIND_HOST: 0.0.0.0
   DB_HOST: postgres
@@ -155,6 +159,7 @@ services:
       VICIDIAL_CONFERENCE_TARGETS: ${VICIDIAL_CONFERENCE_TARGETS:-}
     volumes:
       - ./docker/vicidial-certs:/etc/vicidial-certs:ro
+      - ./docker/crm-reports-private:/etc/crm-reports:ro
       - ./recordings:/var/recordings
       - freeswitch_gateways:/mnt/gateways
       - freeswitch_users:/mnt/users

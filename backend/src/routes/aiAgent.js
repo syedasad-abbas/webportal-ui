@@ -8,6 +8,21 @@ const faqs = require('../services/aiAgentFaqService');
 const router = express.Router();
 const guard = [authenticate(), requirePermissions(['ai_agent.configure'])];
 
+// Raw bytes avoid retaining uploads on disk or accepting client-supplied paths.
+const documentRequests = new Set();
+router.post('/document-draft', ...guard, express.raw({ type: 'application/octet-stream', limit: '2mb' }), async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  if (documentRequests.has(req.user.id)) return res.status(429).json({ message: 'A document is already being processed for this user.' });
+  documentRequests.add(req.user.id);
+  try {
+    const { extractDraft } = require('../services/aiDocumentService');
+    const draft = await extractDraft(req.body, { apiKey: config.aiAgent.apiKey, model: config.aiAgent.textModel });
+    return res.json({ ok: true, draft });
+  } catch (err) {
+    return res.status(err.statusCode || 502).json({ message: err.statusCode ? err.message : 'Document analysis is temporarily unavailable. Try again.' });
+  } finally { documentRequests.delete(req.user.id); }
+});
+
 router.get('/', ...guard, async (_req, res, next) => {
   try { return res.json({ ok: true, settings: await settings.get() }); } catch (err) { return next(err); }
 });

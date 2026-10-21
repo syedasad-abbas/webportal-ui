@@ -135,6 +135,7 @@ Route::delete('/carrier/{carrierId}', [CarrierController::class, 'destroy'])->na
  // Deliberately not named admin.dialer.* : the Dialer sidebar entry stays
  // highlighted for every admin.dialer.* route, so the AI agent page needs its
  // own prefix to light up only its own menu item.
+ Route::post('/ai-agent/document-draft', [AiAgentController::class, 'documentDraft'])->middleware('throttle:5,1')->name('ai-agent.document-draft');
  Route::get('/ai-agent', [AiAgentController::class, 'index'])->name('ai-agent.index');
     // The expected questions are saved as one ordered list, so a single PUT
     // replaces the set instead of one request per row.

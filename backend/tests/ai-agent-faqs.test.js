@@ -178,7 +178,7 @@ test('every AI agent route, settings and FAQ alike, sits behind the same guard',
       return router;
     };
   });
-  const express = { Router: () => router };
+  const express = { Router: () => router, raw: () => (_req, _res, next) => next() };
   const noop = () => () => null;
 
   load('routes/aiAgent.js', {

@@ -25,6 +25,7 @@ function fixture(conference = true) {
     require: (name) => {
       if (name === 'ws') return { WebSocket: Socket, WebSocketServer: Socket };
       if (name === 'fs/promises') return disk;
+      if (name === './crmLiveTools') return { createHandler: () => ({ tools: () => [], handle() {}, cancel() {} }) };
       if (name === '../config') return { aiAgent: { connectTimeoutMs: 1000 }, freeswitch: { recordingsPath: '/test' } };
       if (name === '../aiSalesAgentProfile') return { buildAgentPrompt: () => '' };
       if (name === '../lib/freeswitch') return media;

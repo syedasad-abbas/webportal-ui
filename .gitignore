@@ -31,3 +31,6 @@ docker/vicidial-certs/
 
 # Private VICIdial AI deployment credentials (never commit)
 docker/vicidial-ai-private/
+
+# CRM browser sessions and approved private report configuration
+docker/crm-reports-private/

@@ -200,6 +200,25 @@ html:not(.dark) #ai-agent-page .ai-save-faq:hover { background: #f5f3ff; }
                 <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ __('Up to 10,000 characters. Use Save settings to apply. Clear this field and save to remove the instructions.') }}</p>
             </section>
 
+            @can('ai_agent.configure')
+            <section id="ai-document-import" data-url="{{ route('admin.ai-agent.document-draft') }}" class="ai-card rounded-2xl border border-slate-200 bg-white p-4 dark:border-[#2a4055] dark:bg-[#091827]">
+                <h2 class="text-sm font-semibold">{{ __('Import agent instructions from a file') }}</h2>
+                <p class="mt-2 text-xs text-slate-500 dark:text-slate-400">{{ __('Upload a PDF, JPG or PNG up to 2 MB. The file is sent to Gemini to prepare a draft; this application does not keep the original file. Review the extracted wording before saving. Scanned or unclear text may need correction.') }}</p>
+                <label for="ai-document-file" class="mt-3 block text-sm">{{ __('Document or image') }}</label>
+                <input id="ai-document-file" type="file" accept=".pdf,.jpg,.jpeg,.png" class="mt-2 block w-full text-sm">
+                <button id="ai-document-analyze" type="button" class="mt-3 rounded-xl bg-violet-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{{ __('Read file and prepare draft') }}</button>
+                <p id="ai-document-status" role="status" aria-live="polite" class="mt-2 text-sm"></p>
+                <div id="ai-document-preview" hidden class="mt-3 space-y-3">
+                    <p class="text-xs">{{ __('Review and edit the draft below. Applying replaces only fields with nonempty draft text. Existing FAQ entries are preserved. Nothing is saved until you click Save settings.') }}</p>
+                    @foreach(['role' => 'Duty assignment', 'greeting' => 'Opening greeting', 'goal' => 'Conversational goal', 'knowledgeInstructions' => 'Knowledge and script'] as $field => $label)
+                    <label class="block text-sm" for="ai-document-{{ $field }}">{{ __($label) }}</label>
+                    <textarea id="ai-document-{{ $field }}" data-document-field="{{ $field }}" rows="3" maxlength="{{ ['role' => 200, 'greeting' => 1000, 'goal' => 2000, 'knowledgeInstructions' => 10000][$field] }}" class="w-full rounded-xl border border-slate-300 p-3 dark:border-[#365068]"></textarea>
+                    @endforeach
+                    <button id="ai-document-apply" type="button" class="rounded-xl bg-violet-600 px-4 py-2 text-sm font-semibold text-white">{{ __('Apply draft to form') }}</button>
+                </div>
+            </section>
+            @endcan
+
             <section class="ai-card overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_80px_rgba(2,9,20,.08)] dark:border-[#2a4055] dark:bg-[#091827] dark:shadow-[0_24px_80px_rgba(2,9,20,.35)]"
                 x-data="aiFaqEditor(@js($aiAgentFaqs), @js(route('admin.ai-agent.faqs.update')))">
                 <div class="ai-divide ai-divide border-b border-slate-200 px-4 py-3 dark:border-[#263b50]">
@@ -537,4 +556,5 @@ document.addEventListener('DOMContentLoaded', () => {
     saveButton?.addEventListener('click', () => save(enabled));
 });
 </script>
+<script src="{{ asset('js/ai-document-import.js') }}" defer></script>
 @endsection

@@ -15,6 +15,24 @@ class AiAgentController extends Controller
 {
     use ResolvesAiAgentLabels;
 
+    public function documentDraft(Request $request): JsonResponse
+    {
+        abort_unless($request->user()?->can('ai_agent.configure'), 403);
+        $request->validate(['document' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:2048']]);
+        try {
+            $response = \Illuminate\Support\Facades\Http::acceptJson()
+                ->withToken(session('admin_token'))
+                ->withHeaders(['x-internal-token' => config('services.backend.internal_token')])
+                ->timeout(50)
+                ->withBody(file_get_contents($request->file('document')->getRealPath()), 'application/octet-stream')
+                ->post(config('services.backend.url').'/ai-agent/document-draft');
+            return response()->json($response->json() ?: ['message' => 'Document analysis failed.'], $response->status())
+                ->header('Cache-Control', 'no-store');
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            return response()->json(['message' => 'Document analysis timed out or is unavailable. Try again.'], 502);
+        }
+    }
+
     /**
      * Full page configuration for the AI agent. This replaced the floating card
      * that used to sit over the dialer, which was too narrow for the duty,
