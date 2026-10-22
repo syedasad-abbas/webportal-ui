@@ -20,6 +20,7 @@ const service = createCustomerService({
     await fs.startAudioStream(uuid, url.toString(), { callId: uuid });
     return bridge.waitUntilReady(uuid, config.aiAgent.connectTimeoutMs * 2 + 10000);
   },
+  record: fs.startRecording,
   connected: bridge.hasSession, close: bridge.closeSession
 });
 const timer = setInterval(() => service.reap(), 2000);
@@ -31,7 +32,19 @@ for (const action of ['authorize', 'begin', 'lease', 'end']) {
       const uuid = req.body?.uuid;
       const ok = action === 'end' ? (service.end(uuid), true) : await service[action](uuid);
       return res.status(ok ? 200 : 409).json({ ok });
-    } catch { return res.status(503).json({ ok: false }); }
+    } catch (err) {
+      console.error('[vicidial-ai] action failed', { action, uuid, error: err.message });
+      return res.status(503).json({ ok: false });
+    }
   });
 }
+router.post('/transcript', async (req, res) => {
+  try {
+    const { uuid, transcript } = req.body || {};
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid || '')
+      || typeof transcript !== 'string') return res.status(400).json({ ok: false });
+    await service.saveTranscript(uuid, transcript);
+    return res.json({ ok: true });
+  } catch { return res.status(503).json({ ok: false }); }
+});
 module.exports = router;

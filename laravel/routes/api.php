@@ -39,3 +39,9 @@ Route::middleware(['auth', 'web'])->prefix('admin')->name('admin.api.')->group(f
     Route::put('/terms/{taxonomy}/{id}', [TermsController::class, 'update'])->name('terms.update');
     Route::delete('/terms/{taxonomy}/{id}', [TermsController::class, 'destroy'])->name('terms.destroy');
 });
+
+// Isolated lab CRM: disabled until explicitly configured with a strong API token.
+Route::prefix('test-crm/v1')->middleware([\App\Http\Middleware\TestCrmToken::class, 'throttle:120,1'])->group(function () {
+    Route::get('reports/summary', [\App\Http\Controllers\Api\TestCrmController::class, 'summary']);
+    Route::apiResource('customers', \App\Http\Controllers\Api\TestCrmController::class)->parameters(['customers' => 'customer']);
+});

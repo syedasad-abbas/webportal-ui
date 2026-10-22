@@ -196,7 +196,7 @@ const sendSetup = (session) => {
         activityHandling: 'START_OF_ACTIVITY_INTERRUPTS',
         turnCoverage: 'TURN_INCLUDES_ONLY_ACTIVITY'
       },
-      systemInstruction: { parts: [{ text: `${prompt}\n\nCall continuity rules: Keep the conversation active until the caller hangs up. After the opening, listen and answer every caller turn. Never announce that you are ending the call and never stop after only one response. Keep replies concise and finish each reply with a useful question when appropriate. You receive the caller's live audio directly; transcribe carefully and preserve spelled names and digits exactly. Use Google Search only for general public information when it genuinely helps you answer the caller's question. Never search for a caller, and never use web results to guess how a caller spells a name or to decide what the caller said. Never present a search result as a confirmed booking, price, availability, or commitment.` }] },
+      systemInstruction: { parts: [{ text: `${prompt}\n\nLanguage rule: Speak only in English. Never switch to another language, even if the caller speaks or writes in another language; reply in English and ask the caller to continue in English. Call continuity rules: Keep the conversation active until the caller hangs up. After the opening, listen and answer every caller turn. Never announce that you are ending the call and never stop after only one response. Keep replies concise and finish each reply with a useful question when appropriate. You receive the caller's live audio directly; transcribe carefully and preserve spelled names and digits exactly. Use Google Search only for general public information when it genuinely helps you answer the caller's question. Never search for a caller, and never use web results to guess how a caller spells a name or to decide what the caller said. Never present a search result as a confirmed booking, price, availability, or commitment.` }] },
       // Keep this session genuinely audio-to-audio. The optional input
       // transcription layer repeatedly converted Pakistani names into
       // unrelated foreign sentences and then drove the correction logic with
@@ -555,6 +555,24 @@ const acceptPhoneDigits = (session, newDigits, replace = false) => {
   return true;
 };
 
+const sendTranscript = (session) => {
+  // Preserve speaker boundaries even when spoken text contains newlines or role labels.
+  const text = session.transcript.length ? JSON.stringify(session.transcript) : '';
+  if (!text || text === session.lastPostedTranscript) return;
+  session.lastPostedTranscript = text;
+  fetch(`http://127.0.0.1:4000/vicidial-ai/customer/transcript`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-internal-token': config.internalTokens?.backendSync || ''
+    },
+    body: JSON.stringify({ uuid: session.callId, transcript: text, token: config.internalTokens?.backendSync || '' })
+  }).catch((err) => {
+    console.warn('[ai-agent] transcript save failed', { callId: session.callId, error: err.message });
+    session.lastPostedTranscript = '';
+  });
+};
+
 const handleGeminiMessage = (session, data) => {
   let message;
   try {
@@ -743,7 +761,7 @@ const handleGeminiMessage = (session, data) => {
       queueOutputAudio(session);
     }
   }
-  if (inputText) session.transcript.push({ role: 'caller', text: inputText });
+  if (inputText && inputIsEnglish) session.transcript.push({ role: 'caller', text: inputText });
   if (outputText) {
     session.transcript.push({ role: 'agent', text: outputText });
     session.agentTranscriptWindow = `${session.agentTranscriptWindow} ${outputText}`.slice(-300);
@@ -817,6 +835,7 @@ const handleGeminiMessage = (session, data) => {
 
     session.lastInputTranscription = '';
     session.agentTranscriptWindow = '';
+    sendTranscript(session);
     if (
       !session.silenceFollowUpSent &&
       (!session.phoneCollecting || session.phoneAwaitingConfirmation)
@@ -963,7 +982,8 @@ const attachGemini = (freeswitchSocket, request, callId, settings) => {
     phoneFinalizeTimer: null,
     lastInputTranscription: '',
     agentTranscriptWindow: '',
-    lastCallerSpeechAt: Date.now()
+    lastCallerSpeechAt: Date.now(),
+    lastPostedTranscript: ''
   };
   sessions.set(callId, session);
   connectGemini(session);

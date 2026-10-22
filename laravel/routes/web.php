@@ -100,6 +100,12 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['auth']], 
     Route::delete('/recordings/bulk-delete', [RecordingController::class, 'bulkDelete'])->name('recordings.bulk-delete');
     Route::delete('/recordings/{callLog}', [RecordingController::class, 'destroy'])->name('recordings.destroy');
 
+    // Active call transcript (customer side, free-text only — no paid model)
+    Route::get('/transcript/{callLog}', [RecordingController::class, 'transcript'])->name('recordings.transcript');
+
+    // Active call UUIDs (cheap poll — removes ended calls from UI, no AI tokens)
+    Route::get('/active-calls', [RecordingController::class, 'activeCalls'])->name('recordings.activeCalls');
+
 
     // Terms
     Route::get('/terms/{taxonomy}', [TermsController::class, 'index'])->name('terms.index');
@@ -126,6 +132,8 @@ Route::delete('/carrier/inbound-dids/{inboundDid}', [InboundDidController::class
 Route::get('/carrier/{carrierId}/edit', [CarrierController::class, 'edit'])->name('carrier.edit');
 Route::put('/carrier/{carrierId}', [CarrierController::class, 'update'])->name('carrier.update');
 Route::delete('/carrier/{carrierId}', [CarrierController::class, 'destroy'])->name('carrier.destroy');
+ Route::get('/crm', [\App\Http\Controllers\Admin\CrmController::class, 'index'])->name('crm.index');
+ Route::match(['GET', 'POST', 'PUT', 'DELETE'], '/crm/api/{resource}', [\App\Http\Controllers\Admin\CrmController::class, 'proxy'])->where('resource', 'customers(?:/[1-9][0-9]*)?|reports/summary')->name('crm.proxy');
  Route::get('/dialer', [DialerController::class, 'index'])->name('dialer.index');
  Route::post('/dialer/provider', [DialerController::class, 'selectProvider'])->name('dialer.provider');
  Route::get('/vicidial', [\App\Http\Controllers\Admin\VicidialController::class, 'index'])->name('vicidial.index');
@@ -159,10 +167,6 @@ Route::delete('/carrier/{carrierId}', [CarrierController::class, 'destroy'])->na
         Route::get('/contacts/create', [ContactCenterController::class, 'create'])->name('contacts.create');
         Route::post('/contacts', [ContactCenterController::class, 'store'])->name('contacts.store');
         Route::get('/contacts/activity', [ContactCenterController::class, 'activity'])->name('contacts.activity');
-        Route::get('/contacts/reports', [ContactCenterController::class, 'reports'])->name('contacts.reports');
-        Route::get('/contacts/call-history', [ContactCenterController::class, 'callHistory'])->name('contacts.call-history');
-        Route::delete('/contacts/call-history', [ContactCenterController::class, 'bulkDestroyCallHistory'])->name('contacts.call-history.bulk-destroy');
-        Route::delete('/contacts/call-history/{callLog}', [ContactCenterController::class, 'destroyCallHistory'])->name('contacts.call-history.destroy');
         Route::get('/contacts/{contact}/edit', [ContactCenterController::class, 'edit'])->name('contacts.edit');
         Route::put('/contacts/{contact}', [ContactCenterController::class, 'update'])->name('contacts.update');
         Route::delete('/contacts/{contact}', [ContactCenterController::class, 'destroy'])->name('contacts.destroy');

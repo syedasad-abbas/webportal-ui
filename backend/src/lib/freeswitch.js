@@ -358,6 +358,8 @@ const broadcastAudio = async (uuid, filePath) => {
 };
 
 module.exports = {
+  // One read-only snapshot, rather than one ESL connection per database row.
+  getChannelSnapshot: () => sendApiCommand('show channels as json'),
   originateCall,
   callExists,
   getChannelVar,

@@ -15,6 +15,7 @@
 @endsection
 
 @push('scripts')
+<script src="{{ asset('js/dialer-crm.js') }}" defer></script>
 <script src="{{ asset('js/vicidial-inline.js') }}" defer></script>
 <script src="{{ asset('js/dialer-ai-assist.js') }}" defer></script>
 @endpush
@@ -445,32 +446,6 @@ html:not(.dark) .connectpro-dialer #dialpad-backspace:hover { color: #0f172a !im
         color: #0f172a;
     }
     /* Light mode for full call history panel */
-    html:not(.dark) #dialer-full-history section {
-        border-color: #d6e0eb !important;
-        background: #fff !important;
-    }
-    html:not(.dark) #dialer-full-history h2,
-    html:not(.dark) #dialer-full-history .font-semibold {
-        color: #0f172a !important;
-    }
-    html:not(.dark) #dialer-full-history .text-slate-400 {
-        color: #64748b !important;
-    }
-    html:not(.dark) #dialer-full-history .text-slate-300 {
-        color: #334155 !important;
-    }
-    html:not(.dark) #dialer-full-history .text-slate-500 {
-        color: #64748b !important;
-    }
-    html:not(.dark) #dialer-full-history article {
-        border-color: #e2e8f0 !important;
-    }
-    html:not(.dark) #dialer-full-history article:hover {
-        background: #f8fafc !important;
-    }
-    html:not(.dark) #dialer-full-history .bg-\[#0a1a2e\] {
-        background: #f1f5f9 !important;
-    }
     /* Light mode for full activity panel */
     html:not(.dark) #dialer-full-activity section {
         border-color: #d6e0eb !important;
@@ -850,15 +825,18 @@ html:not(.dark) .connectpro-dialer #dialpad-backspace:hover { color: #0f172a !im
                 <div class="contact-tabs -mx-3 flex overflow-x-auto border-b border-[#2a4055] px-3 sm:-mx-5 sm:px-5" role="tablist" aria-label="{{ __('Contact workspace') }}">
                     <button type="button" data-contact-tab="notes" class="contact-tab-active flex shrink-0 items-center gap-2 border-b-2 px-3 py-3 text-xs font-semibold sm:text-sm" role="tab" aria-selected="true"><i class="bi bi-file-earmark-text"></i>{{ __('Notes & Comments') }}</button>
                     <button type="button" data-contact-tab="ai-assist" class="flex shrink-0 items-center gap-2 border-b-2 border-transparent px-3 py-3 text-xs font-semibold text-slate-400 sm:text-sm" role="tab" aria-selected="false"><i class="bi bi-stars"></i>{{ __('AI Assist') }}</button>
-                    @if(($vicidial['enabled'] ?? false))
-                        <button type="button" data-contact-tab="vicidial" class="flex shrink-0 items-center gap-2 border-b-2 border-transparent px-3 py-3 text-xs font-semibold text-slate-400 sm:text-sm" role="tab" aria-selected="false"><i class="bi bi-headset"></i>{{ __('VICIdial') }}</button>
-                    @endif
                     <button type="button" data-contact-tab="activity" class="flex shrink-0 items-center gap-2 border-b-2 border-transparent px-3 py-3 text-xs font-semibold text-slate-400 sm:text-sm" role="tab" aria-selected="false"><i class="bi bi-activity"></i>{{ __('Activity Log') }}</button>
-                    <button type="button" data-contact-tab="history" class="flex shrink-0 items-center gap-2 border-b-2 border-transparent px-3 py-3 text-xs font-semibold text-slate-400 sm:text-sm" role="tab" aria-selected="false"><i class="bi bi-clock-history"></i>{{ __('Call History') }}</button>
                     <button type="button" data-contact-tab="info" class="flex shrink-0 items-center gap-2 border-b-2 border-transparent px-3 py-3 text-xs font-semibold text-slate-400 sm:text-sm" role="tab" aria-selected="false"><i class="bi bi-person"></i>{{ __('Contact Info') }}</button>
                 </div>
 
                 <div data-contact-tab-panel="info" class="mt-4 hidden rounded-xl border border-[#263b50] bg-[#102338] p-4">
+                    @can('contacts.view')
+                    <div class="mb-3">
+                        <button id="dialer-crm-lookup" type="button" data-url="{{ url('/admin/crm/api/customers') }}" class="btn-primary">{{ __('Look up customer in CRM') }}</button>
+                        <a href="{{ route('admin.crm.index') }}" target="_blank" rel="noopener" class="ml-3 underline">{{ __('Open CRM') }}</a>
+                        <p id="dialer-crm-result" role="status" class="mt-2 text-sm whitespace-pre-wrap"></p>
+                    </div>
+                    @endcan
                     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <input id="contact-name-input" type="text" maxlength="255" placeholder="{{ __('Contact name') }}" class="rounded-lg border border-[#365068] bg-[#091827] px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-400 focus:border-blue-500">
                         <input id="contact-company-input" type="text" maxlength="255" placeholder="{{ __('Company') }}" class="rounded-lg border border-[#365068] bg-[#091827] px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-400 focus:border-blue-500">
@@ -1104,40 +1082,6 @@ html:not(.dark) .connectpro-dialer #dialpad-backspace:hover { color: #0f172a !im
         <div id="dialer-inbound-socket" data-config='@json($inboundSocket ?? [])' class="hidden" aria-hidden="true"></div>
         <div id="vicidial-inline-config" data-config='@json($vicidialInlineConfig)' class="hidden" aria-hidden="true"></div>
         <div id="ai-assist-config" data-config='@json($aiAssistConfig)' class="hidden" aria-hidden="true"></div>
-
-        <!-- Full Call History Panel (shown when History tab is clicked) -->
-        <div id="dialer-full-history" class="hidden mt-4">
-            <section class="overflow-hidden rounded-2xl border border-[#294158] bg-[#091827] shadow-2xl shadow-black/20">
-                <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#294158] p-4 sm:px-5">
-                    <div><h2 class="text-lg font-semibold">{{ __('Call History') }}</h2><p class="mt-1 text-xs text-slate-400">{{ __('All inbound and outbound calls') }}</p></div>
-                    <div class="flex flex-wrap items-center gap-3">
-                        @canany(['recording.delete', 'contacts.delete'])
-                            <label class="flex items-center gap-2 text-sm"><input id="dialer-history-select-all" type="checkbox" disabled> {{ __('Select this page') }}</label>
-                            <button id="dialer-history-delete-selected" type="button" disabled class="rounded-lg border border-red-500 px-3 py-2 text-sm text-red-400 disabled:opacity-40">{{ __('Delete selected') }} (<span id="dialer-history-selected-count">0</span>)</button>
-                        @endcanany
-                        <button id="dialer-history-refresh" type="button" class="flex h-9 w-9 items-center justify-center rounded-full border border-[#365068] text-slate-400 hover:border-blue-500 hover:text-blue-400 disabled:opacity-40" title="{{ __('Refresh') }}"><i class="bi bi-arrow-clockwise"></i></button>
-                    </div>
-                </div>
-                <p id="dialer-history-message" role="status" aria-live="polite" class="hidden px-5 py-3 text-sm"></p>
-                <!-- Column Headers -->
-                <div class="hidden grid-cols-[48px_minmax(160px,1fr)_140px_110px_120px_auto] gap-3 border-b border-[#294158] bg-[#0a1a2e] px-4 py-2 text-xs font-semibold uppercase tracking-wider text-slate-400 sm:grid sm:px-5">
-                    <span></span>
-                    <span>{{ __('Number') }}</span>
-                    <span>{{ __('Direction') }}</span>
-                    <span>{{ __('Status') }}</span>
-                    <span>{{ __('Duration') }}</span>
-                    <span class="text-right">{{ __('Date') }}</span>
-                </div>
-                 <div id="dialer-history-list" class="divide-y divide-[#1e3347] max-h-[calc(100vh-280px)] overflow-y-auto">
-                     <div class="px-6 py-16 text-center text-sm text-slate-400">{{ __('Loading call history...') }}</div>
-                 </div>
-                 <div class="flex items-center justify-between gap-3 border-t border-[#294158] p-4 text-sm">
-                     <button id="dialer-history-prev" type="button" disabled class="rounded-lg border border-[#365068] px-3 py-2 disabled:opacity-40">{{ __('Previous') }}</button>
-                     <span id="dialer-history-page"></span>
-                     <button id="dialer-history-next" type="button" disabled class="rounded-lg border border-[#365068] px-3 py-2 disabled:opacity-40">{{ __('Next') }}</button>
-                 </div>
-             </section>
-         </div>
 
          <!-- Full Activity Panel (shown when Activity tab is clicked) -->
          <div id="dialer-full-activity" class="hidden mt-4">
@@ -1690,138 +1634,12 @@ document.addEventListener('DOMContentLoaded', function () {
     contactActivityRefreshBtn?.addEventListener('click', loadContactActivity);
     contactCallHistoryRefreshBtn?.addEventListener('click', loadContactCallHistory);
 
-    // Top bar History tab - show full call history within dialer page
+    // Top bar Activity panel
     const dialerMainContent = document.querySelector('.connectpro-two-panel-grid');
-    const dialerHistoryPanel = document.getElementById('dialer-full-history');
-    const dialerHistoryList = document.getElementById('dialer-history-list');
-    const dialerHistoryRefreshBtn = document.getElementById('dialer-history-refresh');
     const dialerActivityPanel = document.getElementById('dialer-full-activity');
     const dialerActivityList = document.getElementById('dialer-activity-list');
     const dialerActivityRefreshBtn = document.getElementById('dialer-activity-refresh');
     const topBarLinks = document.querySelectorAll('.connectpro-reference-nav a');
-
-    const historySelectAll = document.getElementById('dialer-history-select-all');
-    const historyDeleteSelected = document.getElementById('dialer-history-delete-selected');
-    const historySelectedCount = document.getElementById('dialer-history-selected-count');
-    const historyMessage = document.getElementById('dialer-history-message');
-    const historyPrev = document.getElementById('dialer-history-prev');
-    const historyNext = document.getElementById('dialer-history-next');
-    const historyPageLabel = document.getElementById('dialer-history-page');
-    const canDeleteHistory = @json(auth()->user()->can('recording.delete') || auth()->user()->can('contacts.delete'));
-    const historyUrl = @json(route('admin.contacts.call-history'));
-    let historyPage = 1;
-    let historyLastPage = 1;
-    let historyBusy = false;
-
-    const updateHistoryControls = () => {
-        const boxes = [...dialerHistoryList.querySelectorAll('[data-history-select]')];
-        const selected = boxes.filter((box) => box.checked).length;
-        if (historySelectAll) {
-            historySelectAll.disabled = historyBusy || boxes.length === 0;
-            historySelectAll.checked = boxes.length > 0 && selected === boxes.length;
-            historySelectAll.indeterminate = selected > 0 && selected < boxes.length;
-        }
-        if (historyDeleteSelected) historyDeleteSelected.disabled = historyBusy || selected === 0;
-        if (historySelectedCount) historySelectedCount.textContent = selected;
-        dialerHistoryList.querySelectorAll('[data-history-select], [data-history-delete]').forEach((el) => { el.disabled = historyBusy; });
-        dialerHistoryRefreshBtn.disabled = historyBusy;
-        historyPrev.disabled = historyBusy || historyPage <= 1;
-        historyNext.disabled = historyBusy || historyPage >= historyLastPage;
-    };
-
-    const deleteHistory = async (ids) => {
-        if (!canDeleteHistory || historyBusy || !ids.length) return;
-        const confirmation = @json(__('Delete :count call record(s) and any associated recordings? This cannot be undone.'));
-        if (!window.confirm(confirmation.replace(':count', ids.length))) return;
-        historyBusy = true;
-        updateHistoryControls();
-        historyMessage.classList.add('hidden');
-        try {
-            const data = await contactRequest(historyUrl, { method: 'DELETE', body: JSON.stringify({ ids }) });
-            historyMessage.textContent = data.message;
-            historyMessage.classList.remove('hidden');
-        } catch (error) {
-            historyMessage.textContent = error.message || @json(__('Unable to delete call history. Please try again.'));
-            historyMessage.classList.remove('hidden');
-        } finally {
-            historyBusy = false;
-            await loadFullCallHistory();
-            if (activeContact) loadContactCallHistory();
-        }
-    };
-
-    historySelectAll?.addEventListener('change', () => {
-        dialerHistoryList.querySelectorAll('[data-history-select]').forEach((box) => { box.checked = historySelectAll.checked; });
-        updateHistoryControls();
-    });
-    historyDeleteSelected?.addEventListener('click', () => deleteHistory([...dialerHistoryList.querySelectorAll('[data-history-select]:checked')].map((box) => box.value)));
-    dialerHistoryList?.addEventListener('change', updateHistoryControls);
-    dialerHistoryList?.addEventListener('click', (event) => {
-        const deleteButton = event.target.closest('[data-history-delete]');
-        if (deleteButton) {
-            deleteHistory([deleteButton.dataset.historyDelete]);
-            return;
-        }
-        // Redial fills the dialpad in place; navigating to a new page would
-        // tear down an in-progress call.
-        const redialButton = event.target.closest('[data-history-redial]');
-        if (redialButton) {
-            if (hasLiveCall()) {
-                setContactFeedback('{{ __('Finish the current call before starting another.') }}', true);
-                return;
-            }
-            const number = redialButton.dataset.historyRedial || '';
-            if (displayInput) displayInput.value = number;
-            if (hiddenInput) hiddenInput.value = number;
-            lookupContactByPhone(number, true);
-            refreshStartButton();
-        }
-    });
-    historyPrev?.addEventListener('click', () => { if (!historyBusy && historyPage > 1) { historyPage--; loadFullCallHistory(); } });
-    historyNext?.addEventListener('click', () => { if (!historyBusy && historyPage < historyLastPage) { historyPage++; loadFullCallHistory(); } });
-
-    const loadFullCallHistory = async () => {
-        if (!dialerHistoryList || historyBusy) return;
-        historyBusy = true;
-        dialerHistoryList.innerHTML = '<div class="px-6 py-16 text-center text-sm text-slate-400">{{ __('Loading call history...') }}</div>';
-        updateHistoryControls();
-        try {
-            const data = await contactRequest(`${historyUrl}?format=json&page=${historyPage}`);
-            historyLastPage = data.calls.last_page;
-            if (historyPage > historyLastPage) {
-                historyPage = historyLastPage;
-                historyBusy = false;
-                return await loadFullCallHistory();
-            }
-            historyPageLabel.textContent = `${historyPage} / ${historyLastPage}`;
-            if (data.calls && data.calls.data && data.calls.data.length > 0) {
-                dialerHistoryList.innerHTML = data.calls.data.map((call) => {
-                    const isMissed = ['failed', 'missed', 'declined', 'busy', 'no_answer'].includes((call.status || '').toLowerCase());
-                    const directionIcon = call.direction === 'inbound' ? 'bi-telephone-inbound' : 'bi-telephone-outbound';
-                    const statusColor = isMissed ? 'text-red-400' : 'text-emerald-400';
-                    const iconBg = isMissed ? 'bg-red-500/10 text-red-400' : 'bg-blue-500/10 text-blue-400';
-                    const duration = call.duration_seconds ? String(Math.floor(call.duration_seconds / 60)).padStart(2, '0') + ':' + String(call.duration_seconds % 60).padStart(2, '0') : '00:00';
-                    const number = call.direction === 'inbound' ? call.caller_id : call.destination;
-                    const date = call.created_at ? new Date(call.created_at).toLocaleString() : '';
-                    return `<article class="grid items-center gap-3 px-4 py-4 transition hover:bg-white/[.025] sm:grid-cols-[48px_minmax(160px,1fr)_140px_110px_120px_auto] sm:px-5">
-                        <div class="flex items-center gap-1">${canDeleteHistory ? `<input type="checkbox" data-history-select value="${escapeContactText(call.id)}" aria-label="${escapeContactText(@json(__('Select call record')))} ${escapeContactText(number || '')}">` : ''}<span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${iconBg}"><i class="bi ${directionIcon}"></i></span></div>
-                        <div class="min-w-0"><p class="truncate font-semibold">${escapeContactText(number || @json(__('Unknown')))}</p><p class="truncate text-xs text-slate-400">${escapeContactText(call.user?.external_name || call.user?.email || '')}</p></div>
-                        <span class="text-sm capitalize text-slate-300">${escapeContactText((call.direction || 'outbound').replace('_', ' '))}</span>
-                        <span class="text-sm ${statusColor}">${escapeContactText((call.status || 'unknown').replace('_', ' '))}</span>
-                        <span class="text-sm text-slate-400">${duration}</span>
-                        <div class="flex items-center justify-end gap-2"><span class="hidden text-xs text-slate-500 xl:inline">${escapeContactText(date)}</span>${canDeleteHistory ? `<button type="button" data-history-delete="${escapeContactText(call.id)}" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-red-500 text-red-400 disabled:opacity-40" aria-label="${escapeContactText(@json(__('Delete call record')))}" title="${escapeContactText(@json(__('Delete call record')))}"><i class="bi bi-trash"></i></button>` : ''}<button type="button" data-history-redial="${escapeContactText(number || '')}" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white hover:bg-emerald-500" title="{{ __('Call this number') }}" aria-label="{{ __('Call this number') }}"><i class="bi bi-telephone-fill"></i></button></div>
-                    </article>`;
-                }).join('');
-            } else {
-                dialerHistoryList.innerHTML = '<div class="px-6 py-16 text-center text-sm text-slate-400">{{ __('No calls have been recorded yet.') }}</div>';
-            }
-        } catch (err) {
-            dialerHistoryList.innerHTML = '<div class="px-6 py-16 text-center text-sm text-red-400">{{ __('Failed to load call history') }}</div>';
-        } finally {
-            historyBusy = false;
-            updateHistoryControls();
-        }
-    };
 
     const loadFullActivity = async () => {
         if (!dialerActivityList) return;
@@ -1898,34 +1716,14 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const showFullActivity = () => {
-        if (!dialerMainContent || !dialerHistoryPanel || !dialerActivityPanel) return;
+        if (!dialerMainContent || !dialerActivityPanel) return;
         dialerMainContent.classList.add('hidden');
         dialerActivityPanel.classList.remove('hidden');
-        dialerHistoryPanel.classList.add('hidden');
         topBarLinks.forEach((link) => {
             link.classList.toggle('connectpro-reference-nav-active', link.hasAttribute('data-dialer-activity'));
         });
         loadFullActivity();
     };
-
-    const showFullHistory = (activeLink) => {
-        if (!dialerMainContent || !dialerHistoryPanel || !dialerActivityPanel) return;
-        dialerMainContent.classList.add('hidden');
-        dialerHistoryPanel.classList.remove('hidden');
-        dialerActivityPanel.classList.add('hidden');
-        topBarLinks.forEach((link) => {
-            link.classList.toggle('connectpro-reference-nav-active', link.hasAttribute('data-dialer-history'));
-        });
-        activeLink?.setAttribute('aria-current', 'page');
-        loadFullCallHistory();
-    };
-
-    document.querySelectorAll('[data-dialer-history]').forEach((link) => {
-        link.addEventListener('click', (event) => {
-            event.preventDefault();
-            showFullHistory(link);
-        });
-    });
 
     document.querySelectorAll('[data-dialer-activity]').forEach((link) => {
         link.addEventListener('click', (event) => {
@@ -1948,15 +1746,13 @@ document.addEventListener('DOMContentLoaded', function () {
         if (link.textContent.trim() === '{{ __('Dialpad') }}') {
             // Only Dialpad restores the dialer; other links use their own routes.
             link.addEventListener('click', (e) => {
-                if (dialerMainContent && dialerHistoryPanel && dialerActivityPanel) {
-                    const isOnHistory = dialerHistoryPanel.classList.contains('hidden') === false;
+                if (dialerMainContent && dialerActivityPanel) {
                     const isOnActivity = dialerActivityPanel.classList.contains('hidden') === false;
-                    if (isOnHistory || isOnActivity) {
+                    if (isOnActivity) {
                         if (link.getAttribute('href') === '#' || link.getAttribute('href') === window.location.href.split('#')[0] + '#') {
                             e.preventDefault();
                         }
                         dialerMainContent.classList.remove('hidden');
-                        dialerHistoryPanel.classList.add('hidden');
                         dialerActivityPanel.classList.add('hidden');
                         // Update active tab highlighting
                         topBarLinks.forEach(l => l.classList.remove('connectpro-reference-nav-active'));
@@ -1967,7 +1763,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    dialerHistoryRefreshBtn?.addEventListener('click', loadFullCallHistory);
     dialerActivityRefreshBtn?.addEventListener('click', loadFullActivity);
 
     if (new URLSearchParams(window.location.search).get('tab') === 'activity') {

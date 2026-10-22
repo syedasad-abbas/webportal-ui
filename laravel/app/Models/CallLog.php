@@ -29,6 +29,7 @@ class CallLog extends Model
         'sip_status',
         'sip_reason',
         'hangup_cause',
+        'transcript',
     ];
 
     protected $casts = [

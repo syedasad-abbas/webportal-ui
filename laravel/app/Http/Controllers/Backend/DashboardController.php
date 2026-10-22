@@ -6,6 +6,8 @@ namespace App\Http\Controllers\Backend;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\CallLog;
+use App\Services\CrmApiClient;
 use App\Services\Charts\PostChartService;
 use App\Services\Charts\UserChartService;
 use App\Services\LanguageService;
@@ -19,7 +21,8 @@ class DashboardController extends Controller
     public function __construct(
         private readonly UserChartService $userChartService,
         private readonly LanguageService $languageService,
-        private readonly PostChartService $postChartService
+        private readonly PostChartService $postChartService,
+        private readonly CrmApiClient $crmApiClient
     ) {
     }
 
@@ -112,6 +115,12 @@ class DashboardController extends Controller
                     'show_home' => false,
                     'show_current' => false,
                 ],
+                'active_calls' => CallLog::with('user')
+                    ->whereNotNull('connected_at')
+                    ->whereNull('ended_at')
+                    ->orderByDesc('connected_at')
+                    ->get(),
+                'crm_summary' => $this->fetchCrmSummary(),
             ]
         );
     }
@@ -370,4 +379,18 @@ class DashboardController extends Controller
             ->count();
     }
 
+    private function fetchCrmSummary(): ?array
+    {
+        try {
+            $base = config('crm.base_url');
+            $token = config('crm.token');
+            if (empty($base) || empty($token)) {
+                return null;
+            }
+            $response = $this->crmApiClient->request('GET', 'reports/summary');
+            return $response['data'] ?? null;
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
 }

@@ -28,6 +28,15 @@ const get = (uuid) => {
   return diagnostics;
 };
 
+// Record-only lifecycle handling: never sends hangup/redirect commands.
+const recordHangup = async (event, query = (...args) => require('../db').query(...args)) => {
+  const uuid = event['Unique-ID'];
+  if (event['Event-Name'] !== 'CHANNEL_HANGUP_COMPLETE' ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid || '')) return;
+  await query(`UPDATE call_logs SET ended_at = NOW(), status = CASE WHEN connected_at IS NULL THEN 'ended' ELSE 'completed' END, updated_at = NOW()
+    WHERE call_uuid = $1 AND ended_at IS NULL`, [uuid]);
+};
+
 const start = () => {
   if (started) return;
   started = true;
@@ -62,7 +71,11 @@ const start = () => {
             clearTimeout(handshake);
           }
         } else if (header.includes('Content-Type: text/event-json')) {
-          try { remember(JSON.parse(body)); } catch (error) {
+          try {
+            const event = JSON.parse(body);
+            remember(event);
+            recordHangup(event).catch(error => console.warn('[call outcomes] unable to record hangup:', error.message));
+          } catch (error) {
             console.warn('[call outcomes] invalid event:', error.message);
           }
         } else if (header.includes('Content-Type: text/disconnect-notice')) {
@@ -75,4 +88,4 @@ const start = () => {
   };
   connect();
 };
-module.exports = { start, get, remember };
+module.exports = { start, get, remember, recordHangup };

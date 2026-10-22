@@ -4,218 +4,95 @@
    {{ $breadcrumbs['title'] }} | {{ config('app.name') }}
 @endsection
 
-@section('before_vite_build')
-    <script>
-        var userGrowthData = @json($user_growth_data['data']);
-        var userGrowthLabels = @json($user_growth_data['labels']);
-    </script>
-@endsection
+@push('styles')
+    <link rel="stylesheet" href="{{ asset('css/dialer-dashboard.css') }}?v=3">
+@endpush
 
 @section('admin-content')
-    <div class="p-4 mx-auto max-w-(--breakpoint-2xl) md:p-6">
+    {{-- Dashboard composition and palette from laravel-crm, inside the existing dialer shell. --}}
+    <div class="crm-dashboard">
         <x-breadcrumbs :breadcrumbs="$breadcrumbs" />
-
         {!! ld_apply_filters('dashboard_after_breadcrumbs', '') !!}
-
-        <div class="grid grid-cols-12 gap-4 md:gap-6">
-            <div class="col-span-12 space-y-6">
-                <div class="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-4 md:gap-6">
-                    {!! ld_apply_filters('dashboard_cards_before_users', '') !!}
-                    @include('backend.pages.dashboard.partials.card', [
-                        'icon_svg' => asset('images/icons/user.svg'),
-                        'label' => __('Users'),
-                        'value' => $total_users,
-                        'bg' => '#635BFF',
-                        'class' => 'bg-white',
-                        'url' => route('admin.users.index'),
-                        'enable_full_div_click' => true,
-                        'value_attr' => 'total_users',
-                    ])
-                    {!! ld_apply_filters('dashboard_cards_after_users', '') !!}
-                    @include('backend.pages.dashboard.partials.card', [
-                        'icon_svg' => asset('images/icons/key.svg'),
-                        'label' => __('Roles'),
-                        'value' => $total_roles,
-                        'bg' => '#00D7FF',
-                        'class' => 'bg-white',
-                        'url' => route('admin.roles.index'),
-                        'enable_full_div_click' => true,
-                    ])
-                    {!! ld_apply_filters('dashboard_cards_after_roles', '') !!}
-                    @include('backend.pages.dashboard.partials.card', [
-                        'icon' => 'bi bi-shield-check',
-                        'label' => __('Permissions'),
-                        'value' => $total_permissions,
-                        'bg' => '#FF4D96',
-                        'class' => 'bg-white',
-                        'url' => route('admin.permissions.index'),
-                        'enable_full_div_click' => true,
-                    ])
-                    {!! ld_apply_filters('dashboard_cards_after_permissions', '') !!}
-                    @include('backend.pages.dashboard.partials.card', [
-                        'icon' => 'bi bi-translate',
-                        'label' => __('Translations'),
-                        'value' => $languages['total'] . ' / ' . $languages['active'],
-                        'bg' => '#22C55E',
-                        'class' => 'bg-white',
-                        'url' => route('admin.translations.index'),
-                        'enable_full_div_click' => true,
-                    ])
-                    {!! ld_apply_filters('dashboard_cards_after_translations', '') !!}
-                    @include('backend.pages.dashboard.partials.card', [
-                        'icon' => 'bi bi-check-circle',
-                        'label' => __('Active Users'),
-                        'value' => $active_users ?? 0,
-                        'bg' => '#34D399',
-                        'class' => 'bg-white',
-                        'url' => route('admin.users.active'),
-                        'enable_full_div_click' => true,
-                        'value_attr' => 'active_users',
-                    ])
-                    @include('backend.pages.dashboard.partials.card', [
-                        'icon' => 'bi bi-power',
-                        'label' => __('Offline Users'),
-                        'value' => $offline_users ?? 0,
-                        'bg' => '#FACC15',
-                        'class' => 'bg-white',
-                        'url' => route('admin.users.offline'),
-                        'enable_full_div_click' => true,
-                        'value_attr' => 'offline_users',
-                    ])
-                    @include('backend.pages.dashboard.partials.card', [
-                        'icon' => 'bi bi-telephone-outbound',
-                        'label' => __('Dialing Users'),
-                        'value' => $dialing_users ?? 0,
-                        'bg' => '#0EA5E9',
-                        'class' => 'bg-white',
-                        'url' => route('admin.calls.dialing'),
-                        'enable_full_div_click' => true,
-                        'value_attr' => 'dialing_users',
-                    ])
-                    @include('backend.pages.dashboard.partials.card', [
-                        'icon' => 'bi bi-telephone-inbound',
-                        'label' => __('In-Call Users'),
-                        'value' => $in_call_users ?? 0,
-                        'bg' => '#A855F7',
-                        'class' => 'bg-white',
-                        'url' => route('admin.calls.in_call'),
-                        'enable_full_div_click' => true,
-                        'value_attr' => 'in_call_users',
-                    ])
-                </div>
-            </div>
-        </div>
-
-        {!! ld_apply_filters('dashboard_cards_after', '') !!}
-
-        <div class="mt-6">
-            <div class="grid grid-cols-12 gap-4 md:gap-6">
-                <div class="col-span-12">
-                    <div class="grid grid-cols-12 gap-4 md:gap-6">
-                        <div class="col-span-12 md:col-span-8">
-                            @include('backend.pages.dashboard.partials.user-growth')
-                        </div>
-                        <div class="col-span-12 md:col-span-4">
-                            @include('backend.pages.dashboard.partials.user-history')
-                        </div>
+        @if($crm_summary)
+            <p class="crm-dashboard-notice crm-dashboard-notice--connected" role="status">{{ __('CRM connected. Revenue and lead values are live. Active Call Transcripts remains connected to the dialer.') }}</p>
+        @else
+            <p class="crm-dashboard-notice" role="status">{{ __('CRM reporting is not connected. Revenue and lead values are unavailable. Active Call Transcripts remains connected to the dialer.') }}</p>
+        @endif
+        <div class="crm-dashboard-layout">
+            <div class="crm-dashboard-main">
+                <section class="crm-dashboard-panel crm-dashboard-overview" aria-label="{{ __('Revenue') }}">
+                    <div class="crm-dashboard-highlights">
+                        @foreach([['Won Revenue', 'green', 'won_revenue'], ['Lost Revenue', 'red', 'lost_revenue']] as [$label, $tone, $key])
+                            <div class="crm-dashboard-metric crm-dashboard-tone-{{ $tone }}">
+                                <span class="crm-dashboard-metric-label">{{ __($label) }}</span>
+                                @if($crm_summary)
+                                    <span class="crm-dashboard-metric-value">{{ number_format((float) ($crm_summary[$key] ?? 0), 2) }}</span>
+                                    <span class="crm-dashboard-metric-note">{{ __('Live from CRM') }}</span>
+                                @else
+                                    <span class="crm-dashboard-metric-value" aria-label="{{ __('Unavailable') }}">—</span>
+                                    <span class="crm-dashboard-metric-note">{{ __('CRM not connected') }}</span>
+                                @endif
+                            </div>
+                        @endforeach
                     </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="mt-6">
-            <div class="grid grid-cols-12 gap-4 md:gap-6">
-                <div class="col-span-12">
-                    <div class="grid grid-cols-12 gap-4 md:gap-6">
-                        @include('backend.pages.dashboard.partials.user-call-time-chart')
+                    <div class="crm-dashboard-chart">
+                        @include('backend.pages.dashboard.partials.crm-report', ['title' => __('Revenue'), 'kind' => 'revenue', 'legend' => [__('Won Revenue'), __('Lost Revenue')], 'crm_summary' => $crm_summary])
                     </div>
+                </section>
+
+                <div class="crm-dashboard-stats">
+                    @if($crm_summary)
+                        @foreach([
+                            ['Total Customers', $crm_summary['total_customers'] ?? 0],
+                            ['Open Leads', $crm_summary['open_leads'] ?? 0],
+                        ] as [$label, $value])
+                            <div class="crm-dashboard-metric">
+                                <span class="crm-dashboard-metric-label">{{ __($label) }}</span>
+                                <span class="crm-dashboard-metric-value">{{ number_format($value) }}</span>
+                                <span class="crm-dashboard-metric-note">{{ __('Live from CRM') }}</span>
+                            </div>
+                        @endforeach
+                    @else
+                        @foreach(['Average Lead Value', 'Total Leads', 'Average Leads Per Day', 'Total Quotations', 'Total Persons', 'Total Organizations'] as $label)
+                            <div class="crm-dashboard-metric">
+                                <span class="crm-dashboard-metric-label">{{ __($label) }}</span>
+                                <span class="crm-dashboard-metric-value" aria-label="{{ __('Unavailable') }}">—</span>
+                                <span class="crm-dashboard-metric-note">{{ __('CRM not connected') }}</span>
+                            </div>
+                        @endforeach
+                    @endif
+                </div>
+                @include('backend.pages.dashboard.partials.crm-report', ['title' => __('Leads'), 'kind' => 'leads', 'legend' => [__('All'), __('Won'), __('Lost')], 'crm_summary' => $crm_summary])
+                <div class="crm-dashboard-pair">
+                    @include('backend.pages.dashboard.partials.crm-report', ['title' => __('Top Products'), 'kind' => 'products', 'legend' => [], 'crm_summary' => $crm_summary])
+                    @include('backend.pages.dashboard.partials.crm-report', ['title' => __('Top Persons'), 'kind' => 'persons', 'legend' => [], 'crm_summary' => $crm_summary])
                 </div>
             </div>
-        </div>
-
-        <div class="mt-6">
-            <div class="grid grid-cols-12 gap-4 md:gap-6">
-                <div class="col-span-12">
-                    <div class="grid grid-cols-12 gap-4 md:gap-6">
-                        @include('backend.pages.dashboard.partials.post-chart')
-                    </div>
+            <aside class="crm-dashboard-summary" aria-label="{{ __('Dashboard summary') }}">
+                <div class="crm-dashboard-transcripts">
+                    @include('backend.pages.dashboard.partials._call-transcripts')
                 </div>
-            </div>
+                @include('backend.pages.dashboard.partials.crm-report', ['title' => __('Open Leads By Stages'), 'kind' => 'stages', 'legend' => [], 'crm_summary' => $crm_summary])
+                @include('backend.pages.dashboard.partials.crm-report', ['title' => __('Revenue By Sources'), 'kind' => 'sources', 'legend' => [], 'crm_summary' => $crm_summary])
+                @include('backend.pages.dashboard.partials.crm-report', ['title' => __('Revenue By Types'), 'kind' => 'types', 'legend' => [], 'crm_summary' => $crm_summary])
+            </aside>
         </div>
-
         {!! ld_apply_filters('dashboard_after', '') !!}
     </div>
 @endsection
 
 @push('scripts')
-    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            if (typeof io === 'undefined') {
-                return;
-            }
-
-            const wsUrl = @json(rtrim((string) config('services.backend.ws_url'), '/')) || window.location.origin;
-            let socket;
-            try {
-                socket = io(wsUrl, {
-                    transports: ['websocket', 'polling'],
-                    auth: { token: @json(session('admin_token')) }
-                });
-            } catch (error) {
-                console.warn('Unable to establish dashboard socket connection', error);
-                return;
-            }
-
-            const formatNumber = (value) => Number(value || 0).toLocaleString();
-            const setMetric = (name, value) => {
-                const el = document.querySelector(`[data-dashboard-metric="${name}"]`);
-                if (el) {
-                    el.textContent = formatNumber(value);
-                }
-            };
-
-            socket.on('dashboard.metrics', (payload) => {
-                if (!payload) {
-                    return;
-                }
-
-                if (payload.presence) {
-                    setMetric('total_users', payload.presence.total);
-                    setMetric('active_users', payload.presence.active);
-                    setMetric('offline_users', payload.presence.offline);
-                }
-
-                setMetric('dialing_users', payload.dialingUsers ?? 0);
-                setMetric('in_call_users', payload.inCallUsers ?? 0);
-
-                if (
-                    window.DashboardActivityChart &&
-                    window.DashboardActivityChart.selectedUser === 0 &&
-                    window.DashboardActivityChart.selectedPeriod === 'today' &&
-                    payload.activity
-                ) {
-                    window.DashboardActivityChart.update(payload.activity);
-                }
-
-                if (window.DashboardUserCallTimeChart && payload.callTimeTimeline) {
-                    window.DashboardUserCallTimeChart.update(payload.callTimeTimeline);
-                }
-            });
-
+        document.addEventListener('DOMContentLoaded', function () {
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-            if (csrfToken) {
-                setInterval(() => {
-                    fetch(@json(route('admin.ping')), {
-                        method: 'POST',
-                        headers: {
-                            'X-CSRF-TOKEN': csrfToken,
-                            'X-Requested-With': 'XMLHttpRequest'
-                        },
-                        credentials: 'same-origin'
-                    }).catch(() => {});
-                }, 60000);
-            }
+            if (!csrfToken) return;
+            setInterval(() => {
+                fetch(@json(route('admin.ping')), {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
+                    credentials: 'same-origin'
+                }).catch(() => {});
+            }, 60000);
         });
     </script>
 @endpush

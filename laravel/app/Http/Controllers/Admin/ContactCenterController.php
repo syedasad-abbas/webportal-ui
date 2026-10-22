@@ -9,7 +9,6 @@ use App\Models\DialerContactActivity;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class ContactCenterController extends Controller
@@ -151,104 +150,6 @@ class ContactCenterController extends Controller
         }
 
         return view('backend.pages.dialer.contacts-activity', compact('activities'));
-    }
-
-    public function reports(Request $request): View
-    {
-        $this->authorizeContacts($request);
-
-        $filters = $request->validate([
-            'from' => ['nullable', 'date_format:Y-m-d'],
-            'to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:from'],
-        ]);
-        $from = $filters['from'] ?? now()->startOfMonth()->toDateString();
-        $to = $filters['to'] ?? now()->toDateString();
-        if ($from > $to) {
-            throw \Illuminate\Validation\ValidationException::withMessages([
-                'to' => __('The end date must be on or after the start date.'),
-            ]);
-        }
-
-        $query = CallLog::query()->withinPeriod($from, $to);
-        $total = (clone $query)->count();
-        $inbound = (clone $query)->where('direction', 'inbound')->count();
-        $outbound = (clone $query)->where('direction', 'outbound')->count();
-        $duration = (int) (clone $query)->sum('duration_seconds');
-        $statuses = (clone $query)->select('status')->selectRaw('COUNT(*) AS total')
-            ->groupBy('status')->orderByDesc('total')->get();
-
-        return view('backend.pages.dialer.contacts-reports', compact(
-            'from', 'to', 'total', 'inbound', 'outbound', 'duration', 'statuses'
-        ));
-    }
-
-    public function callHistory(Request $request): View|JsonResponse
-    {
-        $this->authorizeContacts($request);
-
-        $calls = CallLog::query()->with('user:id,external_name,email')
-            ->latest('created_at')->paginate(20)->withQueryString();
-        $contacts = DialerContact::query()->get(['id', 'name', 'company', 'phone_normalized', 'avatar_url'])
-            ->keyBy('phone_normalized');
-
-        $calls->getCollection()->transform(function (CallLog $call) use ($contacts): CallLog {
-            $number = $call->direction === 'inbound' ? $call->caller_id : $call->destination;
-            $normalized = preg_replace('/\D+/', '', (string) $number) ?? '';
-            $call->setRelation('matchedContact', $contacts->get($normalized));
-            return $call;
-        });
-
-        // Return JSON for AJAX requests (embedded in dialer page)
-        if ($request->query('format') === 'json' || $request->wantsJson()) {
-            return response()->json(['calls' => $calls]);
-        }
-
-        return view('backend.pages.dialer.contacts-call-history', compact('calls'));
-    }
-
-    public function destroyCallHistory(Request $request, CallLog $callLog): RedirectResponse|JsonResponse
-    {
-        abort_unless($request->user()?->can('recording.delete') || $request->user()?->can('contacts.delete'), 403);
-
-        $this->deleteCallRecord($callLog);
-
-        if ($request->wantsJson()) {
-            return response()->json(['message' => __('Call history deleted successfully.')]);
-        }
-
-        return redirect()->route('admin.contacts.call-history')->with('success', __('Call history deleted successfully.'));
-    }
-
-    public function bulkDestroyCallHistory(Request $request): RedirectResponse|JsonResponse
-    {
-        abort_unless($request->user()?->can('recording.delete') || $request->user()?->can('contacts.delete'), 403);
-
-        $data = $request->validate([
-            'ids' => ['required', 'array', 'min:1', 'max:100'],
-            'ids.*' => ['required', 'integer', 'distinct', 'exists:call_logs,id'],
-        ]);
-
-        foreach (CallLog::query()->whereKey($data['ids'])->get() as $callLog) {
-            $this->deleteCallRecord($callLog);
-        }
-
-        $message = __('Selected call history deleted successfully.');
-        if ($request->wantsJson()) {
-            return response()->json(['message' => $message]);
-        }
-
-        return redirect()->route('admin.contacts.call-history')->with('success', $message);
-    }
-
-    private function deleteCallRecord(CallLog $callLog): void
-    {
-        $disk = Storage::disk(config('filesystems.recordings_disk', 'recordings'));
-        $path = $callLog->recordingStoragePath();
-        if ($path && $disk->exists($path) && ! $disk->delete($path)) {
-            abort(500, __('Unable to delete the call recording. Please try again.'));
-        }
-
-        $callLog->delete();
     }
 
     private function authorizeContacts(Request $request): void

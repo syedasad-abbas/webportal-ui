@@ -1,0 +1,71 @@
+/* Krayin-style dashboard layout; scoped to preserve the dialer navigation and other pages. */
+.crm-dashboard{--crm-border:#d1d5db;--crm-surface:#fff;--crm-text:#111827;--crm-muted:#6b7280;--crm-label:#4b5563;--crm-accent:#0e90d9;padding:24px;max-width:1800px;margin:auto;color:var(--crm-text)}
+.dark .crm-dashboard{--crm-border:#1f2937;--crm-surface:#111827;--crm-text:#fff;--crm-muted:#9ca3af;--crm-label:#d1d5db}
+.crm-dashboard-layout{display:grid;grid-template-columns:minmax(0,1fr) 350px;gap:16px;margin-top:14px;align-items:start}
+.crm-dashboard-main,.crm-dashboard-summary{display:flex;flex-direction:column;gap:16px;min-width:0}
+.crm-dashboard-panel,.crm-dashboard-metric{background:var(--crm-surface);border:1px solid var(--crm-border);border-radius:8px;box-shadow:0 1px 2px #00000005}
+.crm-dashboard-panel{min-width:0}
+.crm-dashboard-overview{display:flex;gap:16px;padding:16px;align-items:start}
+.crm-dashboard-highlights{display:flex;flex-direction:column;gap:16px;width:150px;flex-shrink:0}
+.crm-dashboard-chart{flex:1;min-width:0}
+.crm-dashboard-chart>div>div{border:0;box-shadow:none;padding:0;background:transparent}
+.crm-dashboard-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.crm-dashboard-metric{display:flex;flex-direction:column;gap:8px;padding:20px 16px;text-decoration:none;color:var(--crm-text);transition:border-color .15s}
+.crm-dashboard-metric:hover{border-color:var(--crm-accent)}
+.crm-dashboard-metric:focus-visible{outline:2px solid var(--crm-accent);outline-offset:3px}
+.crm-dashboard-metric-label{font-size:12px;font-weight:500;color:var(--crm-label)}
+.crm-dashboard-metric-value{font-size:24px;line-height:1.3;font-weight:700;overflow-wrap:anywhere}
+.crm-dashboard-tone-green .crm-dashboard-metric-value{color:#16a34a}
+.crm-dashboard-tone-blue .crm-dashboard-metric-value{color:#2563eb}
+.dark .crm-dashboard-tone-green .crm-dashboard-metric-value{color:#16a34a}
+.dark .crm-dashboard-tone-blue .crm-dashboard-metric-value{color:#60a5fa}
+.crm-dashboard-admin{padding:16px}
+.crm-dashboard-admin h2{font-size:16px;font-weight:600;margin-bottom:12px}
+.crm-dashboard-admin .crm-dashboard-metric{border:0;border-radius:0;box-shadow:none;flex-direction:row;justify-content:space-between;align-items:center;padding:14px 0;border-top:1px solid var(--crm-border)}
+.crm-dashboard-admin .crm-dashboard-metric-value{font-size:18px}
+.crm-dashboard-report>div,.crm-dashboard-report>div>div,.crm-dashboard-panel>div{border-radius:8px;box-shadow:none}
+.crm-dashboard-report{min-width:0}
+@media(min-width:1200px) and (max-width:1450px){.crm-dashboard-layout{grid-template-columns:minmax(0,1fr) 300px}.crm-dashboard-overview{flex-direction:column}.crm-dashboard-highlights{width:100%;flex-direction:row}.crm-dashboard-highlights>a{flex:1}.crm-dashboard-chart{width:100%}}
+@media(max-width:1199px){.crm-dashboard-layout{grid-template-columns:minmax(0,1fr)}.crm-dashboard-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}}
+@media(max-width:767px){.crm-dashboard{padding:16px}.crm-dashboard-overview{flex-direction:column}.crm-dashboard-highlights{width:100%;flex-direction:row}.crm-dashboard-highlights>a{flex:1}.crm-dashboard-chart{width:100%}.crm-dashboard-summary{display:flex}.crm-dashboard-stats{grid-template-columns:1fr}.crm-dashboard-chart .sm\:flex-row{flex-wrap:wrap}}
+/* Krayin CRM reporting palette and card composition. */
+.crm-dashboard{background:#f3f4f6}
+.dark .crm-dashboard{background:#030712}
+.crm-dashboard-notice{padding:12px 16px;margin:12px 0 18px;border:1px solid var(--crm-border);border-radius:8px;color:var(--crm-muted);font-size:13px;background:var(--crm-surface)}
+.crm-dashboard-metric-note{color:var(--crm-muted);font-size:11px}
+.crm-dashboard-tone-red .crm-dashboard-metric-value{color:#ef4444}
+.crm-dashboard-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.crm-report{padding:16px}
+.crm-report h2{font-size:16px;font-weight:600;line-height:24px}
+.crm-report-empty{min-height:165px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;color:var(--crm-muted);padding:20px 12px}
+.crm-report-empty svg{color:#8979ff}
+.crm-report-empty p{font-size:14px;font-weight:600}
+.crm-report-empty>span{font-size:12px;max-width:240px;line-height:1.6}
+.crm-report-leads .crm-report-empty{min-height:235px}
+.crm-report-legend{display:flex;flex-wrap:wrap;justify-content:center;gap:20px;font-size:12px;color:var(--crm-muted);padding:10px 0 0;list-style:none}
+.crm-report-legend li{display:flex;align-items:center;gap:6px}
+.crm-report-swatch{width:12px;height:12px;border-radius:3px;background:#8979ff}
+.crm-report-legend li:nth-child(2) .crm-report-swatch{background:#63cfe5}
+.crm-report-legend li:nth-child(3) .crm-report-swatch{background:#ffa8a1}
+.crm-report-revenue .crm-report-legend li:first-child .crm-report-swatch{background:#22c55e}
+.crm-report-revenue .crm-report-legend li:nth-child(2) .crm-report-swatch{background:#ef4444}
+.crm-dashboard-chart>.crm-report{border:0;box-shadow:none;padding:0}
+.crm-dashboard-highlights{width:170px}
+@media(max-width:767px){.crm-dashboard-pair{grid-template-columns:1fr}.crm-dashboard-highlights{width:100%}}
+@media(min-width:1200px) and (max-width:1450px){.crm-dashboard-highlights{width:100%}}
+
+/* The transcript widget keeps its behavior while sharing Krayin's neutral surfaces. */
+.crm-dashboard .crm-dashboard-transcripts>div{background:var(--crm-surface);border-color:var(--crm-border);box-shadow:0 1px 2px #00000005}
+.crm-dashboard .crm-dashboard-transcripts .border-b,
+.crm-dashboard .crm-dashboard-transcripts [data-call-uuid],
+.crm-dashboard .crm-dashboard-transcripts [id^="transcript-panel-"]{border-color:var(--crm-border)}
+.crm-dashboard .crm-dashboard-transcripts h3{color:var(--crm-text)}
+.crm-dashboard .crm-dashboard-transcripts .bi-chat-text,
+.crm-dashboard .crm-dashboard-transcripts button{color:var(--crm-accent)}
+.crm-dashboard .crm-dashboard-transcripts [id^="transcript-content-"]{background:#f3f4f6;border-color:#d1d5db;color:#374151}
+.crm-dashboard .crm-dashboard-transcripts [data-call-uuid]:hover{background:#eff6ff}
+.dark .crm-dashboard .crm-dashboard-transcripts [id^="transcript-content-"],
+.dark .crm-dashboard .crm-dashboard-transcripts [id^="transcript-panel-"]{background:#030712;border-color:#1f2937;color:#d1d5db}
+.dark .crm-dashboard .crm-dashboard-transcripts [data-call-uuid]:hover{background:#1f2937}
+.crm-report-empty{color:#9ca3af}
+.crm-report-empty svg{color:#9ca3af}

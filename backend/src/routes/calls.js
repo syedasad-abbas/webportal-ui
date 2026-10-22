@@ -1,6 +1,6 @@
 const express = require('express');
 const Joi = require('joi');
-const { authenticate, requirePermissions } = require('../middleware/auth');
+const { authenticate, requirePermissions, requireInternalToken } = require('../middleware/auth');
 const config = require('../config');
 const callService = require('../services/callService');
 const callControlService = require('../services/callControlService');
@@ -8,6 +8,15 @@ const inboundCallService = require('../services/inboundCallService');
 const db = require('../db');
 
 const router = express.Router();
+router.get('/active-channel-ids', requireInternalToken, async (_req, res) => {
+  try {
+    const ids = await require('../services/activeChannelService').getActiveChannelIds();
+    return res.set('Cache-Control', 'no-store').json({ ids });
+  } catch {
+    return res.status(503).json({ message: 'Live call state unavailable' });
+  }
+});
+
 const dialPermission = config.permissions?.callDial || 'dial';
 
 router.post('/', authenticate(), requirePermissions([dialPermission]), async (req, res) => {

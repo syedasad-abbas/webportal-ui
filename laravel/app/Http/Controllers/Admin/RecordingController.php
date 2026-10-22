@@ -100,6 +100,62 @@ class RecordingController extends Controller
             ->with('status', __('Recording deleted successfully.'));
     }
 
+    public function transcript(Request $request, string $callLog)
+    {
+        Gate::authorize('recording.view');
+
+        abort_unless(in_array($callLog, $this->liveChannelIds(), true), 404, __('Active call not found.'));
+
+        $record = CallLog::where('call_uuid', $callLog)
+            ->whereNotNull('connected_at')
+            ->whereNull('ended_at')
+            ->first();
+        abort_unless($record, 404, __('Active call not found.'));
+
+        return response()->json([
+            'transcript' => \App\Support\CustomerTranscript::fromTaggedText($record->transcript),
+        ])->header('Cache-Control', 'no-store');
+    }
+
+    public function activeCalls(Request $request)
+    {
+        Gate::authorize('recording.view');
+
+        $records = CallLog::whereIn('call_uuid', $this->liveChannelIds())
+            ->whereNotNull('connected_at')
+            ->whereNull('ended_at')
+            ->orderByDesc('connected_at')
+            ->get(['call_uuid', 'caller_id', 'destination', 'connected_at']);
+
+        return response()->json([
+            'activeCalls' => $records->pluck('call_uuid')->all(),
+            'calls' => $records->map(fn ($call) => [
+                'uuid' => $call->call_uuid,
+                'caller' => $call->caller_id,
+                'destination' => $call->destination,
+                'started' => $call->connected_at->getTimestamp() * 1000,
+            ])->all(),
+        ])->header('Cache-Control', 'no-store');
+    }
+
+    private function liveChannelIds(): array
+    {
+        try {
+            $response = \Illuminate\Support\Facades\Http::acceptJson()
+                ->withHeaders(['x-internal-token' => config('services.backend.internal_token')])
+                ->connectTimeout(2)->timeout(6)
+                ->get(rtrim((string) config('services.backend.url'), '/').'/calls/active-channel-ids');
+            $ids = $response->json('ids');
+            if ($response->successful() && is_array($ids) && array_is_list($ids)
+                && count(array_filter($ids, fn ($id) => is_string($id) && preg_match('/^[0-9a-f-]{36}$/i', $id))) === count($ids)) {
+                return $ids;
+            }
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            // Never fall back to stale database rows and label them live.
+        }
+        abort(503, __('Live call state is temporarily unavailable.'));
+    }
+
     public function bulkDelete(Request $request): JsonResponse|RedirectResponse
     {
         Gate::authorize('recording.delete');
