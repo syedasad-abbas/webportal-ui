@@ -25,18 +25,20 @@ function fixture(conference = true) {
     require: (name) => {
       if (name === 'ws') return { WebSocket: Socket, WebSocketServer: Socket };
       if (name === 'fs/promises') return disk;
+      if (name === './confirmedPhone') return require('../src/services/confirmedPhone');
+      if (name === '../db') return { query: async () => ({ rows: [] }) };
       if (name === './crmLiveTools') return { createHandler: () => ({ tools: () => [], handle() {}, cancel() {} }) };
       if (name === '../config') return { aiAgent: { connectTimeoutMs: 1000 }, freeswitch: { recordingsPath: '/test' } };
       if (name === '../aiSalesAgentProfile') return { buildAgentPrompt: () => '' };
       if (name === '../lib/freeswitch') return media;
       return require(name);
     },
-    module: { exports: {} }, Buffer, URL,
+    module: { exports: {} }, Buffer, URL, process: {env:{}}, fetch: async () => ({ok:true}),
     console: { log() {}, warn() {}, error() {} },
     setTimeout: () => 1, clearTimeout() {}, setInterval: () => 1, clearInterval() {}
   };
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../src/services/geminiLiveBridge.js'), 'utf8')
-    + '\nmodule.exports.testing = { attachGemini, sessions, sendInitialGreeting, handleGeminiMessage, playAudioSegment };', context);
+    + '\nmodule.exports.testing = { attachGemini, sessions, sendInitialGreeting, handleGeminiMessage, playAudioSegment, isCorrectionRequest, scheduleIncompletePhoneRetry };', context);
   const api = context.module.exports.testing;
   const socket = new Socket();
   api.attachGemini(socket, { url: typeof conference === 'string' ? `/ai-audio?context=${conference}` : conference ? '/ai-audio?context=vicidial-conference' : '/ai-audio' }, uuid,
@@ -177,3 +179,36 @@ for (const label of ['vicidial-customer']) {
     assert.equal(f.removed.length, 1);
   });
 }
+
+test('yes correct confirms the captured phone instead of restarting collection', () => {
+  const f = fixture('vicidial-customer');
+  Object.assign(f.session,{phoneCollecting:true,phoneAwaitingConfirmation:true,phoneDigits:'03001234567',nameCollecting:false,collectedInfo:{}});
+  assert.equal(f.api.isCorrectionRequest('yes, correct'),false);
+  assert.equal(f.api.isCorrectionRequest('please correct my number'),true);
+  f.api.handleGeminiMessage(f.session,Buffer.from(JSON.stringify({serverContent:{inputTranscription:{text:'yes, correct'}}})));
+  assert.equal(f.session.phoneConfirmed,true);
+  assert.equal(f.session.phoneCollecting,false);
+  assert.equal(f.session.phoneDigits,'03001234567');
+});
+test('native audio confirmation tool works without input transcription', () => {
+  const f = fixture('vicidial-customer');
+  f.api.handleGeminiMessage(f.session,Buffer.from(JSON.stringify({toolCall:{functionCalls:[{id:'phone-1',name:'remember_confirmed_phone',args:{phone:'15559876543'}}]}})));
+  assert.equal(f.session.collectedInfo.phone,'15559876543');
+  assert.equal(f.session.gemini.sent.at(-1).toolResponse.functionResponses[0].response.status,'confirmed');
+});
+test('cancelled native phone tool does not change collected details', () => {
+  const f = fixture('vicidial-customer');
+  f.api.handleGeminiMessage(f.session,Buffer.from(JSON.stringify({toolCallCancellation:{ids:['p']},toolCall:{functionCalls:[{id:'p',name:'remember_confirmed_phone',args:{phone:'15559876543'}}]}})));
+  assert.equal(f.session.phoneConfirmed,false);
+});
+test('successful interruption releases the stopped audio duration wait', async () => {
+  const f = fixture('vicidial-customer');
+  const playing = f.api.playAudioSegment(f.session,Buffer.alloc(24000),24000,0);
+  await new Promise(setImmediate);
+  assert.equal(typeof f.session.releasePlaybackWait,'function');
+  f.api.handleGeminiMessage(f.session,Buffer.from('{"serverContent":{"interrupted":true}}'));
+  await f.session.playbackChain;
+  await playing;
+  assert.equal(f.session.releasePlaybackWait,null);
+  assert.deepEqual(f.breaks,[uuid]);
+});

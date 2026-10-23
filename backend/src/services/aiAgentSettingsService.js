@@ -8,7 +8,7 @@ const defaults = {
   greeting: '',
   goal: 'Collect the patient name, phone number, preferred appointment date, and doctor name.',
   mode: 'lead',
-  voice: 'man',
+  voice: 'woman',
   humanHandoff: true,
   callDirection: 'inbound'
 };

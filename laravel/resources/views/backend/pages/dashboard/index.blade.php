@@ -45,6 +45,7 @@
                         @foreach([
                             ['Total Customers', $crm_summary['total_customers'] ?? 0],
                             ['Open Leads', $crm_summary['open_leads'] ?? 0],
+                            ['Appointments Booked', $crm_summary['appointments_booked'] ?? 0],
                         ] as [$label, $value])
                             <div class="crm-dashboard-metric">
                                 <span class="crm-dashboard-metric-label">{{ __($label) }}</span>
@@ -53,7 +54,7 @@
                             </div>
                         @endforeach
                     @else
-                        @foreach(['Average Lead Value', 'Total Leads', 'Average Leads Per Day', 'Total Quotations', 'Total Persons', 'Total Organizations'] as $label)
+                        @foreach(['Average Lead Value', 'Total Leads', 'Average Leads Per Day', 'Total Quotations', 'Total Persons', 'Total Organizations', 'Appointments Booked'] as $label)
                             <div class="crm-dashboard-metric">
                                 <span class="crm-dashboard-metric-label">{{ __($label) }}</span>
                                 <span class="crm-dashboard-metric-value" aria-label="{{ __('Unavailable') }}">—</span>
