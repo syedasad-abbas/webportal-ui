@@ -69,3 +69,9 @@
 .dark .crm-dashboard .crm-dashboard-transcripts [data-call-uuid]:hover{background:#1f2937}
 .crm-report-empty{color:#9ca3af}
 .crm-report-empty svg{color:#9ca3af}
+
+.crm-dashboard-health{display:flex;gap:10px;align-items:center;margin-top:8px;font-size:12px;color:var(--crm-label)}
+.health-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:4px}
+.health-dot--ok{background:#16a34a;box-shadow:0 0 6px #16a34a}
+.health-dot--err{background:#dc2626;box-shadow:0 0 6px #dc2626}
+.health-label{font-size:11px;font-weight:500}

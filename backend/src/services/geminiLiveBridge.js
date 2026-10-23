@@ -10,6 +10,7 @@ const config = require('../config');
 const { buildAgentPrompt } = require('../aiSalesAgentProfile');
 const freeswitch = require('../lib/freeswitch');
 const db = require('../db');
+const { emitSocketEvent } = require('../socket');
 
 const sessions = new Map();
 let server;
@@ -230,6 +231,12 @@ const closeSession = (callId, code = 1000, reason = 'Call ended') => {
       try { socket.close(code, reason); } catch (_err) {}
     }
   }
+  emitSocketEvent('call:ended', {
+    callId,
+    callerId: session.collectedInfo?.phone || session.phoneDigits || '',
+    status: 'ended',
+    endedAt: new Date().toISOString()
+  });
 };
 
 const sendSetup = (session) => {
@@ -739,6 +746,16 @@ const handleGeminiMessage = (session, data) => {
       if (sessions.get(session.callId) === session && session.gemini.readyState === WebSocket.OPEN) {
         session.gemini.send(JSON.stringify({ toolResponse: { functionResponses: [{ id: call.id, name: call.name, response }] } }));
       }
+      if (response.status === 'saved') {
+        emitSocketEvent('appointment:booked', {
+          callId: session.callId,
+          customerName: call.args?.customer_name || '',
+          phone: call.args?.phone || '',
+          appointmentDate: call.args?.appointment_date || '',
+          doctorName: call.args?.doctor_name || '',
+          bookedAt: new Date().toISOString()
+        });
+      }
     }).catch(() => { console.warn('[crm] appointment tool response could not be delivered'); });
   }
   for (const call of (message.toolCall?.functionCalls || []).filter(call => call.name === crmLookupCustomer.name)) {
@@ -984,6 +1001,77 @@ const handleGeminiMessage = (session, data) => {
       console.log('[ai-agent] phone collection mode started', { callId: session.callId });
     }
 
+    // --- Server-side phone confirmation fallback ---
+    // Gemini may not call remember_confirmed_phone reliably. When the agent
+    // reads back a complete phone number and asks for confirmation, detect the
+    // caller's "yes" here and persist it so the CRM save can proceed.
+    if (
+      session.phoneDigits &&
+      expectedPakistaniPhoneLength(session.phoneDigits) &&
+      session.phoneDigits.length === expectedPakistaniPhoneLength(session.phoneDigits) &&
+      !session.phoneConfirmed &&
+      !session.phoneAwaitingConfirmation &&
+      inputText &&
+      inputIsEnglish &&
+      isPositiveConfirmation(inputText) &&
+      /\bis (?:that|the number|it)(?: correct| right)?\?/i.test(session.agentTranscriptWindow)
+    ) {
+      session.phoneConfirmed = true;
+      session.phoneCollecting = false;
+      session.collectedInfo = session.collectedInfo || {};
+      session.collectedInfo.phone = session.phoneDigits;
+      (async () => {
+        try { await saveCallLogCustomerPhone(session.callId, session.phoneDigits); } catch (_) {}
+      })();
+      console.log('[ai-agent] phone confirmed via server fallback', { callId: session.callId, phone: session.phoneDigits });
+    }
+
+    // --- Server-side appointment confirmation fallback ---
+    // When the agent confirms the appointment is booked and the caller agrees,
+    // save to CRM even if Gemini never calls save_confirmed_appointment.
+    if (
+      !session.phoneConfirmed ||
+      session.appointmentSaving ||
+      !session.collectedInfo.name ||
+      !session.collectedInfo.appointmentDate ||
+      !session.collectedInfo.doctorName
+    ) {
+      // Not enough data yet
+    } else if (
+      inputText &&
+      inputIsEnglish &&
+      isPositiveConfirmation(inputText) &&
+      /\b(appointment|book|scheduled|reserved)\b/i.test(session.agentTranscriptWindow) &&
+      /\bis (?:that|all of this|everything|it) correct\?/i.test(session.agentTranscriptWindow) &&
+      !session.appointmentSaving
+    ) {
+      session.appointmentSaving = true;
+      crmAppointment.save(session, {
+        customer_name: session.collectedInfo.name,
+        appointment_date: session.collectedInfo.appointmentDate,
+        doctor_name: session.collectedInfo.doctorName,
+        confirmed: true
+      }, saveCrmCustomer).then((result) => {
+        session.appointmentSaving = false;
+        if (result.status === 'saved') {
+          console.log('[crm] appointment saved via server fallback', { callId: session.callId });
+          emitSocketEvent('appointment:booked', {
+            callId: session.callId,
+            customerName: session.collectedInfo.name,
+            phone: session.collectedInfo.phone || session.phoneDigits || '',
+            appointmentDate: session.collectedInfo.appointmentDate,
+            doctorName: session.collectedInfo.doctorName,
+            bookedAt: new Date().toISOString()
+          });
+        } else {
+          console.warn('[crm] appointment server fallback save failed', { callId: session.callId, status: result.status });
+        }
+      }).catch((err) => {
+        session.appointmentSaving = false;
+        console.warn('[crm] appointment server fallback error', { callId: session.callId, error: err.message });
+      });
+    }
+
     if (session.nameControlResponse) {
       session.nameControlResponse = false;
     } else if (session.phoneControlResponse) {
@@ -1162,6 +1250,12 @@ const attachGemini = (freeswitchSocket, request, callId, settings) => {
     }
   })();
   connectGemini(session);
+  emitSocketEvent('call:started', {
+    callId,
+    callerId: session.collectedInfo?.phone || session.phoneDigits || '',
+    status: 'active',
+    connectedAt: new Date().toISOString()
+  });
   const logPrefix = () => `[ai-agent][${new Date().toISOString()}] ${callId}`;
   session.heartbeatTimer = setInterval(() => {
     const gemini = session.gemini;
@@ -1293,4 +1387,21 @@ const initGeminiLiveBridge = (httpServer, getSettings) => {
   return server;
 };
 
-module.exports = { initGeminiLiveBridge, closeSession, activeSessionCount, waitUntilReady, hasSession };
+const getActiveCalls = () => {
+  const calls = [];
+  for (const [callId, session] of sessions) {
+    if (!session.ready || session.freeswitch?.readyState !== WebSocket.OPEN) continue;
+    calls.push({
+      callId,
+      callerId: session.collectedInfo?.phone || session.phoneDigits || '',
+      status: session.phoneConfirmed ? 'confirmed' : session.phoneCollecting ? 'collecting' : 'active',
+      connectedAt: session.lastCallerSpeechAt ? new Date(session.lastCallerSpeechAt).toISOString() : null,
+      hasCrmRecord: !!session.crmCustomer,
+      appointmentDate: session.collectedInfo?.appointmentDate || null,
+      doctorName: session.collectedInfo?.doctorName || null
+    });
+  }
+  return calls;
+};
+
+module.exports = { initGeminiLiveBridge, closeSession, activeSessionCount, waitUntilReady, hasSession, getActiveCalls };

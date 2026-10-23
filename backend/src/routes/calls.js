@@ -17,6 +17,70 @@ router.get('/active-channel-ids', requireInternalToken, async (_req, res) => {
   }
 });
 
+// Internal-token call control endpoints for Laravel proxy (server-to-server, no session cookie).
+const internalDialSchema = Joi.object({ durationSeconds: Joi.number().integer().min(0).default(0) });
+const internalDtmfSchema = Joi.object({ digits: Joi.string().min(1).max(20).required() });
+
+router.get('/internal/:uuid/status', requireInternalToken, async (req, res) => {
+  try {
+    const status = await callControlService.getStatus({
+      uuid: req.params.uuid,
+      userId: null
+    });
+    return res.json(status);
+  } catch (err) {
+    return res.status(404).json({ message: err.message });
+  }
+});
+
+router.post('/internal/:uuid/hangup', requireInternalToken, async (req, res) => {
+  const { error, value } = internalDialSchema.validate(req.body || {});
+  if (error) return res.status(400).json({ message: error.message });
+  try {
+    await callControlService.hangup({
+      uuid: req.params.uuid,
+      userId: null,
+      durationSeconds: value.durationSeconds
+    });
+    return res.json({ status: 'ended' });
+  } catch (err) {
+    return res.status(400).json({ message: err.message });
+  }
+});
+
+router.post('/internal/:uuid/mute', requireInternalToken, async (req, res) => {
+  try {
+    await callControlService.mute({ uuid: req.params.uuid, userId: null });
+    return res.json({ status: 'muted' });
+  } catch (err) {
+    return res.status(400).json({ message: err.message });
+  }
+});
+
+router.post('/internal/:uuid/unmute', requireInternalToken, async (req, res) => {
+  try {
+    await callControlService.unmute({ uuid: req.params.uuid, userId: null });
+    return res.json({ status: 'unmuted' });
+  } catch (err) {
+    return res.status(400).json({ message: err.message });
+  }
+});
+
+router.post('/internal/:uuid/dtmf', requireInternalToken, async (req, res) => {
+  const { error, value } = internalDtmfSchema.validate(req.body || {});
+  if (error) return res.status(400).json({ message: error.message });
+  try {
+    await callControlService.sendDtmf({
+      uuid: req.params.uuid,
+      digits: value.digits,
+      userId: null
+    });
+    return res.json({ status: 'sent' });
+  } catch (err) {
+    return res.status(400).json({ message: err.message });
+  }
+});
+
 const dialPermission = config.permissions?.callDial || 'dial';
 
 router.post('/', authenticate(), requirePermissions([dialPermission]), async (req, res) => {
