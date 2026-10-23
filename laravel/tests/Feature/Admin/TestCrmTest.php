@@ -46,6 +46,14 @@ class TestCrmTest extends TestCase
         $this->getJson($this->base.'/reports/summary')->assertJsonPath('data.total_customers', 0);
     }
 
+    public function test_appointments_count_saved_details_not_general_mentions(): void
+    {
+        foreach (['Appointment Date: 2026-11-01 10:00 | Doctor: Test', 'appointment date: 2026-11-02', 'Asked about an Appointment', null] as $i => $notes) {
+            TestCrmCustomer::create($this->customer(['phone'=>'1555987654'.$i, 'notes'=>$notes]));
+        }
+        $this->getJson($this->base.'/reports/summary')->assertOk()->assertJsonPath('data.appointments_booked', 2);
+    }
+
     public function test_validation_and_duplicate_phone(): void
     {
         $this->postJson($this->base.'/customers', $this->customer())->assertCreated();

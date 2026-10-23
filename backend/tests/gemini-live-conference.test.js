@@ -25,6 +25,7 @@ function fixture(conference = true) {
     require: (name) => {
       if (name === 'ws') return { WebSocket: Socket, WebSocketServer: Socket };
       if (name === 'fs/promises') return disk;
+      if (name === './crmAppointment') return require('../src/services/crmAppointment');
       if (name === './confirmedPhone') return require('../src/services/confirmedPhone');
       if (name === '../db') return { query: async () => ({ rows: [] }) };
       if (name === './crmLiveTools') return { createHandler: () => ({ tools: () => [], handle() {}, cancel() {} }) };

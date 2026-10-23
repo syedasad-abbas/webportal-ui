@@ -41,7 +41,7 @@ class TestCrmController extends Controller
         return response()->json(['data' => [
             'total_customers' => TestCrmCustomer::count(),
             'open_leads' => TestCrmCustomer::whereIn('status', ['new', 'qualified'])->count(),
-            'appointments_booked' => TestCrmCustomer::where('notes', 'like', '%Appointment%')->count(),
+            'appointments_booked' => TestCrmCustomer::whereRaw('LOWER(notes) LIKE ?', ['%appointment date:%'])->count(),
             'won_revenue' => (string) TestCrmCustomer::where('status', 'won')->sum('value'),
             'lost_revenue' => (string) TestCrmCustomer::where('status', 'lost')->sum('value'),
         ]]);
