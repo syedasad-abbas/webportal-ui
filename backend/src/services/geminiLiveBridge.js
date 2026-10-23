@@ -88,11 +88,10 @@ const playAudioSegment = async (session, pcm, sampleRate, generation) => {
 
 const queueOutputAudio = (session, flush = false) => {
   const sampleRate = session.outputSampleRate || 24000;
-  // Start playback after roughly one second instead of holding the complete
-  // Gemini reply until turnComplete. Whole-turn buffering delayed the first
-  // greeting by about 11 seconds. One-second segments keep latency low while
-  // remaining large enough to avoid the broken audio caused by tiny chunks.
-  const streamingThresholdBytes = sampleRate * 2;
+  // Start playback after roughly half a second of buffered audio. Small enough
+  // for low latency, large enough to avoid the broken/robotic audio caused by
+  // tiny chunks played back-to-back.
+  const streamingThresholdBytes = sampleRate * 2 * 0.5;
   if (!flush && session.outputTurnBytes < streamingThresholdBytes) return;
 
   const pcm = Buffer.concat(session.outputTurnChunks.splice(0));
@@ -615,6 +614,7 @@ const handleGeminiMessage = (session, data) => {
   const inputLanguageCode = inputTranscription.languageCode || inputTranscription.language_code || '';
   const inputIsEnglish = !inputLanguageCode || /^en(?:-|$)/i.test(inputLanguageCode);
   const outputText = content.outputTranscription?.text || '';
+  const outputIsEnglish = /^[\x00-\x7F]*$/.test(outputText);
   // The Live model hears the original audio. Use deterministic transcription
   // parsing only for explicit spelling and phone digits; multilingual ASR can
   // otherwise turn Pakistani names into unrelated foreign-language phrases.
@@ -727,6 +727,7 @@ const handleGeminiMessage = (session, data) => {
       }
     }
   }
+  let skipModelAudio = false;
   if (content.interrupted) {
     session.outputTurnChunks.length = 0;
     session.outputTurnBytes = 0;
@@ -741,28 +742,31 @@ const handleGeminiMessage = (session, data) => {
     if (session.bargeIn) {
       // Serialize subsequent replies behind the break of this AI leg only.
       session.playbackChain = Promise.all([session.playbackChain, stopped]).then(() => {});
-      return; // Discard any stale model audio bundled with the interruption.
+      skipModelAudio = true; // discard stale model audio, but keep processing input text
+    } else {
+      console.log('[ai-agent] Gemini playback interrupted', { callId: session.callId });
     }
-    console.log('[ai-agent] Gemini playback interrupted', { callId: session.callId });
   }
-  const parts = content.modelTurn?.parts || [];
-  for (const part of parts) {
-    const audio = part.inlineData || part.inline_data;
-    if (audio?.data) {
-      session.modelGenerating = true;
-      const mimeType = audio.mimeType || audio.mime_type || 'audio/pcm;rate=24000';
-      const sampleRate = Number((mimeType.match(/rate=(\d+)/i) || [])[1]) || 24000;
-      session.outputSampleRate = sampleRate;
-      const chunk = Buffer.from(audio.data, 'base64');
-      session.outputAudioChunks += 1;
-      if (suppressControlledOutput) continue;
-      session.outputTurnChunks.push(chunk);
-      session.outputTurnBytes += chunk.length;
-      queueOutputAudio(session);
+  if (!skipModelAudio) {
+    const parts = content.modelTurn?.parts || [];
+    for (const part of parts) {
+      const audio = part.inlineData || part.inline_data;
+      if (audio?.data) {
+        session.modelGenerating = true;
+        const mimeType = audio.mimeType || audio.mime_type || 'audio/pcm;rate=24000';
+        const sampleRate = Number((mimeType.match(/rate=(\d+)/i) || [])[1]) || 24000;
+        session.outputSampleRate = sampleRate;
+        const chunk = Buffer.from(audio.data, 'base64');
+        session.outputAudioChunks += 1;
+        if (suppressControlledOutput) continue;
+        session.outputTurnChunks.push(chunk);
+        session.outputTurnBytes += chunk.length;
+        queueOutputAudio(session);
+      }
     }
   }
   if (inputText && inputIsEnglish) session.transcript.push({ role: 'caller', text: inputText });
-  if (outputText) {
+  if (outputText && outputIsEnglish) {
     session.transcript.push({ role: 'agent', text: outputText });
     session.agentTranscriptWindow = `${session.agentTranscriptWindow} ${outputText}`.slice(-300);
   }
