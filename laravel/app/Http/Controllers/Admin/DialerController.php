@@ -350,6 +350,7 @@ class DialerController extends Controller
             'greeting' => ['nullable', 'string', 'max:1000'],
             'goal' => ['nullable', 'string', 'max:2000'],
             'knowledgeInstructions' => ['sometimes', 'nullable', 'string', 'max:10000'],
+            'salesScript' => ['sometimes', 'nullable', 'string', 'max:50000'],
             'mode' => ['required', 'in:lead,assist,qualify'],
             'voice' => ['required', 'in:man,woman,male,female,professional,warm,confident'],
             'humanHandoff' => ['required', 'boolean'],

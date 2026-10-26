@@ -156,3 +156,7 @@ Route::middleware(['auth', 'web'])->prefix('dashboard')->name('dashboard.api.')-
         }
     })->name('calls.status');
 });
+
+Route::post('/internal/crm-workflow', [\App\Http\Controllers\Api\CrmWorkflowController::class, 'handle'])->middleware('throttle:60,1');
+
+Route::post('/internal/crm-proxy', [\App\Http\Controllers\Api\CrmWorkflowController::class, 'proxy'])->middleware('throttle:120,1');

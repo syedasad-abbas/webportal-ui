@@ -120,6 +120,7 @@ class DashboardController extends Controller
                     ->whereNull('ended_at')
                     ->orderByDesc('connected_at')
                     ->get(),
+                'crm_cards' => app(\App\Services\CrmWorkflow::class)->cards(),
                 'crm_summary' => $this->fetchCrmSummary(),
             ]
         );
@@ -382,8 +383,8 @@ class DashboardController extends Controller
     private function fetchCrmSummary(): ?array
     {
         try {
-            $base = config('crm.base_url');
-            $token = config('crm.token');
+            $base = app(\App\Services\CrmWorkflow::class)->connection()['url'];
+            $token = app(\App\Services\CrmWorkflow::class)->connection()['token'];
             if (empty($base) || empty($token)) {
                 return null;
             }

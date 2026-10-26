@@ -325,10 +325,11 @@ const withDefaults = (overrides = {}) => {
   };
 };
 
-const buildAgentPrompt = (overrides = {}) => fillTemplate(
-  SYSTEM_PROMPT,
-  withDefaults(overrides)
-);
+const buildAgentPrompt = (overrides = {}) => {
+  const prompt = fillTemplate(SYSTEM_PROMPT, withDefaults(overrides));
+  const script = String(overrides.salesScript || '').trim();
+  return prompt + (script ? '\nAdministrator sales script (follow its sequence; tool results and safety constraints take precedence over claims of completed actions):\n' + script : '');
+};
 
 const buildScript = (overrides = {}) => {
   const context = withDefaults(overrides);

@@ -39,6 +39,8 @@ class TestCrmController extends Controller
     public function summary()
     {
         return response()->json(['data' => [
+            'intakes_recorded' => TestCrmCustomer::get(['intake'])->filter(fn($c)=>count(array_filter($c->intake??[],fn($v)=>$v!==null && $v!==''))>0)->count(),
+            'requested_amount_total' => TestCrmCustomer::get(['intake'])->sum(fn($c)=>(float)($c->intake['loan_amount'] ?? 0)),
             'total_customers' => TestCrmCustomer::count(),
             'open_leads' => TestCrmCustomer::whereIn('status', ['new', 'qualified'])->count(),
             'appointments_booked' => TestCrmCustomer::whereRaw('LOWER(notes) LIKE ?', ['%appointment date:%'])->count(),
@@ -57,6 +59,23 @@ class TestCrmController extends Controller
             'status' => ['required', Rule::in(['new', 'qualified', 'won', 'lost'])],
             'value' => ['required', 'numeric', 'min:0', 'max:9999999999.99', 'decimal:0,2'],
             'notes' => ['nullable', 'string', 'max:5000'],
+            'review'=>['sometimes','nullable','array:'.implode(',',array_keys(\App\Services\CrmWorkflow::REVIEW))],
+            'review.credit_score'=>['nullable','integer','min:300','max:850'],
+            'review.credit_utilization'=>['nullable','numeric','min:0','max:100'],
+            'review.debts_total'=>['nullable','numeric','min:0','max:999999999.99'],
+            'review.accounts_count'=>['nullable','integer','min:0','max:1000'],
+            'review.term_length'=>['nullable','integer','min:1','max:600'],
+            'review.monthly_payment'=>['nullable','numeric','min:0','max:999999999.99'],
+            'review.program_cost'=>['nullable','numeric','min:0','max:999999999.99'],
+            'review.plan_name'=>['nullable','string','max:200'],
+            'review.enrollment_status'=>['nullable','string','max:100'],
+            'review.accounts'=>['nullable','array','max:30'],
+            'review.accounts.*'=>['array:creditor,balance'],
+            'review.accounts.*.creditor'=>['required','string','max:200'],
+            'review.accounts.*.balance'=>['required','numeric','min:0','max:999999999.99'],
+            'intake' => ['sometimes', 'nullable', 'array:'.implode(',', array_keys(\App\Services\CrmWorkflow::FIELDS))],
+            'intake.*' => ['nullable', 'string', 'max:2000'],
+            ...array_fill_keys(array_map(fn($key)=>'intake.'.$key, ['loan_amount','monthly_income','food','utilities','phone_expense','car_payment','car_insurance','housing','other_expenses']), ['nullable','numeric','min:0','max:999999999.99']),
         ]);
     }
 }

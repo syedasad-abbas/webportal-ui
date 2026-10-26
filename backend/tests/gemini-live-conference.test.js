@@ -21,10 +21,14 @@ function fixture(conference = true) {
     breakAudioPlayback: async (id) => { breaks.push(id); },
     broadcastAudio: async (id, file) => { broadcasts.push({ id, file }); }
   };
+  const intake = {declarations:[],run:async()=>({status:'unavailable'})};
   const context = {
     require: (name) => {
       if (name === 'ws') return { WebSocket: Socket, WebSocketServer: Socket };
       if (name === 'fs/promises') return disk;
+      if (name === './crmLookupCustomer') return require('../src/services/crmLookupCustomer');
+      if (name === '../socket') return {emitSocketEvent() {}};
+      if (name === './crmIntakeTools') return intake;
       if (name === './crmAppointment') return require('../src/services/crmAppointment');
       if (name === './confirmedPhone') return require('../src/services/confirmedPhone');
       if (name === '../db') return { query: async () => ({ rows: [] }) };
@@ -46,7 +50,7 @@ function fixture(conference = true) {
     { greeting: 'Welcome. What is your name?' });
   const session = api.sessions.get(uuid);
   session.ready = true;
-  return { api, session, socket, disk, media, breaks, broadcasts, removed };
+  return { api, session, socket, disk, media, breaks, broadcasts, removed, intake };
 }
 
 test('conference introduces assistance without reusing normal intake greeting', () => {
@@ -212,4 +216,60 @@ test('successful interruption releases the stopped audio duration wait', async (
   await playing;
   assert.equal(f.session.releasePlaybackWait,null);
   assert.deepEqual(f.breaks,[uuid]);
+});
+
+test('demo quiet period suppresses AI output but keeps VICIdial caller audio flowing',async()=>{
+ const f=fixture('vicidial-customer');
+ f.session.demoQuiet=true;
+ f.socket.emit('message',Buffer.from([1,0,2,0]),true);
+ assert.equal(f.session.gemini.sent.at(-1).realtimeInput.audio.data,'AQACAA==');
+ f.api.handleGeminiMessage(f.session,JSON.stringify({serverContent:{modelTurn:{parts:[{inlineData:{mimeType:'audio/pcm;rate=24000',data:Buffer.alloc(24000).toString('base64')}}]}}}));
+ await new Promise(setImmediate);
+ assert.equal(f.broadcasts.length,0);
+ assert.equal(f.session.outputTurnBytes,0);
+});
+test('demo quiet callback stops only this AI leg and invalidates queued speech',async()=>{
+ const f=fixture('vicidial-customer');
+ f.intake.declarations.push({name:'demo_call_step'});
+ let invoked=false;
+ f.intake.run=async session=>{invoked=true;session.demoQuiet=true;await session.beginDemoQuiet();return {status:'waiting'};};
+ const generation=f.session.playbackGeneration;
+ f.api.handleGeminiMessage(f.session,JSON.stringify({toolCall:{functionCalls:[{id:'demo-pain',name:'demo_call_step',args:{action:'complete',step_id:'pain'}}]}}));
+ await new Promise(setImmediate);
+ assert.equal(invoked,true);assert.deepEqual(f.breaks,[uuid]);
+ assert.equal(f.session.playbackGeneration,generation+1);
+ assert.equal(f.api.sessions.get(uuid),f.session);
+ assert.equal(f.socket.readyState,1);
+});
+
+test('asking for name spelling without input transcription does not silence the reply', async () => {
+  for (const context of ['vicidial-customer', false]) {
+    const f = fixture(context);
+    f.api.handleGeminiMessage(f.session, JSON.stringify({serverContent: {
+      outputTranscription: {text: 'Can you spell your first and last name?'}, turnComplete: true
+    }}));
+    assert.equal(f.session.nameSpellingMode, true);
+    assert.equal(f.session.nameSpellingTimer, null);
+    f.api.handleGeminiMessage(f.session, JSON.stringify({serverContent: {
+      outputTranscription: {text: 'So your name is Asad, right?'},
+      modelTurn: {parts: [{inlineData: {mimeType: 'audio/pcm;rate=24000', data: Buffer.alloc(100).toString('base64')}}]},
+      turnComplete: true
+    }}));
+    await new Promise(setImmediate);
+    assert.equal(f.broadcasts.length, 1);
+    assert.equal(f.api.sessions.get(uuid), f.session);
+  }
+});
+
+test('recognized spelling still suppresses competing speech while its confirmation timer is pending', async () => {
+  const f = fixture('vicidial-customer');
+  f.session.nameSpellingMode = true;
+  f.session.nameSpellingBuffer = 'ASAD';
+  f.session.nameSpellingTimer = 1;
+  f.api.handleGeminiMessage(f.session, JSON.stringify({serverContent: {
+    modelTurn: {parts: [{inlineData: {mimeType: 'audio/pcm;rate=24000', data: Buffer.alloc(100).toString('base64')}}]},
+    turnComplete: true
+  }}));
+  await new Promise(setImmediate);
+  assert.equal(f.broadcasts.length, 0);
 });

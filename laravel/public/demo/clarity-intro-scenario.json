@@ -1,0 +1,114 @@
+{
+  "values": {
+    "agent_name": "Alex",
+    "customer_name": "Taylor Example",
+    "phone": "15550102030",
+    "address": "123 Example Street, Demo City",
+    "income_source": "Demo employment",
+    "monthly_income": "4000",
+    "email": "taylor@example.com",
+    "date_of_birth": "1990-01-15 (fictional)",
+    "loan_amount": "20000",
+    "loan_purpose": "Pay off existing debts",
+    "identity_check": "DEMO-IDENTITY-VERIFIED (no SSN)"
+  },
+  "steps": [
+    {
+      "id": "opening",
+      "instructions": "Disclose briefly: This is a fictional demo, no real credit pull. Then say: This is {agent_name} with the lending department. Are you looking for help with the loan offer? Wait for the answer.",
+      "result": "Demo conversation checkpoint completed; no real financial action."
+    },
+    {
+      "id": "loan_amount",
+      "instructions": "Ask: Can you tell me how much you are looking to borrow? Remember their answer. Do not ask again if already provided.",
+      "result": "Demo conversation checkpoint completed; no real financial action."
+    },
+    {
+      "id": "loan_purpose",
+      "instructions": "Ask: Is this mainly to pay off existing debts, or something else? Wait and remember the answer.",
+      "result": "Demo conversation checkpoint completed; no real financial action."
+    },
+    {
+      "id": "name",
+      "instructions": "Ask for the spelling of first and last name. Read it back once and accept confirmation. Preserve any correction; never repeatedly confirm an already confirmed name.",
+      "result": "Demo conversation checkpoint completed; no real financial action."
+    },
+    {
+      "id": "address",
+      "instructions": "Ask: Can you confirm the physical address you are residing at? Use fictional details only for this demo. Skip if already confirmed.",
+      "result": "Demo conversation checkpoint completed; no real financial action."
+    },
+    {
+      "id": "income_source",
+      "instructions": "Ask: What do you do for a living right now? What is your main source of income? Wait for the answer.",
+      "result": "Demo conversation checkpoint completed; no real financial action."
+    },
+    {
+      "id": "monthly_income",
+      "instructions": "Ask: What is your monthly income, approximately? Accept the actual answer; never adjust it to qualify.",
+      "result": "Demo conversation checkpoint completed; no real financial action."
+    },
+    {
+      "id": "email",
+      "instructions": "Ask: Do you have an email address? Accept the answer or refusal. Do not loop on confirmation.",
+      "result": "Demo conversation checkpoint completed; no real financial action."
+    },
+    {
+      "id": "birth_date",
+      "instructions": "Ask for a fictional date of birth for this demo. Never invent a real identity. Remember the answer.",
+      "result": "Demo conversation checkpoint completed; no real financial action."
+    },
+    {
+      "id": "identity",
+      "instructions": "Say: We will now simulate a soft credit check using a fictional record. No bureau will be contacted and your credit is not affected by this demo. Ask permission to continue. Explain no Social Security digits are required; use the configured identity_check placeholder. If permission is refused, do not proceed; stop the demo.",
+      "result": "Demo conversation checkpoint completed; no real financial action."
+    },
+    {
+      "id": "hold",
+      "instructions": "Say: Perfect. Please give me a moment to retrieve our demo information. I will place you on a brief hold while I check it. Then complete this step to fetch the report. Stay silent during the request. Do not claim a report or plan exists before the tool succeeds. If unavailable, explain and request staff help; never fabricate a report. This is a spoken hold, not hold music.",
+      "result": "Demo conversation checkpoint completed; no real financial action.",
+      "effect": "credit_lookup"
+    },
+    {
+      "id": "debt_review",
+      "instructions": "Use ONLY the report returned by the hold tool. Say: Hi, I am back on the line. I have the demo report here. Let us go over your accounts together. I am showing [accounts_count] accounts totaling [debts_total]. Read the returned creditors and balances, ask whether they are correct, and wait. The enrollment selection is simulated and internal; do not claim real approval or enrollment.",
+      "result": "Demo conversation checkpoint completed; no real financial action."
+    },
+    {
+      "id": "pain",
+      "instructions": "Ask: Looking at all of this together, how did you get into this debt with your creditors? STOP speaking. After their answer call complete with quote containing their EXACT words, not a summary. The tool waits for three seconds of quiet; do not fill that silence. If they add a second sentence, include it in the quote and retry. Never use a dummy pain statement. After saved, say: I appreciate you sharing that. I can see why that would put pressure on you. Explain this demo section is complete and stop; do not continue to sales, contracts or payment.",
+      "result": "Demo conversation checkpoint completed; no real financial action.",
+      "effect": "pain_quote"
+    }
+  ],
+  "credit_record": {
+    "id": "DEMO-CREDIT-001",
+    "credit_score": 650,
+    "accounts": [
+      {
+        "creditor": "Fictional Card A",
+        "balance": 12000
+      },
+      {
+        "creditor": "Fictional Card B",
+        "balance": 8000
+      }
+    ]
+  },
+  "term_table": [
+    {
+      "min_debt": 0,
+      "max_debt": 10000,
+      "plan_account": "Demo account",
+      "base_plan": "Demo lower-debt plan",
+      "term_months": 24
+    },
+    {
+      "min_debt": 10000.01,
+      "max_debt": 50000,
+      "plan_account": "Demo account",
+      "base_plan": "Demo standard plan",
+      "term_months": 48
+    }
+  ]
+}

@@ -141,6 +141,14 @@ class PermissionService
                     'contacts.labels',
                 ],
             ],
+            [
+                'group_name' => 'crm_config',
+                'permissions' => [
+                    'crm_config.view',
+                    'crm_config.edit',
+                    'crm_dashboard.configure',
+                ],
+            ],
         ];
 
         return $permissions;

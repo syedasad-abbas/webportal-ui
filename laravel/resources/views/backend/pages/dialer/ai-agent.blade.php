@@ -200,6 +200,13 @@ html:not(.dark) #ai-agent-page .ai-save-faq:hover { background: #f5f3ff; }
                 <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ __('Up to 10,000 characters. Use Save settings to apply. Clear this field and save to remove the instructions.') }}</p>
             </section>
 
+            <section class="ai-card rounded-2xl border border-slate-200 bg-white p-4 dark:border-[#2a4055] dark:bg-[#091827]">
+                <label for="ai-agent-sales-script" class="block text-sm font-semibold text-slate-900 dark:text-white">{{ __('Sales Script (Clarity Early Payoff Program)') }}</label>
+                <p class="mt-2 text-xs text-slate-500 dark:text-slate-400">{{ __('Full call script used by the AI agent. Configured from the uploaded PDF or entered manually. This text guides the AI through every stage: call start, debt review, pain question, budget analysis, comparison email, tie-downs, signing, and QA warm-down.') }}</p>
+                <textarea id="ai-agent-sales-script" rows="10" maxlength="50000" placeholder="{{ __('Paste the full sales script here…') }}" class="mt-3 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 dark:border-[#365068] dark:bg-[#071625] dark:text-white">{{ $aiAgentSettings['salesScript'] ?? '' }}</textarea>
+                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ __('Up to 50,000 characters. The agent reads this as its call guide.') }}</p>
+            </section>
+
             @can('ai_agent.configure')
             <section id="ai-document-import" data-url="{{ route('admin.ai-agent.document-draft') }}" class="ai-card rounded-2xl border border-slate-200 bg-white p-4 dark:border-[#2a4055] dark:bg-[#091827]">
                 <h2 class="text-sm font-semibold">{{ __('Import agent instructions from a file') }}</h2>
@@ -210,9 +217,9 @@ html:not(.dark) #ai-agent-page .ai-save-faq:hover { background: #f5f3ff; }
                 <p id="ai-document-status" role="status" aria-live="polite" class="mt-2 text-sm"></p>
                 <div id="ai-document-preview" hidden class="mt-3 space-y-3">
                     <p class="text-xs">{{ __('Review and edit the draft below. Applying replaces only fields with nonempty draft text. Existing FAQ entries are preserved. Nothing is saved until you click Save settings.') }}</p>
-                    @foreach(['role' => 'Duty assignment', 'greeting' => 'Opening greeting', 'goal' => 'Conversational goal', 'knowledgeInstructions' => 'Knowledge and script'] as $field => $label)
+                    @foreach(['role' => 'Duty assignment', 'greeting' => 'Opening greeting', 'goal' => 'Conversational goal', 'knowledgeInstructions' => 'Knowledge and script', 'salesScript' => 'Sales script'] as $field => $label)
                     <label class="block text-sm" for="ai-document-{{ $field }}">{{ __($label) }}</label>
-                    <textarea id="ai-document-{{ $field }}" data-document-field="{{ $field }}" rows="3" maxlength="{{ ['role' => 200, 'greeting' => 1000, 'goal' => 2000, 'knowledgeInstructions' => 10000][$field] }}" class="w-full rounded-xl border border-slate-300 p-3 dark:border-[#365068]"></textarea>
+                    <textarea id="ai-document-{{ $field }}" data-document-field="{{ $field }}" rows="3" maxlength="{{ ['role' => 200, 'greeting' => 1000, 'goal' => 2000, 'knowledgeInstructions' => 10000, 'salesScript' => 50000][$field] }}" class="w-full rounded-xl border border-slate-300 p-3 dark:border-[#365068]"></textarea>
                     @endforeach
                     <button id="ai-document-apply" type="button" class="rounded-xl bg-violet-600 px-4 py-2 text-sm font-semibold text-white">{{ __('Apply draft to form') }}</button>
                 </div>
@@ -409,6 +416,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const roleInput = document.getElementById('ai-agent-role');
     const greetingInput = document.getElementById('ai-agent-greeting');
     const knowledgeInput = document.getElementById('ai-agent-knowledge');
+    const scriptInput = document.getElementById('ai-agent-sales-script');
     const goalInput = document.getElementById('ai-agent-goal');
     const modeSelect = document.getElementById('ai-agent-mode');
     const voiceSelect = document.getElementById('ai-agent-voice');
@@ -467,6 +475,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (roleInput) roleInput.value = settings.role || '';
         if (greetingInput) greetingInput.value = settings.greeting || '';
         if (knowledgeInput) knowledgeInput.value = settings.knowledgeInstructions || '';
+        if (scriptInput) scriptInput.value = settings.salesScript || '';
         if (goalInput) goalInput.value = settings.goal || '';
         if (modeSelect) modeSelect.value = settings.mode || 'lead';
         if (voiceSelect) voiceSelect.value = settings.voice || 'man';
@@ -489,6 +498,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 role: roleInput?.value || '',
                 greeting: greetingInput?.value || '',
                 knowledgeInstructions: knowledgeInput?.value || '',
+                salesScript: scriptInput?.value || '',
                 goal: goalInput?.value || '',
                 mode: modeSelect?.value || 'lead',
                 voice: voiceSelect?.value || 'man',
@@ -497,7 +507,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }));
         } catch (error) {}
     };
-    [roleInput, greetingInput, goalInput, knowledgeInput, modeSelect, voiceSelect, handoffInput, callDirectionSelect]
+    [roleInput, greetingInput, goalInput, knowledgeInput, scriptInput, modeSelect, voiceSelect, handoffInput, callDirectionSelect]
         .filter(Boolean)
         .forEach((control) => control.addEventListener('input', writeDraft));
     [modeSelect, voiceSelect, handoffInput, callDirectionSelect].filter(Boolean)
@@ -508,6 +518,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (roleInput && typeof draft.role === 'string' && roleInput.value === '') roleInput.value = draft.role;
         if (greetingInput && typeof draft.greeting === 'string' && greetingInput.value === '') greetingInput.value = draft.greeting;
         if (knowledgeInput && typeof draft.knowledgeInstructions === 'string' && knowledgeInput.value === '') knowledgeInput.value = draft.knowledgeInstructions;
+        if (scriptInput && typeof draft.salesScript === 'string' && scriptInput.value === '') scriptInput.value = draft.salesScript;
         if (goalInput && typeof draft.goal === 'string' && goalInput.value === '') goalInput.value = draft.goal;
     }
 
@@ -532,6 +543,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     role: roleInput?.value || '',
                     greeting: greetingInput?.value || '',
                     knowledgeInstructions: knowledgeInput?.value || '',
+                    salesScript: scriptInput?.value || '',
                     goal: goalInput?.value || '',
                     mode: modeSelect?.value || 'lead',
                     voice: voiceSelect?.value || 'man',

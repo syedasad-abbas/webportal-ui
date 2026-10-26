@@ -28,7 +28,8 @@
             <div class="crm-dashboard-main">
                 <section class="crm-dashboard-panel crm-dashboard-overview" aria-label="{{ __('Revenue') }}">
                     <div class="crm-dashboard-highlights">
-                        @foreach([['Won Revenue', 'green', 'won_revenue'], ['Lost Revenue', 'red', 'lost_revenue']] as [$label, $tone, $key])
+                        @foreach(collect($crm_cards)->where('enabled', true)->whereIn('key', ['won_revenue','lost_revenue']) as $card)
+                            @php $key=$card['key']; $label=$card['label']; $tone=$key==='won_revenue'?'green':'red'; @endphp
                             <div class="crm-dashboard-metric crm-dashboard-tone-{{ $tone }}">
                                 <span class="crm-dashboard-metric-label">{{ __($label) }}</span>
                                 <span class="crm-dashboard-metric-value" data-crm-key="{{ $key }}">@if($crm_summary){{ number_format((float) ($crm_summary[$key] ?? 0), 2) }}@else—@endif</span>
@@ -42,11 +43,8 @@
                 </section>
 
                 <div class="crm-dashboard-stats">
-                    @foreach([
-                        ['Total Customers', 'total_customers'],
-                        ['Open Leads', 'open_leads'],
-                        ['Appointments Booked', 'appointments_booked'],
-                    ] as [$label, $key])
+                    @foreach(collect($crm_cards)->where('enabled', true)->whereNotIn('key', ['won_revenue','lost_revenue']) as $card)
+                        @php $key=$card['key']; $label=$card['label']; @endphp
                         <div class="crm-dashboard-metric">
                             <span class="crm-dashboard-metric-label">{{ __($label) }}</span>
                             <span class="crm-dashboard-metric-value" data-crm-key="{{ $key }}">@if($crm_summary){{ number_format($crm_summary[$key] ?? 0) }}@else—@endif</span>
@@ -183,7 +181,9 @@
                     'lost_revenue': 'lost_revenue',
                     'total_customers': 'total_customers',
                     'open_leads': 'open_leads',
-                    'appointments_booked': 'appointments_booked'
+                    'appointments_booked': 'appointments_booked',
+                    'intakes_recorded': 'intakes_recorded',
+                    'requested_amount_total': 'requested_amount_total'
                 };
                 Object.entries(keyMap).forEach(([dataKey, domKey]) => {
                     const el = document.querySelector(`[data-crm-key="${domKey}"]`);

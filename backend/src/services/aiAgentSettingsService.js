@@ -10,7 +10,8 @@ const defaults = {
   mode: 'lead',
   voice: 'woman',
   humanHandoff: true,
-  callDirection: 'inbound'
+  callDirection: 'inbound',
+  salesScript: ''
 };
 
 const supportsDirection = (settings, direction) => {
@@ -34,6 +35,10 @@ const normalizeGoal = (goal) => (
   goal === undefined ? defaults.goal : String(goal ?? '').trim()
 );
 
+const normalizeSalesScript = (script) => (
+  script === undefined ? defaults.salesScript : String(script ?? '').trim()
+);
+
 // The live model is intentionally not stored per-record. It is controlled
 // exclusively by the GEMINI_LIVE_MODEL environment variable so there is a
 // single source of truth and no hardcoded model choice anywhere in the code.
@@ -49,6 +54,7 @@ const normalize = (row = {}) => ({
   callDirection: ['inbound', 'outbound', 'both'].includes(row.call_direction)
     ? row.call_direction
     : defaults.callDirection,
+  salesScript: normalizeSalesScript(row.sales_script),
   updatedBy: row.updated_by || null,
   ready: Boolean(config.aiAgent.apiKey),
   model: config.aiAgent.model,
@@ -79,14 +85,15 @@ const update = async (settings, userId) => {
   }
   const result = await db.query(
     `INSERT INTO ai_agent_settings
-      (id, enabled, role, greeting, goal, mode, voice, human_handoff, call_direction, updated_by, knowledge_instructions, created_at, updated_at)
-     VALUES (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, COALESCE($10, ''), NOW(), NOW())
+      (id, enabled, role, greeting, goal, mode, voice, human_handoff, call_direction, updated_by, knowledge_instructions, sales_script, created_at, updated_at)
+     VALUES (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, COALESCE($10, ''), COALESCE($11, ''), NOW(), NOW())
      ON CONFLICT (id) DO UPDATE SET
        enabled = EXCLUDED.enabled, role = EXCLUDED.role, greeting = EXCLUDED.greeting,
        goal = EXCLUDED.goal, mode = EXCLUDED.mode, voice = EXCLUDED.voice,
        human_handoff = EXCLUDED.human_handoff,
        call_direction = EXCLUDED.call_direction,
        knowledge_instructions = COALESCE($10, ai_agent_settings.knowledge_instructions),
+       sales_script = COALESCE($11, ai_agent_settings.sales_script),
        updated_by = EXCLUDED.updated_by, updated_at = NOW()
      RETURNING *`,
     [
@@ -99,7 +106,8 @@ const update = async (settings, userId) => {
       value.humanHandoff,
       value.callDirection,
       userId,
-      settings.knowledgeInstructions === undefined ? null : String(settings.knowledgeInstructions ?? '').trim()
+      settings.knowledgeInstructions === undefined ? null : String(settings.knowledgeInstructions ?? '').trim(),
+      settings.salesScript === undefined ? null : String(settings.salesScript ?? '').trim()
     ]
   );
   return normalize(result.rows[0]);

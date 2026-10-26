@@ -134,6 +134,14 @@ Route::put('/carrier/{carrierId}', [CarrierController::class, 'update'])->name('
 Route::delete('/carrier/{carrierId}', [CarrierController::class, 'destroy'])->name('carrier.destroy');
  Route::get('/crm', [\App\Http\Controllers\Admin\CrmController::class, 'index'])->name('crm.index');
  Route::match(['GET', 'POST', 'PUT', 'DELETE'], '/crm/api/{resource}', [\App\Http\Controllers\Admin\CrmController::class, 'proxy'])->where('resource', 'customers(?:/[1-9][0-9]*)?|reports/summary')->name('crm.proxy');
+
+Route::get('/crm/active-calls', [\App\Http\Controllers\Admin\CrmController::class, 'activeCalls'])->name('crm.active-calls');
+Route::post('/crm/verify-call', [\App\Http\Controllers\Admin\CrmController::class, 'verifyCall'])->name('crm.verify-call');
+// CRM Configuration routes
+Route::put('/crm-config', [\App\Http\Controllers\Admin\CrmConfigController::class, 'update'])->name('crm-config.update');
+Route::get('/crm-config', [\App\Http\Controllers\Admin\CrmConfigController::class, 'index'])->name('crm-config.index');
+Route::get('/crm-config/dashboard', [\App\Http\Controllers\Admin\CrmConfigController::class, 'dashboard'])->name('crm-config.dashboard');
+Route::put('/crm-config/dashboard', [\App\Http\Controllers\Admin\CrmConfigController::class, 'updateDashboard'])->name('crm-config.update-dashboard');
  Route::get('/dialer', [DialerController::class, 'index'])->name('dialer.index');
  Route::post('/dialer/provider', [DialerController::class, 'selectProvider'])->name('dialer.provider');
  Route::get('/vicidial', [\App\Http\Controllers\Admin\VicidialController::class, 'index'])->name('vicidial.index');

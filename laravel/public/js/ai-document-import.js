@@ -5,8 +5,8 @@
         const get = (suffix) => document.getElementById(`ai-document-${suffix}`);
         const fileInput = get('file'), analyze = get('analyze'), apply = get('apply');
         const status = get('status'), preview = get('preview');
-        const targets = { role: 'ai-agent-role', greeting: 'ai-agent-greeting', goal: 'ai-agent-goal', knowledgeInstructions: 'ai-agent-knowledge' };
-        const limits = { role: 200, greeting: 1000, goal: 2000, knowledgeInstructions: 10000 };
+        const targets = { role: 'ai-agent-role', greeting: 'ai-agent-greeting', goal: 'ai-agent-goal', knowledgeInstructions: 'ai-agent-knowledge', salesScript: 'ai-agent-sales-script' };
+        const limits = { role: 200, greeting: 1000, goal: 2000, knowledgeInstructions: 10000, salesScript: 50000 };
         let busy = false;
         fileInput.addEventListener('change', () => { preview.hidden = true; status.textContent = ''; });
         analyze.addEventListener('click', async () => {

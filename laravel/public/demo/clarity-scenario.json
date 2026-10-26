@@ -1,0 +1,108 @@
+{
+  "values": {
+    "agent_name": "Alex (demo)",
+    "customer_name": "Taylor Example",
+    "phone": "15550102030",
+    "address": "123 Example Street, Demo City",
+    "income_source": "Demo employment",
+    "monthly_income": "4000",
+    "email": "taylor@example.com",
+    "date_of_birth": "Use a fictional adult birth date supplied by the tester",
+    "identity_check": "SIMULATED IDENTITY CHECK \u2014 do not collect SSN",
+    "loan_amount": "20000",
+    "loan_purpose": "Discuss existing personal debts",
+    "accounts": "Demo Card A: 12000; Demo Card B: 8000",
+    "accounts_count": "2",
+    "debts_total": "20000",
+    "credit_score": "650",
+    "credit_utilization": "65",
+    "food": "500",
+    "utilities": "250",
+    "phone_expense": "100",
+    "car_payment": "300",
+    "car_insurance": "150",
+    "housing": "1200",
+    "other_expenses": "200",
+    "current_payment": "500",
+    "current_payoff_months": "181",
+    "current_interest": "18000",
+    "plan_name": "Illustrative demo plan",
+    "monthly_payment": "250",
+    "term_length": "48",
+    "program_cost": "12000",
+    "interest": "0 (illustrative only)",
+    "fee_description": "Illustrative total includes fees; no real quote or fee calculation",
+    "first_payment": "Choose a hypothetical future date with the tester",
+    "bank_reference": "DEMO BANK TOKEN \u2014 never collect routing or account numbers",
+    "contract_reference": "DEMO CONTRACT \u2014 no legal signature",
+    "pain_statement": "Ask the tester; use their exact words, not this placeholder",
+    "dream_answer": "Ask the tester; use their exact words, not this placeholder"
+  },
+  "steps": [
+    {
+      "id": "opening",
+      "instructions": "Disclose this is an AI-led simulation with no financial actions. Follow the saved opening, clarify that the demonstrated program is debt settlement, not a loan. Ask amount and purpose one at a time.",
+      "result": "Demo opening completed."
+    },
+    {
+      "id": "intake",
+      "instructions": "Collect name/address/income/email one at a time if missing. Accept previously confirmed answers without repeating. For birth date or identity use fictional scenario values only; never ask for SSN.",
+      "result": "Demo intake recorded in this simulation only."
+    },
+    {
+      "id": "credit_review",
+      "instructions": "Explain that you are opening the simulated credit report. Read each configured account and balance; wait for confirmation of each. Do not claim a real credit pull or eligibility determination.",
+      "result": "Simulated credit report reviewed; no bureau contacted."
+    },
+    {
+      "id": "pain",
+      "instructions": "Ask how the tester got into debt. Let them finish and leave a three-second pause where feasible. Retain their exact words; do not invent a personal story.",
+      "result": "Pain discussion checkpoint complete."
+    },
+    {
+      "id": "budget",
+      "instructions": "Ask each missing actual demo expense. Do not modify values to hit a target. Confirm the figures with the tester.",
+      "result": "Demo budget reviewed without altering stated expenses."
+    },
+    {
+      "id": "utilization",
+      "instructions": "Review configured score and utilization as illustrative data. Ask about business debts/legal action neutrally. Do not prescribe answers or promise score changes.",
+      "result": "Illustrative credit discussion complete."
+    },
+    {
+      "id": "dream",
+      "instructions": "Ask what would change for them. Wait for their own response and remember the exact words before discussing the comparison.",
+      "result": "Dream discussion checkpoint complete."
+    },
+    {
+      "id": "comparison",
+      "instructions": "Simulate comparison email preparation, explicitly saying nothing was sent. Explain configured current versus illustrative plan figures one at a time. Ask each tie-down question and await its answer; do not fabricate consent.",
+      "result": "Comparison email simulated, not delivered."
+    },
+    {
+      "id": "plan",
+      "instructions": "Review exclusions and program cost, payment and term. Explain uncertainty; never guarantee settlements, score improvement or tax outcomes. Do not tell the tester to stop real creditor payments.",
+      "result": "Illustrative plan reviewed; no enrollment submitted."
+    },
+    {
+      "id": "payment",
+      "instructions": "Choose a hypothetical date with the tester and use configured payment values. Explain that no bank draft or real payment is being scheduled.",
+      "result": "Payment scheduling simulated; no funds moved."
+    },
+    {
+      "id": "contract",
+      "instructions": "Use the configured DEMO BANK TOKEN. Do not collect bank credentials. Walk through simulated contract review/signing; wait for tester agreement. No actual email or signature exists.",
+      "result": "Contract workflow simulated, not emailed or legally signed."
+    },
+    {
+      "id": "compliance",
+      "instructions": "Announce a simulated QA segment with this same AI, not a real transfer. Ask neutral comprehension questions one by one. Permit questions, corrections and no answers; never coach yes/no answers.",
+      "result": "QA segment simulated; no external transfer made."
+    },
+    {
+      "id": "wrap_up",
+      "instructions": "Summarize the demo only. Explain that no loan approval, credit pull, enrollment, payment, email, legal signature or transfer took place. Ask if they have questions and finish politely when ready.",
+      "result": "Demo conversation completed; no real-world transactions occurred."
+    }
+  ]
+}

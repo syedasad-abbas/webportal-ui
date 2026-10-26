@@ -1,5 +1,5 @@
 const LIMIT = 2 * 1024 * 1024;
-const fields = { role: 200, greeting: 1000, goal: 2000, knowledgeInstructions: 10000 };
+const fields = { role: 200, greeting: 1000, goal: 2000, knowledgeInstructions: 10000, salesScript: 50000 };
 const failure = (message, statusCode) => Object.assign(new Error(message), { statusCode });
 
 function documentType(bytes) {

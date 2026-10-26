@@ -197,37 +197,37 @@ $this->addMenuItem([
 ]);
 
 
-    $this->addMenuItem([
-        'label' => __('Carrier'),
-        'icon' => 'user.svg',
-        'id' => 'carrier-submenu',
-        'active' => Route::is('admin.carrier.*'),
-        'priority' => 26,
-        'permissions' => ['carrier.view', 'carrier.create'],
-        'children' => [
-            [
-                'label' => __('View carrier'),
-                'route' => route('admin.carrier.index'),
-                'active' => Route::is('admin.carrier.index'),
-                'priority' => 10,
-                'permissions' => ['carrier.view'],
-            ],
-            [
-                'label' => __('New Carrier'),
-                'route' => route('admin.carrier.create'),
-                'active' => Route::is('admin.carrier.create'),
-                'priority' => 20,
-                'permissions' => ['carrier.create'],
-            ],
-            [
-                'label' => __('Inbound DIDs'),
-                'route' => route('admin.carrier.inbound-dids.index'),
-                'active' => Route::is('admin.carrier.inbound-dids.*'),
-                'priority' => 30,
-                'permissions' => ['carrier.view'],
-            ],
+$this->addMenuItem([
+    'label' => __('Carrier'),
+    'icon' => 'user.svg',
+    'id' => 'carrier-submenu',
+    'active' => Route::is('admin.carrier.*'),
+    'priority' => 26,
+    'permissions' => ['carrier.view', 'carrier.create'],
+    'children' => [
+        [
+            'label' => __('View carrier'),
+            'route' => route('admin.carrier.index'),
+            'active' => Route::is('admin.carrier.index'),
+            'priority' => 10,
+            'permissions' => ['carrier.view'],
         ],
-    ]);
+        [
+            'label' => __('New Carrier'),
+            'route' => route('admin.carrier.create'),
+            'active' => Route::is('admin.carrier.create'),
+            'priority' => 20,
+            'permissions' => ['carrier.create'],
+        ],
+        [
+            'label' => __('Inbound DIDs'),
+            'route' => route('admin.carrier.inbound-dids.index'),
+            'active' => Route::is('admin.carrier.inbound-dids.*'),
+            'priority' => 30,
+            'permissions' => ['carrier.view'],
+        ],
+    ],
+]);
         $this->addMenuItem([
             'label' => __('Modules'),
             'icon' => 'three-dice.svg',
@@ -237,6 +237,39 @@ $this->addMenuItem([
             'priority' => 30,
             'permissions' => 'module.view',
         ]);
+
+        // CRM configuration menu group.
+        $this->addMenuItem([
+            'label' => __('CRM Configuration'),
+            'iconClass' => 'bi bi-database',
+            'id' => 'crm-config-submenu',
+            'active' => Route::is('admin.crm-config.*'),
+            'priority' => 22,
+            'permissions' => ['crm_config.view', 'crm_dashboard.configure', 'contacts.view'],
+            'children' => [
+                [
+                    'label' => __('Customer Records'),
+                    'route' => route('admin.crm.index'),
+                    'active' => Route::is('admin.crm.*'),
+                    'priority' => 5,
+                    'permissions' => 'contacts.view',
+                ],
+                [
+                    'label' => __('CRM Settings'),
+                    'route' => route('admin.crm-config.index'),
+                    'active' => Route::is('admin.crm-config.index'),
+                    'priority' => 10,
+                    'permissions' => 'crm_config.view',
+                ],
+                [
+                    'label' => __('Dashboard Cards'),
+                    'route' => route('admin.crm-config.dashboard'),
+                    'active' => Route::is('admin.crm-config.dashboard'),
+                    'priority' => 20,
+                    'permissions' => 'crm_dashboard.configure',
+                ],
+            ],
+        ], __('More'));
 
         $this->addMenuItem([
             'label' => __('Settings'),

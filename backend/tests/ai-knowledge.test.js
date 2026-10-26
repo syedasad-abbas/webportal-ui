@@ -15,6 +15,7 @@ function fixture() {
       if (name === '../db') return { query: async (sql, params) => {
         calls.push({ sql, params });
         if (params && params[9] !== null) row.knowledge_instructions = params[9];
+        if (params && params[10] !== null) row.sales_script = params[10];
         return { rows: [{ ...row }] };
       } };
       if (name === '../config') return { aiAgent: { apiKey: 'test', model: 'test' } };
@@ -52,4 +53,13 @@ test('live prompt includes knowledge as literal text alongside greeting and FAQs
   assert.ok(prompt.includes('Welcome to the clinic.'));
   assert.ok(prompt.includes('From nine to five.'));
   assert.ok(!buildAgentPrompt({ knowledgeInstructions: '' }).includes('Ask one question at a time. Literal'));
+});
+
+test('saved sales script reaches live prompt verbatim and clearing is supported', async () => {
+ const f=fixture();const text='STEP A: review caller values. Literal {{goal}} and $&.';
+ await f.service.update({salesScript:text},81);
+ const saved=await f.service.get();
+ assert.equal(saved.salesScript,text);
+ assert.ok(buildAgentPrompt({salesScript:saved.salesScript}).includes(text));
+ assert.equal((await f.service.update({salesScript:''},81)).salesScript,'');
 });
