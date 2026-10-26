@@ -944,6 +944,60 @@ const handleGeminiMessage = (session, data) => {
     }
   }
 
+  // Pain answer collection - capture the caller's exact words after the pain question.
+  if (inputText && session.painCollecting) {
+    session.painStatement = inputText;
+    session.painConfirmed = true;
+    session.painCollecting = false;
+    session.collectedInfo = session.collectedInfo || {};
+    session.collectedInfo.pain = session.painStatement;
+    console.log('[ai-agent] pain statement captured', { callId: session.callId, pain: session.painStatement });
+    suppressControlledOutput = true;
+    // Immediately proceed to Budget Analysis questions.
+    sendControlText(
+      session,
+      "All right. My underwriting team is asking for a bit more information to see what you can afford each month."
+    );
+    sendControlText(session, "How much do you pay for food per month?");
+    session.budgetCollecting = true;
+    session.budgetQuestionIndex = 0;
+    session.budgetQuestions = [
+      'How much do you pay for food per month?',
+      'How much for utilities?',
+      'How much is your phone bill?',
+      'Do you have a car payment or car insurance? How much are those?',
+      'Are you currently renting, or do you own your home? How much do you pay each month?',
+      'Any other major expenses I should list here?'
+    ];
+    console.log('[ai-agent] budget collection started', { callId: session.callId });
+  }
+
+  // Budget answer collection - collect each expense answer and move to next question.
+  if (inputText && session.budgetCollecting) {
+    const currentQuestion = session.budgetQuestions[session.budgetQuestionIndex];
+    const key = session.budgetQuestionIndex === 0 ? 'food' :
+      session.budgetQuestionIndex === 1 ? 'utilities' :
+      session.budgetQuestionIndex === 2 ? 'phone' :
+      session.budgetQuestionIndex === 3 ? 'car' :
+      session.budgetQuestionIndex === 4 ? 'housing' : 'other';
+    session.budgetAnswers[key] = inputText;
+    console.log('[ai-agent] budget answer captured', { callId: session.callId, key, answer: inputText });
+    session.budgetQuestionIndex++;
+    if (session.budgetQuestionIndex < session.budgetQuestions.length) {
+      suppressControlledOutput = true;
+      sendControlText(session, session.budgetQuestions[session.budgetQuestionIndex]);
+    } else {
+      session.budgetCollecting = false;
+      session.budgetConfirmed = true;
+      console.log('[ai-agent] budget collection complete', { callId: session.callId, answers: session.budgetAnswers });
+      suppressControlledOutput = true;
+      sendControlText(
+        session,
+        "All right, thank you for the information. I'm going to place you on hold one more time. I should be back in about a minute with your results."
+      );
+    }
+  }
+
   let skipModelAudio = false;
   if (content.interrupted) {
     session.outputTurnChunks.length = 0;
@@ -991,11 +1045,13 @@ const handleGeminiMessage = (session, data) => {
     session.transcript.push({ role: 'agent', text: outputText });
     session.agentTranscriptWindow = `${session.agentTranscriptWindow} ${outputText}`.slice(-300);
     // Start SSN collection when the AI asks for the last four digits of SSN.
+    // The AI may say this across multiple chunks, so check both current and
+    // accumulated text.
+    const ssnTriggerText = `${outputText} ${session.agentTranscriptWindow}`.replace(/\s+/g, ' ');
     if (
       !session.ssnConfirmed &&
       !session.ssnCollecting &&
-      /\blast four (digits|numbers)\b/i.test(outputText) &&
-      /\b(SSN|social|social security|identity)\b/i.test(outputText)
+      /\blast four (digits|numbers)\b/i.test(ssnTriggerText)
     ) {
       session.ssnCollecting = true;
       console.log('[ai-agent] ssn collection started', { callId: session.callId });
@@ -1085,6 +1141,19 @@ const handleGeminiMessage = (session, data) => {
         try { await saveCallLogCustomerPhone(session.callId, session.phoneDigits); } catch (_) {}
       })();
       console.log('[ai-agent] phone confirmed via server fallback', { callId: session.callId, phone: session.phoneDigits });
+    }
+
+    // --- Pain question detection ---
+    // When the agent asks the pain question, mark pain collection active so we can
+    // capture the caller's exact words.
+    if (
+      !session.painConfirmed &&
+      !session.painCollecting &&
+      inputText &&
+      /\b(how did you get into this debt|how did you get into debt|what led you into this debt|how did you end up in this debt|how did this debt happen|how did you get into this situation)\b/i.test(outputText)
+    ) {
+      session.painCollecting = true;
+      console.log('[ai-agent] pain question asked', { callId: session.callId });
     }
 
     if (session.nameControlResponse) {
@@ -1248,7 +1317,13 @@ const attachGemini = (freeswitchSocket, request, callId, settings) => {
     collectedInfo: { name: '', phone: '' },
     ssnDigits: '',
     ssnConfirmed: false,
-    ssnAwaitingConfirmation: false,
+    ssnCollecting: false,
+    painCollecting: false,
+    painConfirmed: false,
+    painStatement: '',
+    budgetCollecting: false,
+    budgetConfirmed: false,
+    budgetAnswers: {},
   };
   sessions.set(callId, session);
   (async () => {
