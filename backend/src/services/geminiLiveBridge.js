@@ -969,6 +969,10 @@ const handleGeminiMessage = (session, data) => {
       'Are you currently renting, or do you own your home? How much do you pay each month?',
       'Any other major expenses I should list here?'
     ];
+    session.creditQuestions = [
+      "Hey [Customer Name], I'm back on the line. Your credit score right now is sitting at 620, and your credit utilization is at 35%. That can make things a bit tricky, not exactly lendable, but we can work on that.",
+      "Also, just to confirm: none of these accounts are tied to a business, and you haven't been sued by any lenders, right?",
+    ];
     console.log('[ai-agent] budget collection started', { callId: session.callId });
   }
 
@@ -987,16 +991,41 @@ const handleGeminiMessage = (session, data) => {
       suppressControlledOutput = true;
       sendControlText(session, session.budgetQuestions[session.budgetQuestionIndex]);
     } else {
-      session.budgetCollecting = false;
-      session.budgetConfirmed = true;
-      console.log('[ai-agent] budget collection complete', { callId: session.callId, answers: session.budgetAnswers });
+    session.budgetCollecting = false;
+    session.budgetConfirmed = true;
+    console.log('[ai-agent] budget collection complete', { callId: session.callId, answers: session.budgetAnswers });
+    suppressControlledOutput = true;
+    sendControlText(
+      session,
+      "All right, thank you for the information. I'm going to place you on hold one more time. I should be back in about a minute with your results."
+    );
+  }
+
+  // Credit utilization collection - capture credit score, utilization, business/lawsuit confirmation.
+  if (inputText && session.creditCollecting) {
+    const key = session.creditQuestionIndex === 0 ? 'creditScore' :
+      session.creditQuestionIndex === 1 ? 'creditUtilization' :
+      session.creditQuestionIndex === 2 ? 'businessAccounts' :
+      'lawsuits';
+    session.creditAnswers[key] = inputText;
+    console.log('[ai-agent] credit answer captured', { callId: session.callId, key, answer: inputText });
+    session.creditQuestionIndex++;
+    if (session.creditQuestionIndex < session.creditQuestions.length) {
+      suppressControlledOutput = true;
+      sendControlText(session, session.creditQuestions[session.creditQuestionIndex]);
+    } else {
+      session.creditCollecting = false;
+      session.creditConfirmed = true;
+      console.log('[ai-agent] credit collection complete', { callId: session.callId, answers: session.creditAnswers });
       suppressControlledOutput = true;
       sendControlText(
         session,
-        "All right, thank you for the information. I'm going to place you on hold one more time. I should be back in about a minute with your results."
+        "Now, before I show you what came back from underwriting, let me ask you something. You told me about your situation. Once this is handled in the next few months, what's the first thing that changes for you? What does that free up?"
       );
+      session.dreamCollecting = true;
     }
   }
+}
 
   let skipModelAudio = false;
   if (content.interrupted) {
@@ -1154,6 +1183,18 @@ const handleGeminiMessage = (session, data) => {
     ) {
       session.painCollecting = true;
       console.log('[ai-agent] pain question asked', { callId: session.callId });
+    }
+
+    // --- Credit utilization detection ---
+    // When the agent asks about credit score/utilization, mark credit collection active.
+    if (
+      !session.creditConfirmed &&
+      !session.creditCollecting &&
+      inputText &&
+      /\b(credit score|credit utilization|credit report|sitting at|utilization is)\b/i.test(outputText)
+    ) {
+      session.creditCollecting = true;
+      console.log('[ai-agent] credit utilization question asked', { callId: session.callId });
     }
 
     if (session.nameControlResponse) {
@@ -1324,6 +1365,14 @@ const attachGemini = (freeswitchSocket, request, callId, settings) => {
     budgetCollecting: false,
     budgetConfirmed: false,
     budgetAnswers: {},
+    creditCollecting: false,
+    creditConfirmed: false,
+    dreamCollecting: false,
+    dreamConfirmed: false,
+    dreamAnswer: '',
+    comparisonCollecting: false,
+    comparisonConfirmed: false,
+    comparisonAnswers: {},
   };
   sessions.set(callId, session);
   (async () => {
