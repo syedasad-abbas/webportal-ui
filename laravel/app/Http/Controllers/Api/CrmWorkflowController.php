@@ -14,19 +14,31 @@ class CrmWorkflowController extends Controller {
     public function handle(Request $request, CrmWorkflow $workflow, CrmApiClient $client) {
         $token=(string)config('services.backend.internal_token');
         abort_unless(strlen($token)>=32 && hash_equals($token,(string)$request->bearerToken()),401);
-        $data=$request->validate(['operation'=>['required','in:config,intake,review,demo,demo_credit,demo_pain'], 'call_id'=>['required','uuid'], 'stage'=>['required_if:operation,review',\Illuminate\Validation\Rule::in(CrmWorkflow::STAGES)],
-            'quote'=>['required_if:operation,demo_pain','string','max:2000'],
+        $data=$request->validate(['operation'=>['required','in:config,intake,review,demo,demo_credit,demo_pain,demo_budget,demo_dream,demo_comparison,demo_exclusions'], 'call_id'=>['required','uuid'], 'stage'=>['required_if:operation,review',\Illuminate\Validation\Rule::in(CrmWorkflow::STAGES)],
+            'quote'=>['required_if:operation,demo_pain,demo_dream','string','max:2000'],
+            'budget'=>['required_if:operation,demo_budget','array:monthly_income,food,utilities,phone,car_payment,car_insurance,housing,other'],
+            'budget.monthly_income'=>['required_if:operation,demo_budget','numeric','gt:0','max:10000000'],
+            'budget.food'=>['required_if:operation,demo_budget','numeric','between:0,10000000'],
+            'budget.utilities'=>['required_if:operation,demo_budget','numeric','between:0,10000000'],
+            'budget.phone'=>['required_if:operation,demo_budget','numeric','between:0,10000000'],
+            'budget.car_payment'=>['required_if:operation,demo_budget','numeric','between:0,10000000'],
+            'budget.car_insurance'=>['required_if:operation,demo_budget','numeric','between:0,10000000'],
+            'budget.housing'=>['required_if:operation,demo_budget','numeric','between:0,10000000'],
+            'budget.other'=>['required_if:operation,demo_budget','numeric','between:0,10000000'],
+            'accounts'=>['present_if:operation,demo_exclusions','array','max:30'], 'accounts.*'=>['string','max:100','distinct'],
             'phone'=>['required_if:operation,intake','regex:/^[0-9]{7,15}$/'], 'name'=>['required_if:operation,intake','string','max:200'],
             'intake'=>['required_if:operation,intake','array'], 'intake.*'=>['string','max:2000']]);
         $call=\Illuminate\Support\Facades\DB::table('call_logs')->where('call_uuid',$data['call_id'])->whereNull('ended_at')->first();
         $user=$call ? \App\Models\User::find($call->user_id) : null;
         abort_unless($user && ($data['operation']==='intake' ? ($user->can('contacts.create') && $user->can('contacts.edit')) : $user->can('contacts.view')),403);
-        if (in_array($data['operation'],['demo','demo_credit','demo_pain'],true)) {
+        if (in_array($data['operation'],['demo','demo_credit','demo_pain','demo_budget','demo_dream','demo_comparison','demo_exclusions'],true)) {
             $settings=$workflow->settings();
             $link=\Illuminate\Support\Facades\DB::table('crm_call_customers')->where('call_uuid',$data['call_id'])->where('is_demo',true)->first();
             if (!$settings?->demo_enabled || !$link || !$settings->demo_scenario) return response()->json(['data'=>['status'=>'disabled','message'=>'This call is not explicitly enabled for simulation.']])->header('Cache-Control','no-store');
             $scenario=$settings->demo_scenario;
-            if ($data['operation']==='demo_credit') {
+            if (in_array($data['operation'],['demo_budget','demo_dream','demo_comparison','demo_exclusions'],true)) {
+                $result=app(\App\Services\CrmDemoContinuation::class)->run($data['call_id'],$data,$scenario);
+            } elseif ($data['operation']==='demo_credit') {
                 $result=app(\App\Services\CrmDemoReport::class)->fetch($scenario);
                 if ($result['status']==='report_ready') {
                     \Illuminate\Support\Facades\DB::table('crm_demo_notes')->updateOrInsert(['call_uuid'=>$data['call_id']],
@@ -36,9 +48,9 @@ class CrmWorkflowController extends Controller {
                 // Separate demo notes: never mutate a real customer's financial record.
                 \Illuminate\Support\Facades\DB::table('crm_demo_notes')->updateOrInsert(['call_uuid'=>$data['call_id']],
                     ['customer_id'=>$link->customer_id,'pain_quote'=>$data['quote'],'provenance'=>'model_transcribed_quote','created_at'=>now(),'updated_at'=>now()]);
-                $result=['status'=>'saved','simulated'=>true,'message'=>'Quoted caller words saved to demo CRM notes. Acknowledge empathetically, then stop this demo.'];
+                $result=['status'=>'saved','simulated'=>true,'message'=>'Quoted caller words saved to demo CRM notes. Acknowledge empathetically, then follow the next configured step if present.'];
             } else {
-                unset($scenario['credit_record'],$scenario['term_table']);
+                unset($scenario['credit_record'],$scenario['term_table'],$scenario['comparison']);
                 $result=['status'=>'demo','scenario'=>$scenario];
             }
             return response()->json(['data'=>$result])->header('Cache-Control','no-store');

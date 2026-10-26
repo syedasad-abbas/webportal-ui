@@ -151,6 +151,8 @@ const getChannelVar = async (uuid, variable) => {
 
 const muteCall = async (uuid) => sendCommand(`bgapi uuid_audio ${uuid} start read mute`);
 const unmuteCall = async (uuid) => sendCommand(`bgapi uuid_audio ${uuid} stop read mute`);
+const holdCall = async (uuid) => sendApiCommand(`uuid_hold ${uuid}`);
+const unholdCall = async (uuid) => sendApiCommand(`uuid_unhold ${uuid}`);
 const hangupCall = async (uuid) => sendCommand(`bgapi uuid_kill ${uuid}`);
 const bridgeCalls = async (firstUuid, secondUuid) => {
   if (!/^[0-9a-f-]{36}$/i.test(firstUuid || '') || !/^[0-9a-f-]{36}$/i.test(secondUuid || '')) {
@@ -365,6 +367,8 @@ module.exports = {
   getChannelVar,
   muteCall,
   unmuteCall,
+  holdCall,
+  unholdCall,
   hangupCall,
   bridgeCalls,
   sendDtmf,
